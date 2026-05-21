@@ -1,7 +1,4 @@
 import type { User, UserRole } from "../types/types";
-import i18n from "../i18n";
-
-export const rolePriority: readonly UserRole[] = ["admin", "barber", "user"] as const;
 
 export function getPrimaryRole(user: Pick<User, "role"> | null | undefined): UserRole | undefined {
   return user?.role;
@@ -17,34 +14,28 @@ export function getUserRoles(user: Pick<User, "role"> | null | undefined): UserR
 }
 
 export function getDefaultRouteForRole(user: Pick<User, "role"> | null | undefined) {
-  const role = getPrimaryRole(user);
-  if (role === "admin") return "/admin";
-  if (role === "barber") return "/barber";
-  if (role === "user") return "/account";
-  return "/user/access";
+  return getPrimaryRole(user) ? "/" : "/login";
 }
 
 export function getPostLoginRoute(user: Pick<User, "role"> | null | undefined) {
-  const role = getPrimaryRole(user);
-  if (role === "user") return "/";
   return getDefaultRouteForRole(user);
 }
 
 export function getRoleLabel(role: UserRole | undefined) {
   switch (role) {
     case "admin":
-      return i18n.t("roles.admin");
-    case "barber":
-      return i18n.t("roles.barber");
-    case "user":
-      return i18n.t("roles.user");
+      return "Admin";
+    case "owner":
+      return "Owner";
+    case "customer":
+      return "Customer";
     default:
-      return i18n.t("roles.user");
+      return "Customer";
   }
 }
 
 export function getUserRoleLabel(user: Pick<User, "role"> | null | undefined) {
   const roles = getUserRoles(user);
-  if (roles.length === 0) return i18n.t("roles.user");
+  if (roles.length === 0) return "Customer";
   return roles.map((role) => getRoleLabel(role)).join(", ");
 }

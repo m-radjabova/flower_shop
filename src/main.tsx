@@ -1,12 +1,11 @@
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "bootstrap/dist/css/bootstrap.css";
-import "./index.css";
-import { ToastContainer } from "react-toastify";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import CreateContextPro from "./hooks/CreateContextPro.tsx";
-import "./i18n";
+import { ToastContainer } from "react-toastify";
+import App from "./App";
+import CreateContextPro from "./hooks/CreateContextPro";
+import "./index.css";
+import "react-toastify/dist/ReactToastify.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,7 +14,6 @@ const queryClient = new QueryClient({
       gcTime: 30 * 60 * 1000,
       retry: 1,
       refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
     },
     mutations: {
       retry: 0,
@@ -24,14 +22,22 @@ const queryClient = new QueryClient({
 });
 
 createRoot(document.getElementById("root")!).render(
-  <>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <CreateContextPro>
-          <App />
-          <ToastContainer />
-        </CreateContextPro>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </>
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <CreateContextPro>
+        <App />
+        <ToastContainer
+          position="top-right"
+          autoClose={2800}
+          hideProgressBar={false}
+          closeButton={false}
+          newestOnTop
+          pauseOnFocusLoss={false}
+          toastClassName="fs-toast"
+          bodyClassName="fs-toast-body"
+          progressClassName="fs-toast-progress"
+        />
+      </CreateContextPro>
+    </BrowserRouter>
+  </QueryClientProvider>,
 );

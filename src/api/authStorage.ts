@@ -1,7 +1,7 @@
 import type { LoginResponse } from "../types/types";
 
-export const ACCESS_TOKEN_KEY = "barber-shop-access-token";
-export const REFRESH_TOKEN_KEY = "barber-shop-refresh-token";
+export const ACCESS_TOKEN_KEY = "flower-shop-access-token";
+export const REFRESH_TOKEN_KEY = "flower-shop-refresh-token";
 
 export function persistTokens(tokens: LoginResponse) {
   localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);

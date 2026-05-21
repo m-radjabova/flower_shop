@@ -15,7 +15,7 @@ export function formatUzbekPhone(value: string) {
     digits.slice(7, 9),
   ].filter(Boolean);
 
-  return parts.length ? `${UZBEKISTAN_PHONE_PREFIX} ${parts.join(" ")}` : `${UZBEKISTAN_PHONE_PREFIX} `;
+  return parts.length ? `${UZBEKISTAN_PHONE_PREFIX} ${parts.join("-")}` : `${UZBEKISTAN_PHONE_PREFIX} `;
 }
 
 export function toApiPhone(value: string) {

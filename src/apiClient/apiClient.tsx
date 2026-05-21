@@ -1,8 +1,18 @@
 import axios from "axios";
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, clearStoredAuth, getStoredRefreshToken } from "../api/authStorage";
+import {
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  clearStoredAuth,
+  getStoredRefreshToken,
+} from "../api/authStorage";
+
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_ORIGIN ||
+  "http://127.0.0.1:8000";
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_ORIGIN,
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -23,7 +33,7 @@ apiClient.interceptors.response.use(
     const requestUrl = String(originalRequest?.url ?? "");
     const isAuthRequest =
       requestUrl.includes("/auth/login") ||
-      requestUrl.includes("/auth/customer") ||
+      requestUrl.includes("/auth/register") ||
       requestUrl.includes("/auth/refresh");
 
     if (
@@ -37,17 +47,14 @@ apiClient.interceptors.response.use(
       const refreshToken = getStoredRefreshToken();
       if (!refreshToken) {
         clearStoredAuth();
-        window.location.href = window.location.pathname.startsWith("/account") ? "/user/access" : "/login";
+        window.location.href = "/login";
         return Promise.reject(error);
       }
 
       try {
-        const { data: tokens } = await axios.post(
-          `${import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_ORIGIN}/auth/refresh`,
-          {
-            refresh_token: refreshToken,
-          },
-        );
+        const { data: tokens } = await axios.post(`${baseURL}/auth/refresh`, {
+          refresh_token: refreshToken,
+        });
 
         localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
         if (tokens.refresh_token) {
@@ -58,7 +65,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         clearStoredAuth();
-        window.location.href = window.location.pathname.startsWith("/account") ? "/user/access" : "/login";
+        window.location.href = "/login";
         return Promise.reject(refreshError);
       }
     }

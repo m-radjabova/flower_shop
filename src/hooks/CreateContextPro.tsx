@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { MyContext } from "../context/MyContext";
 import { clearStoredAuth, getMe, getStoredAccessToken, logoutUser, normalizeUser, persistTokens } from "../api/auth";
+import { MyContext } from "../context/MyContext";
 import type { LoginResponse, User } from "../types/types";
 
 export interface TypeState {
@@ -95,19 +95,18 @@ function CreateContextPro({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     authRequestIdRef.current += 1;
-    const redirectTo = state.user?.role === "user" ? "/" : "/";
 
     try {
       await logoutUser();
     } catch {
-      // Local logout should still complete even if backend logout fails.
+      // local logout still completes
     } finally {
       clearStoredAuth();
       queryClient.clear();
       dispatch({ type: "LOGOUT" });
-      navigate(redirectTo, { replace: true });
+      navigate("/login", { replace: true });
     }
-  }, [navigate, queryClient, state.user?.role]);
+  }, [navigate, queryClient]);
 
   const value = useMemo<ContextType>(
     () => ({
