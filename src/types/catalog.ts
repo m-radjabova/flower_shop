@@ -205,3 +205,20 @@ export interface AddressUpdatePayload {
   longitude?: number;
   is_primary?: boolean;
 }
+
+export interface ReferralFriend {
+  id: string;
+  full_name: string;
+  email: string;
+  reward_granted: boolean;
+}
+
+export interface ReferralSummary {
+  referral_code: string;
+  invite_count: number;
+  pending_referrals: number;
+  successful_referrals: number;
+  bonus_balance: string;
+  reward_amount: string;
+  referred_friends: ReferralFriend[];
+}

@@ -11,6 +11,12 @@ import BouquetReviews from "./pages/catalog/BouquetReviews";
 import Cart from "./pages/catalog/Cart";
 import DeliveryCheckout from "./pages/catalog/DeliveryCheckout";
 import ShopDetail from "./pages/catalog/ShopDetail";
+import Admin from "./pages/admin/Admin";
+import HelloAdmin from "./pages/admin/Helloadmin";
+import AdminApplications from "./pages/admin/applications/AdminApplications";
+import AdminCategories from "./pages/admin/categories/AdminCategories";
+import AdminShops from "./pages/admin/shops/AdminShops";
+import AdminUsers from "./pages/admin/users/AdminUsers";
 import Home from "./pages/home/Home";
 import Login from "./pages/login/Login";
 import Register from "./pages/login/Register";
@@ -24,12 +30,26 @@ function App() {
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/favorites" element={<Favorites />} />
+          <Route
+            path="/favorites"
+            element={(
+              <ProtectedRoute role={["customer", "owner", "admin"]}>
+                <Favorites />
+              </ProtectedRoute>
+            )}
+          />
           <Route path="/bouquets" element={<BouquetCatalog />} />
           <Route path="/bouquets/:bouquetId" element={<BouquetDetail />} />
           <Route path="/bouquets/:bouquetId/reviews" element={<BouquetReviews />} />
           <Route path="/shops/:slug" element={<ShopDetail />} />
-          <Route path="/cart" element={<Cart />} />
+          <Route
+            path="/cart"
+            element={(
+              <ProtectedRoute role={["customer", "owner", "admin"]}>
+                <Cart />
+              </ProtectedRoute>
+            )}
+          />
           <Route path="/delivery" element={<DeliveryCheckout />} />
           <Route
             path="/profile"
@@ -47,6 +67,22 @@ function App() {
               </ProtectedRoute>
             )}
           />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+
+        <Route
+          path="/admin"
+          element={(
+            <ProtectedRoute role="admin">
+              <Admin />
+            </ProtectedRoute>
+          )}
+        >
+          <Route index element={<HelloAdmin />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="shops" element={<AdminShops />} />
+          <Route path="categories" element={<AdminCategories />} />
+          <Route path="applications" element={<AdminApplications />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 

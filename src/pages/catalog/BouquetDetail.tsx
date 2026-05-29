@@ -5,6 +5,8 @@ import { addToCart } from "../../utils/cart";
 import {
   HiArrowLeft,
   HiOutlineClock,
+  HiOutlineGift,
+  HiOutlineHeart,
   HiOutlineMapPin,
   HiOutlineShoppingBag,
   HiPhone,
@@ -16,6 +18,23 @@ import { DetailPageSkeleton } from "../../components/PageSkeletons";
 import ReviewSection from "../../components/catalog/ReviewSection";
 import { useBouquet } from "../../hooks/useCatalog";
 import { formatPrice, getBouquetImages } from "../../utils/catalog";
+
+function FloralFlourish({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 220 60" className={className} fill="none" aria-hidden="true">
+      <path d="M8 30c26-22 52-22 78 0s52 22 78 0 32-22 48 0" stroke="url(#bouquet-flourish-gradient)" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="58" cy="22" r="5" fill="#f0c89c" fillOpacity=".35" />
+      <circle cx="162" cy="22" r="5" fill="#ff8b9f" fillOpacity=".35" />
+      <defs>
+        <linearGradient id="bouquet-flourish-gradient" x1="8" y1="30" x2="212" y2="30" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#f0c89c" stopOpacity=".15" />
+          <stop offset=".5" stopColor="#fff2ee" stopOpacity=".65" />
+          <stop offset="1" stopColor="#ff8b9f" stopOpacity=".2" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
 
 function BouquetDetail() {
   const { bouquetId } = useParams();
@@ -37,6 +56,7 @@ function BouquetDetail() {
     <main className="min-h-screen overflow-hidden bg-[#070102] text-[#fff6f4]">
       <section className="relative px-4 pb-20 pt-28 sm:px-6 lg:px-10">
         <div className="absolute inset-0 -z-0 bg-[radial-gradient(circle_at_16%_18%,rgba(205,77,74,0.32),transparent_28%),radial-gradient(circle_at_90%_8%,rgba(255,183,142,0.12),transparent_24%)]" />
+        <div className="absolute inset-0 -z-0 bg-[radial-gradient(circle_at_82%_76%,rgba(255,121,155,0.10),transparent_18%),radial-gradient(circle_at_24%_68%,rgba(255,221,197,0.08),transparent_18%)]" />
         <div className="relative z-10 mx-auto max-w-7xl">
           <Link
             to="/#bouquets"
@@ -48,11 +68,25 @@ function BouquetDetail() {
 
           <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="rounded-[2rem] border border-[#5d2825] bg-[#130708]/90 p-3 shadow-[0_28px_90px_rgba(0,0,0,0.38)]">
-              <img
-                src={heroImage}
-                alt={bouquet.name}
-                className="h-[430px] w-full rounded-[1.55rem] object-cover sm:h-[560px]"
-              />
+              <div className="relative overflow-hidden rounded-[1.55rem]">
+                <img
+                  src={heroImage}
+                  alt={bouquet.name}
+                  className="h-[430px] w-full object-cover sm:h-[560px]"
+                />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_20%,rgba(255,218,188,0.18),transparent_20%),linear-gradient(180deg,rgba(10,2,4,0.02),rgba(10,2,4,0.24))]" />
+                <div className="absolute left-5 top-5 flex flex-wrap gap-2">
+                  {bouquet.category ? (
+                    <span className="rounded-full border border-white/20 bg-black/20 px-4 py-2 text-sm font-semibold text-[#fff4ef] backdrop-blur">
+                      {bouquet.category.name}
+                    </span>
+                  ) : null}
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/20 px-4 py-2 text-sm font-semibold text-[#fff4ef] backdrop-blur">
+                    <HiStar className="text-[#f2b15e]" />
+                    {bouquet.rating} ({bouquet.reviews_count} reviews)
+                  </span>
+                </div>
+              </div>
               <div className="mt-3 grid grid-cols-4 gap-3">
                 {images.map((image, index) => (
                   <button
@@ -78,20 +112,16 @@ function BouquetDetail() {
             <div className="flex flex-col justify-center">
               <div className="rounded-[2rem] border border-[#63302d] bg-[linear-gradient(145deg,rgba(27,9,10,0.94),rgba(51,15,17,0.88))] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.34)] sm:p-8">
                 <div className="flex flex-wrap items-center gap-3">
-                  {bouquet.category ? (
-                    <span className="rounded-full border border-[#8b4a43] bg-[#2a1112] px-4 py-2 text-sm font-semibold text-[#ffc7ba]">
-                      {bouquet.category.name}
-                    </span>
-                  ) : null}
                   <span className="inline-flex items-center gap-2 rounded-full border border-[#7a3d37] bg-[#19090a] px-4 py-2 text-sm text-[#f6d6cd]">
-                    <HiStar className="text-[#f2b15e]" />
-                    {bouquet.rating} ({bouquet.reviews_count} reviews)
+                    <HiOutlineGift className="text-[#ffb7a8]" />
+                    Handcrafted arrangement
                   </span>
                 </div>
 
                 <h1 className="mt-6 font-cormorant text-5xl font-semibold leading-none text-white sm:text-7xl">
                   {bouquet.name}
                 </h1>
+                <FloralFlourish className="mt-4 h-10 w-full max-w-[22rem] opacity-90" />
                 <p className="mt-5 max-w-2xl text-base leading-8 text-[#dfc1ba]">
                   {bouquet.description ?? "A carefully prepared bouquet from a trusted local flower shop."}
                 </p>
@@ -120,6 +150,30 @@ function BouquetDetail() {
                   </div>
                 </div>
 
+                <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-[#5b2a28] bg-[linear-gradient(180deg,rgba(18,7,8,0.98),rgba(14,4,6,0.98))] p-4">
+                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#271113] text-[#ffb7a8]">
+                      <HiOutlineHeart className="text-lg" />
+                    </div>
+                    <p className="mt-3 text-sm uppercase tracking-[0.16em] text-[#a9857d]">Mood</p>
+                    <p className="mt-1 text-base font-semibold text-white">Soft and elegant</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#5b2a28] bg-[linear-gradient(180deg,rgba(18,7,8,0.98),rgba(14,4,6,0.98))] p-4">
+                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#271113] text-[#ffb7a8]">
+                      <HiSparkles className="text-lg" />
+                    </div>
+                    <p className="mt-3 text-sm uppercase tracking-[0.16em] text-[#a9857d]">Finish</p>
+                    <p className="mt-1 text-base font-semibold text-white">Premium wrapped</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#5b2a28] bg-[linear-gradient(180deg,rgba(18,7,8,0.98),rgba(14,4,6,0.98))] p-4">
+                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#271113] text-[#ffb7a8]">
+                      <HiOutlineGift className="text-lg" />
+                    </div>
+                    <p className="mt-3 text-sm uppercase tracking-[0.16em] text-[#a9857d]">Occasion</p>
+                    <p className="mt-1 text-base font-semibold text-white">{bouquet.category?.name ?? "Thoughtful gifting"}</p>
+                  </div>
+                </div>
+
                 {bouquet.compound ? (
                   <div className="mt-6 rounded-[1.4rem] border border-[#60302d] bg-[#150809] p-5">
                     <div className="flex items-center gap-2 text-[#ffc8bc]">
@@ -141,11 +195,22 @@ function BouquetDetail() {
                   <HiOutlineShoppingBag />
                   Add to cart
                 </button>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-[#5b2a28] bg-[#120708] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#a9857d]">Perfect for</p>
+                    <p className="mt-2 text-lg font-semibold text-white">{bouquet.category?.name ?? "Elegant gifting"}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#5b2a28] bg-[#120708] p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[#a9857d]">Delivery feel</p>
+                    <p className="mt-2 text-lg font-semibold text-white">Fresh, wrapped, ready</p>
+                  </div>
+                </div>
               </div>
 
               <Link
                 to={`/shops/${bouquet.shop.slug}`}
-                className="mt-5 grid gap-4 rounded-[1.7rem] border border-[#61302d] bg-[#130708]/92 p-5 transition hover:-translate-y-1 hover:border-[#bd756c] sm:grid-cols-[auto_1fr]"
+                className="mt-5 grid gap-4 rounded-[1.7rem] border border-[#61302d] bg-[#130708]/92 p-5 transition hover:-translate-y-1 hover:border-[#bd756c] hover:shadow-[0_22px_48px_rgba(0,0,0,0.28)] sm:grid-cols-[auto_1fr]"
               >
                 {bouquet.shop.logo ? (
                   <img

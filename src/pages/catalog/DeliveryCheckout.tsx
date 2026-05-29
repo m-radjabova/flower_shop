@@ -40,6 +40,7 @@ declare global {
 type LeafletMap = {
   setView: (latlng: [number, number], zoom: number) => LeafletMap;
   on: (event: string, callback: (event: { latlng: { lat: number; lng: number } }) => void) => void;
+  invalidateSize: (options?: { pan?: boolean; animate?: boolean }) => void;
   remove: () => void;
 };
 

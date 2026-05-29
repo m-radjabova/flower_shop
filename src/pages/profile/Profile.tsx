@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import {
   HiArrowLeftOnRectangle,
-  HiGift,
+  HiTrash,
   HiOutlineGift,
   HiOutlineHeart as HiOutlineHeartCard,
   HiOutlineShoppingBag as HiOutlineShoppingBagCard,
   HiStar,
-  HiOutlineBell,
   HiOutlineCamera,
-  HiOutlineCog6Tooth,
-  HiOutlineHeart,
-  HiOutlineMapPin,
-  HiOutlineShoppingBag,
-  HiOutlineUser,
 } from "react-icons/hi2";
 import { toast } from "react-toastify";
+import { changeMyPassword, deleteMyAvatar, getErrorMessage, updateMe, uploadMyAvatar } from "../../api/auth";
 import { useFavoriteItems } from "../../hooks/useFavorites";
 import useContextPro from "../../hooks/useContextPro";
 import {
@@ -24,29 +20,33 @@ import {
   useDeleteAddress,
   useMyAddresses,
   useMyOrders,
+  useMyReferralSummary,
   useMyReviews,
   useSetPrimaryAddress,
   useUpdateAddress,
-  useUploadImage,
 } from "../../hooks/useCatalog";
-import type { AddressOut, OrderOut } from "../../types/catalog";
+import type { Bouquet, OrderOut } from "../../types/catalog";
 import { formatPrice } from "../../utils/catalog";
 import { addToCart } from "../../utils/cart";
-import { removeFavoriteBouquet } from "../../utils/favorites";
+import { hasAnyRole } from "../../utils/roles";
 import {
   clearPreferredCheckoutAddress,
   getPreferredCheckoutAddress,
   isSameCheckoutAddress,
   setPreferredCheckoutAddress,
+  type StoredCheckoutAddress,
 } from "../../utils/address";
 import {
-  AddressCardsSkeleton,
-  OrdersListSkeleton,
   ProfileDashboardSkeleton,
   RecommendedBouquetSkeleton,
 } from "../../components/PageSkeletons";
+import AddressesTab from "./components/AddressesTab";
+import FavoritesTab from "./components/FavoritesTab";
+import OrdersTab from "./components/OrdersTab";
+import { getOrderStatusMeta, getRepeatOrderAvailability, type ProfileTab, tabs } from "./components/profileHelpers";
+import SettingsTab from "./components/SettingsTab";
+import { HiGift } from "react-icons/hi2";
 
-const AVATAR_STORAGE_KEY = "flower-shop-profile-avatar";
 const TASHKENT_COORDS: [number, number] = [41.3111, 69.2797];
 
 declare global {
@@ -63,12 +63,34 @@ declare global {
 type LeafletMap = {
   setView: (latlng: [number, number], zoom: number) => LeafletMap;
   on: (event: string, callback: (event: { latlng: { lat: number; lng: number } }) => void) => void;
+  invalidateSize: (options?: { pan?: boolean; animate?: boolean }) => void;
   remove: () => void;
 };
 
 type LeafletMarker = {
   addTo: (map: LeafletMap) => LeafletMarker;
   setLatLng: (latlng: [number, number]) => void;
+};
+
+type AccountFormValues = {
+  full_name: string;
+  email: string;
+  phone: string;
+};
+
+type PasswordFormValues = {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+};
+
+type AddressFormValues = {
+  title: string;
+  address_line: string;
+  city: string;
+  notes: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 function injectLeafletAssets() {
@@ -103,70 +125,55 @@ function injectLeafletAssets() {
   });
 }
 
-type ProfileTab = "profile" | "orders" | "favorites" | "addresses" | "notifications" | "settings";
 
-const tabs: Array<{ key: ProfileTab; label: string; icon: React.ReactNode }> = [
-  { key: "profile", label: "My Profile", icon: <HiOutlineUser /> },
-  { key: "orders", label: "My Orders", icon: <HiOutlineShoppingBag /> },
-  { key: "favorites", label: "My Favorites", icon: <HiOutlineHeart /> },
-  { key: "addresses", label: "My Addresses", icon: <HiOutlineMapPin /> },
-  { key: "notifications", label: "Notifications", icon: <HiOutlineBell /> },
-  { key: "settings", label: "Settings", icon: <HiOutlineCog6Tooth /> },
-];
-
-function getStoredAvatar(userId: string | undefined) {
-  if (!userId || typeof window === "undefined") return "";
-  return window.localStorage.getItem(`${AVATAR_STORAGE_KEY}:${userId}`) ?? "";
-}
-
-function setStoredAvatar(userId: string | undefined, url: string) {
-  if (!userId || typeof window === "undefined") return;
-  window.localStorage.setItem(`${AVATAR_STORAGE_KEY}:${userId}`, url);
-}
-
-function getOrderStatusMeta(status: OrderOut["status"]) {
-  switch (status) {
-    case "new":
-      return { label: "New", className: "border-[#6b4f2f] bg-[#2a1b0e] text-[#f7cf9d]" };
-    case "accepted":
-      return { label: "Accepted", className: "border-[#4b5a73] bg-[#121c2d] text-[#a8c8ff]" };
-    case "preparing":
-      return { label: "Preparing", className: "border-[#7b5832] bg-[#2d1a0f] text-[#ffcf8c]" };
-    case "delivering":
-      return { label: "Delivering", className: "border-[#35626b] bg-[#10252a] text-[#8fe7ff]" };
-    case "delivered":
-      return { label: "Delivered", className: "border-[#2f6a4f] bg-[#10231a] text-[#9ef0c2]" };
-    case "cancelled":
-      return { label: "Cancelled", className: "border-[#7a3542] bg-[#2a0f14] text-[#ff9eae]" };
-    default:
-      return { label: status, className: "border-[#704447] bg-[#2a1014] text-[#f4d8d2]" };
-  }
-}
-
-function getPaymentStatusMeta(status: OrderOut["payment_status"]) {
-  switch (status) {
-    case "paid":
-      return { label: "Paid", className: "text-[#9ef0c2]" };
-    case "pending":
-      return { label: "Pending", className: "text-[#ffd39a]" };
-    case "failed":
-      return { label: "Failed", className: "text-[#ff9eae]" };
-    default:
-      return { label: status, className: "text-[#f4d8d2]" };
-  }
+function buildRepeatBouquet(order: OrderOut, item: OrderOut["items"][number]): Bouquet {
+  return {
+    id: item.bouquet_id ?? item.id,
+    shop_id: order.shop_id,
+    category_id: null,
+    name: item.bouquet_name,
+    slug: item.bouquet_id ?? item.id,
+    description: order.note ?? "Reordered from your previous purchase.",
+    compound: null,
+    price: item.price,
+    old_price: null,
+    image: item.bouquet_image ?? "/logo2.png",
+    images: item.bouquet_image ? [item.bouquet_image] : ["/logo2.png"],
+    size: null,
+    stock: 99,
+    status: "active",
+    rating: "0",
+    reviews_count: 0,
+    created_at: order.created_at,
+    updated_at: order.updated_at,
+    shop: {
+      id: order.shop_id,
+      name: "Flower Shop",
+      slug: order.shop_id,
+      logo: null,
+      city: null,
+      rating: "0",
+      reviews_count: 0,
+      status: "active",
+    },
+    category: null,
+  };
 }
 
 function Profile() {
+  const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  const MAX_AVATAR_SIZE_BYTES = 6 * 1024 * 1024;
   const {
     state: { user },
+    dispatch,
     logout,
   } = useContextPro();
 
   const ordersQuery = useMyOrders();
   const addressesQuery = useMyAddresses();
   const myReviewsQuery = useMyReviews();
+  const referralQuery = useMyReferralSummary();
   const favoriteItems = useFavoriteItems();
-  const uploadImage = useUploadImage();
   const createAddressMutation = useCreateAddress();
   const updateAddressMutation = useUpdateAddress();
   const deleteAddressMutation = useDeleteAddress();
@@ -174,27 +181,50 @@ function Profile() {
   const recommendedQuery = useBouquets({ limit: 8 });
 
   const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
-  const [avatarUrl, setAvatarUrl] = useState(() => getStoredAvatar(user?.id));
   const [recommendedIndex, setRecommendedIndex] = useState(0);
-  const [addressForm, setAddressForm] = useState({
-    title: "",
-    address_line: "",
-    city: "",
-    notes: "",
-    latitude: null as number | null,
-    longitude: null as number | null,
-  });
+  const [isAvatarSubmitting, setIsAvatarSubmitting] = useState(false);
+  const [avatarStatus, setAvatarStatus] = useState<string>("");
+  const [avatarError, setAvatarError] = useState<string>("");
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>("");
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
-  const [mapOpen, setMapOpen] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [isResolvingAddress, setIsResolvingAddress] = useState(false);
-  const [preferredCheckoutAddress, setPreferredCheckoutAddressState] = useState(() => getPreferredCheckoutAddress());
+  const [preferredCheckoutAddress, setPreferredCheckoutAddressState] = useState<StoredCheckoutAddress | null>(() => getPreferredCheckoutAddress());
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<LeafletMap | null>(null);
+  const accountForm = useForm<AccountFormValues>({
+    defaultValues: {
+      full_name: "",
+      email: "",
+      phone: "",
+    },
+  });
+  const passwordForm = useForm<PasswordFormValues>({
+    defaultValues: {
+      current_password: "",
+      new_password: "",
+      confirm_password: "",
+    },
+  });
+  const addressForm = useForm<AddressFormValues>({
+    defaultValues: {
+      title: "",
+      address_line: "",
+      city: "",
+      notes: "",
+      latitude: null,
+      longitude: null,
+    },
+  });
+  const addressLatitude = addressForm.watch("latitude");
+  const addressLongitude = addressForm.watch("longitude");
 
   const orders = ordersQuery.data ?? [];
   const addresses = addressesQuery.data ?? [];
   const myReviewsCount = myReviewsQuery.data?.length ?? 0;
+  const referralSummary = referralQuery.data;
   const recommendedBouquets = recommendedQuery.data ?? [];
   const safeRecommendedIndex = recommendedBouquets.length
     ? recommendedIndex % recommendedBouquets.length
@@ -209,9 +239,9 @@ function Profile() {
     if (user?.full_name?.trim()) done += 25;
     if (user?.email?.trim()) done += 25;
     if (user?.phone?.trim()) done += 25;
-    if (avatarUrl) done += 25;
+    if (user?.avatar_url?.trim()) done += 25;
     return done;
-  }, [user?.full_name, user?.email, user?.phone, avatarUrl]);
+  }, [user?.full_name, user?.email, user?.phone, user?.avatar_url]);
 
   const userInitials = user?.full_name
     ?.split(/\s+/)
@@ -221,26 +251,225 @@ function Profile() {
     .join("") ?? "U";
 
   const firstName = user?.full_name?.split(/\s+/)[0] ?? "Guest";
+  const canOpenAdminDashboard = hasAnyRole(user, ["admin"]);
+  const referralLink = useMemo(() => {
+    if (!referralSummary?.referral_code || typeof window === "undefined") return "";
+    return `${window.location.origin}/register?ref=${referralSummary.referral_code}`;
+  }, [referralSummary?.referral_code]);
 
-  const handleAvatarChange = async (file: File | null) => {
-    if (!file || !user?.id) return;
-    try {
-      const uploaded = await uploadImage.mutateAsync(file);
-      setAvatarUrl(uploaded.url);
-      setStoredAvatar(user.id, uploaded.url);
-      toast.success("Avatar yangilandi");
-    } catch {
-      toast.error("Avatar yuklashda xatolik");
+  useEffect(() => {
+    accountForm.reset({
+      full_name: user?.full_name ?? "",
+      email: user?.email ?? "",
+      phone: user?.phone ?? "",
+    });
+  }, [accountForm, user?.full_name, user?.email, user?.phone]);
+
+  useEffect(() => {
+    if (!selectedAvatarFile) {
+      setAvatarPreviewUrl("");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(selectedAvatarFile);
+    setAvatarPreviewUrl(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [selectedAvatarFile]);
+
+  const resetAvatarSelection = () => {
+    setSelectedAvatarFile(null);
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = "";
     }
   };
 
+  const handleAvatarSelect = (file: File | null) => {
+    if (!file) return;
+
+    setAvatarStatus("");
+    setAvatarError("");
+
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      const message = "Faqat JPG, PNG, WEBP yoki GIF rasm yuklash mumkin";
+      setAvatarError(message);
+      toast.error(message);
+      resetAvatarSelection();
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      const message = "Avatar hajmi 6MB dan oshmasligi kerak";
+      setAvatarError(message);
+      toast.error(message);
+      resetAvatarSelection();
+      return;
+    }
+
+    setSelectedAvatarFile(file);
+    setAvatarStatus("Preview tayyor. Tasdiqlasangiz upload qilinadi.");
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!selectedAvatarFile) return;
+
+    setIsAvatarSubmitting(true);
+    setAvatarStatus("Avatar yuklanmoqda...");
+    try {
+      const updatedUser = await uploadMyAvatar(selectedAvatarFile);
+      dispatch({ type: "SET_USER", payload: updatedUser });
+      resetAvatarSelection();
+      setAvatarStatus("Avatar muvaffaqiyatli yangilandi");
+      toast.success("Avatar yangilandi");
+    } catch (error) {
+      const message = getErrorMessage(error, "Avatar yuklashda xatolik");
+      setAvatarStatus("");
+      setAvatarError(message);
+      toast.error(message);
+    } finally {
+      setIsAvatarSubmitting(false);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    setAvatarError("");
+    setIsAvatarSubmitting(true);
+    setAvatarStatus("Avatar o'chirilmoqda...");
+    try {
+      const updatedUser = await deleteMyAvatar();
+      dispatch({ type: "SET_USER", payload: updatedUser });
+      setAvatarStatus("Avatar o'chirildi");
+      toast.success("Avatar o'chirildi");
+    } catch (error) {
+      const message = getErrorMessage(error, "Avatarni o'chirib bo'lmadi");
+      setAvatarStatus("");
+      setAvatarError(message);
+      toast.error(message);
+    } finally {
+      setIsAvatarSubmitting(false);
+    }
+  };
+
+  const handleInviteFriends = async () => {
+    if (!referralLink) {
+      toast.info("Referral link tayyor emas");
+      return;
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Muslima Boutique Referral",
+          text: "Sign up with my referral link and after your first order we both get a $10 bonus.",
+          url: referralLink,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(referralLink);
+      toast.success("Referral link nusxalandi");
+    } catch {
+      toast.error("Referral linkni ulashib bo'lmadi");
+    }
+  };
+
+  const handleCopyReferralCode = async () => {
+    if (!referralSummary?.referral_code) {
+      toast.info("Referral code hali tayyor emas");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(referralSummary.referral_code);
+      toast.success("Referral code nusxalandi");
+    } catch {
+      toast.error("Referral code nusxalanmadi");
+    }
+  };
+
+  const handleAccountSave = accountForm.handleSubmit(async (values) => {
+    if (!values.full_name.trim() || !values.email.trim()) {
+      toast.error("Full name va email majburiy");
+      return;
+    }
+
+    try {
+      const updatedUser = await updateMe({
+        full_name: values.full_name.trim(),
+        email: values.email.trim(),
+        phone: values.phone.trim() || null,
+      });
+      dispatch({ type: "SET_USER", payload: updatedUser });
+      toast.success("Profil ma'lumotlari saqlandi");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Profilni saqlab bo'lmadi"));
+    }
+  });
+
+  const handlePasswordSave = passwordForm.handleSubmit(async (values) => {
+    if (!values.current_password || !values.new_password || !values.confirm_password) {
+      toast.error("Parol maydonlarini to'liq to'ldiring");
+      return;
+    }
+
+    if (values.new_password.length < 6) {
+      toast.error("Yangi parol kamida 6 ta belgidan iborat bo'lsin");
+      return;
+    }
+
+    if (values.new_password !== values.confirm_password) {
+      toast.error("Yangi parollar mos emas");
+      return;
+    }
+
+    try {
+      await changeMyPassword({
+        current_password: values.current_password,
+        new_password: values.new_password,
+      });
+      passwordForm.reset({
+        current_password: "",
+        new_password: "",
+        confirm_password: "",
+      });
+      toast.success("Parol muvaffaqiyatli yangilandi");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Parolni yangilab bo'lmadi"));
+    }
+  });
+
+  const handleRepeatOrder = (order: OrderOut) => {
+    const repeatAvailability = getRepeatOrderAvailability(order.created_at);
+
+    if (!repeatAvailability.canRepeat) {
+      toast.info("Repeat order faqat buyurtmadan keyingi 2 soat ichida mumkin");
+      return;
+    }
+
+    const firstItem = order.items[0];
+
+    if (!firstItem) {
+      toast.info("Bu orderda qayta qo'shish uchun mahsulot topilmadi");
+      return;
+    }
+
+    addToCart(buildRepeatBouquet(order, firstItem), firstItem.quantity);
+    if (order.items.length > 1) {
+      toast.success(`${firstItem.bouquet_name} cartga qo'shildi. Cart hozircha bitta bouquet bilan ishlaydi.`);
+      return;
+    }
+    toast.success(`${firstItem.bouquet_name} cartga qo'shildi`);
+  };
+
   const resetAddressForm = () => {
-    setAddressForm({ title: "", address_line: "", city: "", notes: "", latitude: null, longitude: null });
+    addressForm.reset({ title: "", address_line: "", city: "", notes: "", latitude: null, longitude: null });
     setEditingAddressId(null);
   };
 
-  const handleAddressSubmit = async () => {
-    if (!addressForm.title.trim() || !addressForm.address_line.trim()) {
+  const handleAddressSubmit = addressForm.handleSubmit(async (values) => {
+    if (!values.title.trim() || !values.address_line.trim()) {
       toast.error("Title va address majburiy");
       return;
     }
@@ -249,23 +478,23 @@ function Profile() {
         await updateAddressMutation.mutateAsync({
           addressId: editingAddressId,
           payload: {
-            title: addressForm.title.trim(),
-            address_line: addressForm.address_line.trim(),
-            city: addressForm.city.trim() || undefined,
-            notes: addressForm.notes.trim() || undefined,
-            latitude: addressForm.latitude ?? undefined,
-            longitude: addressForm.longitude ?? undefined,
+            title: values.title.trim(),
+            address_line: values.address_line.trim(),
+            city: values.city.trim() || undefined,
+            notes: values.notes.trim() || undefined,
+            latitude: values.latitude ?? undefined,
+            longitude: values.longitude ?? undefined,
           },
         });
         toast.success("Address yangilandi");
       } else {
         await createAddressMutation.mutateAsync({
-          title: addressForm.title.trim(),
-          address_line: addressForm.address_line.trim(),
-          city: addressForm.city.trim() || undefined,
-          notes: addressForm.notes.trim() || undefined,
-          latitude: addressForm.latitude ?? undefined,
-          longitude: addressForm.longitude ?? undefined,
+          title: values.title.trim(),
+          address_line: values.address_line.trim(),
+          city: values.city.trim() || undefined,
+          notes: values.notes.trim() || undefined,
+          latitude: values.latitude ?? undefined,
+          longitude: values.longitude ?? undefined,
           is_primary: addresses.length === 0,
         });
         toast.success("Address qo'shildi");
@@ -274,7 +503,7 @@ function Profile() {
     } catch (error) {
       toast.error((error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Address saqlanmadi");
     }
-  };
+  });
 
   useEffect(() => {
     if (recommendedBouquets.length <= 1) return;
@@ -291,8 +520,10 @@ function Profile() {
   }, []);
 
   useEffect(() => {
-    if (!mapOpen || !mapHostRef.current) return;
+    if (activeTab !== "addresses" || !mapHostRef.current) return;
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
+    let resizeTimer: number | null = null;
 
     const setupMap = async () => {
       try {
@@ -300,8 +531,8 @@ function Profile() {
         if (cancelled || !window.L || !mapHostRef.current) return;
 
         const initial: [number, number] = [
-          addressForm.latitude ?? TASHKENT_COORDS[0],
-          addressForm.longitude ?? TASHKENT_COORDS[1],
+          addressLatitude ?? TASHKENT_COORDS[0],
+          addressLongitude ?? TASHKENT_COORDS[1],
         ];
         const map = window.L.map(mapHostRef.current).setView(initial, 12);
         window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -317,20 +548,39 @@ function Profile() {
 
         leafletMapRef.current = map;
 
+        const refreshMapSize = () => {
+          map.invalidateSize({ pan: false, animate: false });
+        };
+
+        window.requestAnimationFrame(() => {
+          if (!cancelled) refreshMapSize();
+        });
+
+        resizeTimer = window.setTimeout(() => {
+          if (!cancelled) refreshMapSize();
+        }, 180);
+
+        if (typeof ResizeObserver !== "undefined") {
+          resizeObserver = new ResizeObserver(() => {
+            refreshMapSize();
+          });
+          resizeObserver.observe(mapHostRef.current);
+        }
+
         map.on("click", async ({ latlng }) => {
           const coords: [number, number] = [latlng.lat, latlng.lng];
           marker.setLatLng(coords);
-          setAddressForm((prev) => ({ ...prev, latitude: coords[0], longitude: coords[1] }));
+          addressForm.setValue("latitude", coords[0]);
+          addressForm.setValue("longitude", coords[1]);
           setIsResolvingAddress(true);
           try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`);
             const data = (await res.json()) as { display_name?: string; address?: { city?: string; town?: string; village?: string } };
             if (data.display_name) {
-              setAddressForm((prev) => ({
-                ...prev,
-                address_line: data.display_name ?? prev.address_line,
-                city: data.address?.city ?? data.address?.town ?? data.address?.village ?? prev.city,
-              }));
+              addressForm.setValue("address_line", data.display_name);
+              if (data.address?.city ?? data.address?.town ?? data.address?.village) {
+                addressForm.setValue("city", data.address?.city ?? data.address?.town ?? data.address?.village ?? "");
+              }
             }
           } finally {
             setIsResolvingAddress(false);
@@ -344,272 +594,93 @@ function Profile() {
     setupMap();
     return () => {
       cancelled = true;
+      if (resizeTimer !== null) window.clearTimeout(resizeTimer);
+      resizeObserver?.disconnect();
       leafletMapRef.current?.remove();
       leafletMapRef.current = null;
     };
-  }, [mapOpen, addressForm.latitude, addressForm.longitude]);
+  }, [activeTab, addressForm, addressLatitude, addressLongitude]);
 
   const renderCenterContent = () => {
     if (activeTab === "orders") {
       return (
-        <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-6">
-          <p className="font-cormorant text-4xl text-white">My Orders</p>
-          {isOrdersLoading ? (
-            <OrdersListSkeleton />
-          ) : (
-            <div className="mt-4 space-y-3">
-            {!orders.length ? <p className="text-[#d8beb8]">Hozircha order yo'q.</p> : null}
-            {orders.map((order) => (
-              <article key={order.id} className="flex items-center justify-between rounded-xl bg-[#120607] p-3">
-                <div>
-                  <p className="text-sm text-[#d7b7b0]">Order #{order.id.slice(0, 8)}</p>
-                  <p className="font-semibold text-white">{order.items[0]?.bouquet_name ?? "Bouquet"}</p>
-                  <p className="text-sm text-[#bc9892]">{order.items.reduce((acc, item) => acc + item.quantity, 0)} item(s)</p>
-                  <p className={`mt-1 text-xs ${getPaymentStatusMeta(order.payment_status).className}`}>
-                    Payment: {getPaymentStatusMeta(order.payment_status).label}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className={`rounded-full border px-2 py-1 text-xs uppercase ${getOrderStatusMeta(order.status).className}`}>
-                    {getOrderStatusMeta(order.status).label}
-                  </p>
-                  <p className="mt-2 text-xl font-semibold text-white">{formatPrice(order.total_price)}</p>
-                </div>
-              </article>
-            ))}
-            </div>
-          )}
-        </div>
+        <OrdersTab
+          expandedOrderId={expandedOrderId}
+          isLoading={isOrdersLoading}
+          onRepeatOrder={handleRepeatOrder}
+          onToggleExpanded={(orderId) => setExpandedOrderId((current) => current === orderId ? null : orderId)}
+          orders={orders}
+        />
       );
     }
 
     if (activeTab === "favorites") {
-      return (
-        <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-6">
-          <p className="font-cormorant text-4xl text-white">My Favorites</p>
-          <p className="mt-2 text-[#d8beb8]">Sizda {favoriteItems.length} ta saqlangan bouquet bor.</p>
-          <div className="mt-4 space-y-3">
-            {!favoriteItems.length ? <p className="text-[#d8beb8]">Hozircha favorites yo'q.</p> : null}
-            {favoriteItems.map((item) => (
-              <article key={item.id} className="flex items-center justify-between rounded-xl bg-[#120607] p-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={item.bouquet.image}
-                    alt={item.bouquet.name}
-                    className="h-16 w-16 rounded-lg object-cover"
-                  />
-                  <div>
-                    <p className="font-semibold text-white">{item.bouquet.name}</p>
-                    <p className="text-sm text-[#c9a59e]">{item.bouquet.shop.name}</p>
-                    <p className="text-lg font-semibold text-[#ffe0b3]">{formatPrice(item.bouquet.price)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      addToCart(item.bouquet);
-                      toast.success(`${item.bouquet.name} cartga qo'shildi`);
-                    }}
-                    className="rounded-lg bg-[#2a1b0f] px-3 py-1.5 text-sm text-[#ffd59a]"
-                  >
-                    Add to cart
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      removeFavoriteBouquet(item.id);
-                      toast.info(`${item.bouquet.name} favoritesdan olib tashlandi`);
-                    }}
-                    className="rounded-lg bg-[#3a1116] px-3 py-1.5 text-sm text-[#ffb1bd]"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      );
+      return <FavoritesTab favoriteItems={favoriteItems} />;
     }
 
     if (activeTab === "addresses") {
       return (
-        <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-6">
-          <p className="font-cormorant text-4xl text-white">My Addresses</p>
-          <p className="mt-2 text-[#d8beb8]">Address qo'shing, tahrirlang, o'chiring va primary qilib belgilang.</p>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <input
-              value={addressForm.title}
-              onChange={(event) => setAddressForm((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder="Title (Home, Office...)"
-              className="h-11 rounded-xl bg-[#1f0a0d] px-3 text-white outline-none"
-            />
-            <input
-              value={addressForm.city}
-              onChange={(event) => setAddressForm((prev) => ({ ...prev, city: event.target.value }))}
-              placeholder="City"
-              className="h-11 rounded-xl bg-[#1f0a0d] px-3 text-white outline-none"
-            />
-          </div>
-          <input
-            value={addressForm.address_line}
-            onChange={(event) => setAddressForm((prev) => ({ ...prev, address_line: event.target.value }))}
-            placeholder="Address line"
-            className="mt-3 h-11 w-full rounded-xl bg-[#1f0a0d] px-3 text-white outline-none"
-          />
-          <div className="mt-2 flex items-center justify-between rounded-xl bg-[#1f0a0d] px-3 py-2 text-sm text-[#e7c8c0]">
-            <span>
-              {addressForm.latitude && addressForm.longitude
-                ? `Pin: ${addressForm.latitude.toFixed(5)}, ${addressForm.longitude.toFixed(5)}`
-                : "Map pin tanlanmagan"}
-            </span>
-            <button type="button" onClick={() => setMapOpen(true)} className="rounded-lg bg-[#3a161b] px-3 py-1 text-[#ffd3ca]">
-              Pick from map
-            </button>
-          </div>
-          <textarea
-            value={addressForm.notes}
-            onChange={(event) => setAddressForm((prev) => ({ ...prev, notes: event.target.value }))}
-            placeholder="Notes"
-            className="mt-3 min-h-20 w-full rounded-xl bg-[#1f0a0d] px-3 py-2 text-white outline-none"
-          />
-
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={handleAddressSubmit}
-              disabled={createAddressMutation.isPending || updateAddressMutation.isPending}
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-gradient-to-r from-[#8f1220] to-[#bb2435] px-5 font-semibold text-white disabled:opacity-60"
-            >
-              {editingAddressId ? "Update Address" : "Add Address"}
-            </button>
-            {editingAddressId ? (
-              <button type="button" onClick={resetAddressForm} className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2a0f12] px-5 text-[#f3d6d0]">
-                Cancel
-              </button>
-            ) : null}
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {isAddressesLoading ? <AddressCardsSkeleton /> : null}
-            {!isAddressesLoading && !addresses.length ? <p className="text-[#d8beb8]">Hozircha address yo'q.</p> : null}
-            {!isAddressesLoading && addresses.map((address: AddressOut) => (
-              <article key={address.id} className="rounded-xl bg-[#16080a] p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-semibold text-white">
-                      {address.title}{" "}
-                      {address.is_primary ? (
-                        <span className="ml-2 rounded-full bg-[#3a1d0f] px-2 py-0.5 text-xs text-[#ffd59a]">Primary</span>
-                      ) : null}
-                      {isSameCheckoutAddress(address, preferredCheckoutAddress) ? (
-                        <span className="ml-2 rounded-full bg-[#10241a] px-2 py-0.5 text-xs text-[#9ef0c2]">Checkout</span>
-                      ) : null}
-                    </p>
-                    <p className="text-[#e0c1ba]">{address.address_line}</p>
-                    <p className="text-sm text-[#c4a39b]">{address.city ?? "City not set"}</p>
-                    {address.notes ? <p className="mt-1 text-sm text-[#b7948d]">{address.notes}</p> : null}
-                    {address.latitude !== null && address.longitude !== null ? (
-                      <div className="mt-3 overflow-hidden rounded-xl border border-[#4b2326]">
-                        <iframe
-                          title={`${address.title} map preview`}
-                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${address.longitude - 0.01}%2C${address.latitude - 0.01}%2C${address.longitude + 0.01}%2C${address.latitude + 0.01}&layer=mapnik&marker=${address.latitude}%2C${address.longitude}`}
-                          className="h-32 w-full"
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (
-                      <div className="mt-3 rounded-xl border border-dashed border-[#4b2326] bg-[#120607] px-3 py-3 text-sm text-[#c4a39b]">
-                        Map pin hali qo'yilmagan.
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingAddressId(address.id);
-                        setAddressForm({
-                          title: address.title,
-                          address_line: address.address_line,
-                          city: address.city ?? "",
-                          notes: address.notes ?? "",
-                          latitude: address.latitude ?? null,
-                          longitude: address.longitude ?? null,
-                        });
-                      }}
-                      className="rounded-lg bg-[#2a0f12] px-3 py-1 text-sm text-[#f3d6d0]"
-                    >
-                      Edit
-                    </button>
-                    {!address.is_primary ? (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await setPrimaryAddressMutation.mutateAsync(address.id);
-                          toast.success("Primary address o'rnatildi");
-                        }}
-                        className="rounded-lg bg-[#2a1b0f] px-3 py-1 text-sm text-[#ffd59a]"
-                      >
-                        Set Primary
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPreferredCheckoutAddress(address);
-                        setPreferredCheckoutAddressState(getPreferredCheckoutAddress());
-                        toast.success("Checkout uchun address tanlandi");
-                      }}
-                      className={`rounded-lg px-3 py-1 text-sm ${
-                        isSameCheckoutAddress(address, preferredCheckoutAddress)
-                          ? "bg-[#1c5038] text-white"
-                          : "bg-[#10241a] text-[#9ef0c2]"
-                      }`}
-                    >
-                      {isSameCheckoutAddress(address, preferredCheckoutAddress) ? "Selected for checkout" : "Use for checkout"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await deleteAddressMutation.mutateAsync(address.id);
-                        if (isSameCheckoutAddress(address, preferredCheckoutAddress)) {
-                          clearPreferredCheckoutAddress();
-                          setPreferredCheckoutAddressState(null);
-                        }
-                        toast.success("Address o'chirildi");
-                        if (editingAddressId === address.id) resetAddressForm();
-                      }}
-                      className="rounded-lg bg-[#3a1116] px-3 py-1 text-sm text-[#ffb1bd]"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    if (activeTab === "notifications") {
-      return (
-        <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-6">
-          <p className="font-cormorant text-4xl text-white">Notifications</p>
-          <p className="mt-3 text-[#d8beb8]">Notification sozlamalari yaqin orada qo'shiladi.</p>
-        </div>
+        <AddressesTab
+          addresses={addresses}
+          createPending={createAddressMutation.isPending}
+          editingAddressId={editingAddressId}
+          isAddressesLoading={isAddressesLoading}
+          isResolvingAddress={isResolvingAddress}
+          isSameCheckoutAddress={isSameCheckoutAddress}
+          mapHostRef={mapHostRef}
+          addressForm={addressForm}
+          onAddressSubmit={handleAddressSubmit}
+          onDeleteAddress={async (address) => {
+            await deleteAddressMutation.mutateAsync(address.id);
+            if (isSameCheckoutAddress(address, preferredCheckoutAddress)) {
+              clearPreferredCheckoutAddress();
+              setPreferredCheckoutAddressState(null);
+            }
+            toast.success("Address o'chirildi");
+            if (editingAddressId === address.id) resetAddressForm();
+          }}
+          onEditAddress={(address) => {
+            setEditingAddressId(address.id);
+            addressForm.reset({
+              title: address.title,
+              address_line: address.address_line,
+              city: address.city ?? "",
+              notes: address.notes ?? "",
+              latitude: address.latitude ?? null,
+              longitude: address.longitude ?? null,
+            });
+          }}
+          onResetAddressForm={resetAddressForm}
+          onSetCheckoutAddress={(address) => {
+            setPreferredCheckoutAddress(address);
+            setPreferredCheckoutAddressState(getPreferredCheckoutAddress());
+            toast.success("Checkout uchun address tanlandi");
+          }}
+          onSetPrimaryAddress={async (addressId) => {
+            await setPrimaryAddressMutation.mutateAsync(addressId);
+            toast.success("Primary address o'rnatildi");
+          }}
+          preferredCheckoutAddress={preferredCheckoutAddress}
+          updatePending={updateAddressMutation.isPending}
+        />
       );
     }
 
     if (activeTab === "settings") {
       return (
-        <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-6">
-          <p className="font-cormorant text-4xl text-white">Settings</p>
-          <p className="mt-3 text-[#d8beb8]">Account settings bo'limi shu yerda bo'ladi.</p>
-        </div>
+        <SettingsTab
+          accountForm={accountForm}
+          onAccountSave={handleAccountSave}
+          onManageAddresses={() => setActiveTab("addresses")}
+          onPasswordSave={handlePasswordSave}
+          onResetAccountForm={() => accountForm.reset({
+            full_name: user?.full_name ?? "",
+            email: user?.email ?? "",
+            phone: user?.phone ?? "",
+          })}
+          passwordForm={passwordForm}
+          profileCompletion={profileCompletion}
+        />
       );
     }
 
@@ -620,58 +691,51 @@ function Profile() {
     return (
       <>
         <section className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-6">
-          <h1 className="font-cormorant text-6xl leading-none text-[#fff2ee]">Hello, {firstName} <span className="text-4xl">👋</span></h1>
-          <p className="mt-2 text-lg text-[#d8beb8]">Welcome back! Here's what's happening with your account today.</p>
+          <h1 className="font-cormorant text-[4.1rem] leading-none text-[#fff2ee] sm:text-[4.7rem]">Hello, {firstName} <span className="text-[2.7rem] sm:text-[3.1rem]">👋</span></h1>
+          <p className="mt-2 text-base text-[#d8beb8] sm:text-lg">Welcome back! Here's what's happening with your account today.</p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl bg-[#130708] p-4">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-18 w-18 items-center justify-center rounded-2xl bg-[#251007] text-4xl text-[#e8b478]">
-                  <HiOutlineShoppingBagCard />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                value: orders.length,
+                hoverText: `${orders.length} Orders`,
+                icon: <HiOutlineShoppingBagCard />,
+                iconClassName: "bg-[#251007] text-[#e8b478]",
+              },
+              {
+                value: favoriteItems.length,
+                hoverText: `${favoriteItems.length} Favorites`,
+                icon: <HiOutlineHeartCard />,
+                iconClassName: "bg-[#21080f] text-[#f0b38f]",
+              },
+              {
+                value: myReviewsCount,
+                hoverText: `${myReviewsCount} Reviews`,
+                icon: <HiStar />,
+                iconClassName: "bg-[#1c0b07] text-[#e8b478]",
+              },
+              {
+                value: 3,
+                hoverText: "3 Gift Cards",
+                icon: <HiOutlineGift />,
+                iconClassName: "bg-[#251007] text-[#e8b478]",
+              },
+            ].map((stat) => (
+              <div
+                key={stat.hoverText}
+                className="group relative flex min-h-[100px] items-center justify-center overflow-visible rounded-[1.6rem] border border-[#3a171c] bg-[linear-gradient(180deg,rgba(24,7,9,0.98),rgba(15,4,6,0.96))] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#6a3941]"
+              >
+                <span
+                  className={`inline-flex h-20 w-20 items-center justify-center rounded-[2rem] text-6xl shadow-[0_20px_40px_rgba(0,0,0,0.22)] transition-transform duration-300 group-hover:scale-105 ${stat.iconClassName}`}
+                >
+                  {stat.icon}
                 </span>
-                <div>
-                  <p className="text-5xl font-semibold leading-none text-white">{orders.length}</p>
-                  <p className="mt-1 text-2xl text-[#f1ddd8]">Orders</p>
-                  <p className="text-lg text-[#b9958f]">Total Orders</p>
+
+                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-3 -translate-x-1/2 translate-y-2 whitespace-nowrap rounded-xl border border-[#6a4349] bg-[rgba(40,12,18,0.98)] px-4 py-2 text-sm font-medium text-[#f7dfd9] opacity-0 shadow-[0_14px_32px_rgba(0,0,0,0.28)] transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                  {stat.hoverText}
                 </div>
               </div>
-            </div>
-            <div className="rounded-xl bg-[#130708] p-4">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-18 w-18 items-center justify-center rounded-2xl bg-[#21080f] text-4xl text-[#f0b38f]">
-                  <HiOutlineHeartCard />
-                </span>
-                <div>
-                  <p className="text-5xl font-semibold leading-none text-white">{favoriteItems.length}</p>
-                  <p className="mt-1 text-2xl text-[#f1ddd8]">Favorites</p>
-                  <p className="text-lg text-[#b9958f]">Saved Bouquets</p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl bg-[#130708] p-4">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-18 w-18 items-center justify-center rounded-2xl bg-[#1c0b07] text-4xl text-[#e8b478]">
-                  <HiStar />
-                </span>
-                <div>
-                  <p className="text-5xl font-semibold leading-none text-white">{myReviewsCount}</p>
-                  <p className="mt-1 text-2xl text-[#f1ddd8]">Reviews</p>
-                  <p className="text-lg text-[#b9958f]">Your Reviews</p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl bg-[#130708] p-4">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-18 w-18 items-center justify-center rounded-2xl bg-[#251007] text-4xl text-[#e8b478]">
-                  <HiOutlineGift />
-                </span>
-                <div>
-                  <p className="text-5xl font-semibold leading-none text-white">3</p>
-                  <p className="mt-1 text-2xl text-[#f1ddd8]">Gift Cards</p>
-                  <p className="text-lg text-[#b9958f]">Available</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </section>
 
@@ -713,15 +777,69 @@ function Profile() {
         </section>
 
         <section className="rounded-[1.6rem] bg-[linear-gradient(90deg,rgba(67,8,16,0.95),rgba(30,5,9,0.96))] p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="flex flex-1 items-start gap-4">
               <span className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-[#3a1016] text-3xl text-[#ff5f79]"><HiGift /></span>
-              <div>
+              <div className="flex-1">
                 <p className="font-cormorant text-5xl text-white">Give $10, Get $10</p>
                 <p className="text-[#d5b2ac]">Invite your friends and both get bonus after first order.</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl bg-[#2a0e14] px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[#bc8e8d]">Bonus balance</p>
+                    <p className="mt-1 text-2xl font-semibold text-white">
+                      {referralSummary ? formatPrice(referralSummary.bonus_balance) : "$0.00"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-[#2a0e14] px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[#bc8e8d]">Successful</p>
+                    <p className="mt-1 text-2xl font-semibold text-white">{referralSummary?.successful_referrals ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#2a0e14] px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[#bc8e8d]">Pending</p>
+                    <p className="mt-1 text-2xl font-semibold text-white">{referralSummary?.pending_referrals ?? 0}</p>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-xl border border-white/10 bg-[#220b10] px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[#bc8e8d]">Your referral code</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <p className="text-lg font-semibold tracking-[0.18em] text-[#ffe4dd]">
+                      {referralSummary?.referral_code ?? "Loading..."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCopyReferralCode}
+                      className="inline-flex h-9 items-center justify-center rounded-lg bg-[#3a1419] px-3 text-sm font-semibold text-[#ffd9d2]"
+                    >
+                      Copy code
+                    </button>
+                  </div>
+                  <p className="mt-2 text-sm text-[#caa49d]">
+                    Share link: <span className="break-all text-[#f7ddd7]">{referralLink || "Preparing link..."}</span>
+                  </p>
+                </div>
+                {referralSummary?.referred_friends.length ? (
+                  <div className="mt-4 rounded-xl border border-white/10 bg-[#220b10] px-4 py-3">
+                    <p className="text-sm font-semibold text-white">Recent invited friends</p>
+                    <div className="mt-3 space-y-2">
+                      {referralSummary.referred_friends.map((friend) => (
+                        <div key={friend.id} className="flex items-center justify-between gap-3 rounded-lg bg-[#2d1015] px-3 py-2">
+                          <div>
+                            <p className="font-medium text-[#fff1ed]">{friend.full_name}</p>
+                            <p className="text-sm text-[#caa49d]">{friend.email}</p>
+                          </div>
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${friend.reward_granted ? "bg-[#143424] text-[#9ef0c2]" : "bg-[#3a2610] text-[#ffd59a]"}`}>
+                            {friend.reward_granted ? "Rewarded" : "Pending"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
-            <button type="button" className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-[#8f1220] to-[#bb2435] px-6 font-semibold text-white">Invite Friends</button>
+            <button type="button" onClick={handleInviteFriends} className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-[#8f1220] to-[#bb2435] px-6 font-semibold text-white">
+              Invite Friends
+            </button>
           </div>
         </section>
       </>
@@ -749,6 +867,17 @@ function Profile() {
             })}
           </div>
 
+          {canOpenAdminDashboard ? (
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <Link
+                to="/admin"
+                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#8b5b3d] bg-[#1a0a0c] font-semibold text-[#f3c890] transition hover:border-[#c98f61] hover:bg-[#221013]"
+              >
+                Open Admin Dashboard
+              </Link>
+            </div>
+          ) : null}
+
           <div className="mt-4 border-t border-white/10 pt-4">
             <button type="button" onClick={logout} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#ff7485] to-[#df5065] text-lg font-semibold text-white">
               <HiArrowLeftOnRectangle /> Log Out
@@ -766,17 +895,96 @@ function Profile() {
 
         <aside className="space-y-5">
           <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-5">
-            <div className="flex items-start gap-4">
-              <div className="relative h-24 w-24 shrink-0">
-                {avatarUrl ? <img src={avatarUrl} alt="avatar" className="h-24 w-24 rounded-full object-cover" /> : <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#2f1015] text-3xl font-bold">{userInitials}</div>}
-                <button type="button" onClick={() => avatarInputRef.current?.click()} className="absolute -bottom-1 -right-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#af2338] text-white"><HiOutlineCamera /></button>
-                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarChange(event.target.files?.[0] ?? null)} />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="relative mx-auto h-24 w-24 shrink-0 sm:mx-0 sm:h-20 sm:w-20">
+                {avatarPreviewUrl ? (
+                  <img src={avatarPreviewUrl} alt="Avatar preview" className="h-24 w-24 rounded-full object-cover ring-2 ring-[#ff7f93] sm:h-20 sm:w-20" />
+                ) : user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="avatar" className="h-24 w-24 rounded-full object-cover sm:h-20 sm:w-20" />
+                ) : (
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#2f1015] text-3xl font-bold sm:h-20 sm:w-20 sm:text-2xl">{userInitials}</div>
+                )}
+                {isAvatarSubmitting ? (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-xs font-semibold text-white">
+                    Loading...
+                  </div>
+                ) : null}
+                <button type="button" disabled={isAvatarSubmitting} onClick={() => avatarInputRef.current?.click()} className="absolute -bottom-1 -right-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#af2338] text-white shadow-[0_8px_20px_rgba(175,35,56,0.35)] disabled:opacity-60 sm:h-8 sm:w-8"><HiOutlineCamera /></button>
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarSelect(event.target.files?.[0] ?? null)} />
               </div>
-              <div>
-                <p className="font-cormorant text-5xl leading-none text-white">{user?.full_name}</p>
-                <p className="mt-2 text-[#d8beb8]">{user?.email}</p>
-                <p className="text-[#d8beb8]">{user?.phone ?? "+998 __ ___ __ __"}</p>
-                <p className="text-[#d8beb8]">Tashkent, Uzbekistan</p>
+              <div className="min-w-0 flex-1 text-center sm:pt-0.5 sm:text-left">
+                <div>
+                  <p className="font-cormorant text-[3rem] leading-[0.92] text-white sm:text-[3.35rem]">{user?.full_name}</p>
+                </div>
+
+                <div className="mt-2 space-y-1 text-[#dcc0bb]">
+                  <p className="truncate text-base sm:text-[1.02rem]">{user?.email}</p>
+                  <p className="text-base sm:text-[1.02rem]">{user?.phone ?? "+998 __ ___ __ __"}</p>
+                  <p className="text-base sm:text-[1.02rem]">Tashkent, Uzbekistan</p>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[0.82rem] uppercase tracking-[0.18em] text-[#bfa19a] sm:justify-start">
+                  <span>JPG, PNG, WEBP, GIF</span>
+                  <span className="hidden h-1 w-1 rounded-full bg-[#7d5652] sm:block" />
+                  <span>Max 6MB</span>
+                </div>
+
+                {selectedAvatarFile ? (
+                  <p className="mt-2 text-sm text-[#f7ddd7]">
+                    Tanlangan fayl: {selectedAvatarFile.name}
+                  </p>
+                ) : null}
+                {avatarStatus ? <p className="mt-2 rounded-xl border border-[#23543d] bg-[#10291e] px-3 py-2 text-sm text-[#9ef0c2]">{avatarStatus}</p> : null}
+                {avatarError ? <p className="mt-2 rounded-xl border border-[#6f2d39] bg-[#2c0f15] px-3 py-2 text-sm text-[#ff9eae]">{avatarError}</p> : null}
+                {selectedAvatarFile ? (
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                    <button
+                      type="button"
+                      onClick={handleAvatarUpload}
+                      disabled={isAvatarSubmitting}
+                      className="inline-flex h-10 items-center justify-center rounded-xl bg-[#a31528] px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(163,21,40,0.22)] transition hover:brightness-105 disabled:opacity-60"
+                    >
+                      Save avatar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetAvatarSelection}
+                      disabled={isAvatarSubmitting}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 text-sm font-medium text-[#ffd4cd] transition hover:bg-white/[0.04] disabled:opacity-60"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : user?.avatar_url ? (
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={isAvatarSubmitting}
+                      className="inline-flex h-10 items-center justify-center rounded-xl bg-[#a31528] px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(163,21,40,0.22)] transition hover:brightness-105 disabled:opacity-60"
+                    >
+                      Change avatar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAvatarDelete}
+                      disabled={isAvatarSubmitting}
+                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-1 text-sm font-medium text-[#cfa7a1] transition hover:text-[#ffd4cd] disabled:opacity-60"
+                    >
+                      <HiTrash />
+                      Remove avatar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={isAvatarSubmitting}
+                    className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-[#a31528] px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(163,21,40,0.22)] transition hover:brightness-105 disabled:opacity-60"
+                  >
+                    Upload avatar
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -846,23 +1054,6 @@ function Profile() {
         </aside>
       </div>
 
-      {mapOpen ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-3xl rounded-2xl bg-[#100507] p-4 sm:p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-cormorant text-3xl text-white">Address Picker</p>
-              <button type="button" onClick={() => setMapOpen(false)} className="rounded-full bg-[#2a0f12] px-3 py-1 text-[#ffd9d2]">
-                Close
-              </button>
-            </div>
-            <div ref={mapHostRef} className="h-[420px] w-full overflow-hidden rounded-xl" />
-            <div className="mt-3 flex items-center justify-between text-sm text-[#cfafa8]">
-              <span>Xaritada bosib manzil tanlang.</span>
-              {isResolvingAddress ? <span>Address aniqlanmoqda...</span> : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </main>
   );
 }

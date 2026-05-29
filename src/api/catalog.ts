@@ -4,6 +4,7 @@ import type {
   BouquetPage,
   Category,
   ImageUploadResponse,
+  ReferralSummary,
   OrderCreatePayload,
   OrderOut,
   AddressCreatePayload,
@@ -13,6 +14,20 @@ import type {
   ReviewCreatePayload,
   Shop,
 } from "../types/catalog";
+
+export interface CategoryCreatePayload {
+  name: string;
+  slug?: string;
+  image?: string;
+  is_active?: boolean;
+}
+
+export interface CategoryUpdatePayload {
+  name?: string;
+  slug?: string;
+  image?: string;
+  is_active?: boolean;
+}
 
 export interface BouquetQueryParams {
   shopId?: string;
@@ -25,6 +40,13 @@ export interface BouquetQueryParams {
 export async function getCategories() {
   const { data } = await apiClient.get<Category[]>("/categories", {
     params: { active_only: true },
+  });
+  return data;
+}
+
+export async function getAdminCategories() {
+  const { data } = await apiClient.get<Category[]>("/categories", {
+    params: { active_only: false },
   });
   return data;
 }
@@ -65,8 +87,30 @@ export async function getShop(slug: string) {
   return data;
 }
 
+export async function getAdminShops() {
+  const { data } = await apiClient.get<Shop[]>("/shops", {
+    params: { include_inactive: true },
+  });
+  return data;
+}
+
 export async function getMyShops() {
   const { data } = await apiClient.get<Shop[]>("/shops/me");
+  return data;
+}
+
+export async function updateShop(shopId: string, payload: Partial<Pick<Shop, "status">>) {
+  const { data } = await apiClient.patch<Shop>(`/shops/${shopId}`, payload);
+  return data;
+}
+
+export async function createCategory(payload: CategoryCreatePayload) {
+  const { data } = await apiClient.post<Category>("/categories", payload);
+  return data;
+}
+
+export async function updateCategory(categoryId: string, payload: CategoryUpdatePayload) {
+  const { data } = await apiClient.patch<Category>(`/categories/${categoryId}`, payload);
   return data;
 }
 
@@ -134,5 +178,10 @@ export async function deleteMyAddress(addressId: string) {
 
 export async function setPrimaryAddress(addressId: string) {
   const { data } = await apiClient.patch<AddressOut>(`/addresses/me/${addressId}/primary`);
+  return data;
+}
+
+export async function getMyReferralSummary() {
+  const { data } = await apiClient.get<ReferralSummary>("/referrals/me");
   return data;
 }

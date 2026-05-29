@@ -51,7 +51,7 @@ function BouquetSection({
 
   return (
     <section
-      className="mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6 lg:px-10"
+      className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-10"
     >
       <div id="categories" className="scroll-mt-28 rounded-[2rem] sm:px-6 sm:py-8">
         <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-6 md:grid">
@@ -61,14 +61,13 @@ function BouquetSection({
           </h2>
           <div className="flex items-center justify-between gap-4">
             <div className="h-px flex-1 bg-[#5b2524]" />
-            <button
-              type="button"
-              onClick={() => onSelectCategory(null)}
+            <Link
+              to="/bouquets"
               className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-[#f1d5cb] transition hover:text-white"
             >
               View all
               <HiArrowRight className="text-[#cb5c57]" />
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -116,14 +115,13 @@ function BouquetSection({
             </div>
 
             <div className="mt-8 flex justify-end md:hidden">
-              <button
-                type="button"
-                onClick={() => onSelectCategory(null)}
+              <Link
+                to="/bouquets"
                 className="inline-flex items-center gap-2 text-sm font-semibold text-[#f1d5cb] transition hover:text-white"
               >
                 View all
                 <HiArrowRight className="text-[#cb5c57]" />
-              </button>
+              </Link>
             </div>
 
             <div id="bouquets" className="scroll-mt-28" />
@@ -247,14 +245,13 @@ function BouquetSection({
                 <p className="mt-3 text-sm leading-7 text-[#caaba5]">
                   No bouquets match your current filters. Choose another category to explore more arrangements.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => onSelectCategory(null)}
+                <Link
+                  to="/bouquets"
                   className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#764342] bg-[#1b0b0c] px-5 py-3 text-sm font-semibold text-[#f5ddd6] transition hover:border-[#bd786f] hover:text-white"
                 >
                   View all bouquets
                   <HiArrowRight />
-                </button>
+                </Link>
               </div>
             )}
           </>

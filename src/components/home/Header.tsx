@@ -12,9 +12,11 @@ import {
   HiXMark,
 } from "react-icons/hi2";
 import headerLogo from "../../assets/header_logo.png";
+import { Skeleton } from "../Skeleton";
 import { useFavoritesCount } from "../../hooks/useFavorites";
 import { useCartCount } from "../../hooks/useCart";
 import useContextPro from "../../hooks/useContextPro";
+import { toast } from "react-toastify";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -43,7 +45,7 @@ function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const {
-    state: { user },
+    state: { user, isLoading },
   } = useContextPro();
 
   const userInitials = getUserInitials(user?.full_name);
@@ -118,6 +120,16 @@ function Header() {
     setActiveSection(href.slice(1));
   };
 
+  const handleProtectedRouteClick =
+    () =>
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      if (user) return;
+      event.preventDefault();
+      setMenuOpen(false);
+      toast.info("Avval ro'yxatdan o'ting yoki tizimga kiring");
+      navigate("/register");
+    };
+
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
@@ -186,6 +198,7 @@ function Header() {
           <Tooltip title="Wishlist" arrow placement="bottom">
             <Link
               to="/favorites"
+              onClick={handleProtectedRouteClick()}
               className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[#e7c39d] transition-all duration-300 hover:text-[#ffe1ba]"
             >
               <HiOutlineHeart size={24} />
@@ -200,6 +213,7 @@ function Header() {
           <Tooltip title="Cart" arrow placement="bottom">
             <Link
               to="/cart"
+              onClick={handleProtectedRouteClick()}
               className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[#e7c39d] transition-all duration-300 hover:text-[#ffe1ba]"
             >
               <HiOutlineShoppingBag size={24} />
@@ -213,28 +227,40 @@ function Header() {
 
           <div className="mx-1 h-9 w-px bg-[#5d332f]" />
 
-          {user ? (
-            <Tooltip title="Open profile" arrow placement="bottom">
-              <Link
-                to="/profile"
-                className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-[#f0c89c] transition-all duration-300 hover:bg-[rgba(25,8,10,0.92)]"
-              >
-                <Avatar
-                  sx={{
-                    width: 42,
-                    height: 42,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: "#fff",
-                    background: "linear-gradient(135deg, #b1846a 0%, #6d4032 100%)",
-                    border: "1px solid rgba(255, 232, 209, 0.35)",
-                  }}
+          {isLoading ? (
+            <div className="ml-2 inline-flex items-center gap-3 rounded-full px-2 py-1">
+              <Skeleton className="h-[42px] w-[42px] rounded-full" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-28 rounded-full" />
+                <Skeleton className="h-3 w-20 rounded-full opacity-80" />
+              </div>
+            </div>
+          ) : user ? (
+            <div className="flex items-center gap-2">
+              <Tooltip title="Open profile" arrow placement="bottom">
+                <Link
+                  to="/profile"
+                  className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-[#f0c89c] transition-all duration-300 hover:bg-[rgba(25,8,10,0.92)]"
                 >
-                  {userInitials}
-                </Avatar>
-                <span className="font-cormorant text-xl text-[#f0c89c]">Hello, {userFirstName}</span>
-              </Link>
-            </Tooltip>
+                  <Avatar
+                    src={user.avatar_url ?? undefined}
+                    alt={user.full_name}
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#fff",
+                      background: "linear-gradient(135deg, #b1846a 0%, #6d4032 100%)",
+                      border: "1px solid rgba(255, 232, 209, 0.35)",
+                    }}
+                  >
+                    {user.avatar_url ? undefined : userInitials}
+                  </Avatar>
+                  <span className="font-cormorant text-xl text-[#f0c89c]">Hello, {userFirstName}</span>
+                </Link>
+              </Tooltip>
+            </div>
           ) : (
             <div className="flex items-center gap-2.5 ml-2">
               <Link
@@ -314,7 +340,11 @@ function Header() {
             <button className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#87404a]/40 bg-white/[0.04] transition-all duration-300 hover:bg-white/[0.10] hover:border-[#a55862]">
               <HiOutlineHeart size={20} />
             </button>
-            <Link to="/cart" className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#87404a]/40 bg-white/[0.04] transition-all duration-300 hover:bg-white/[0.10] hover:border-[#a55862]">
+            <Link
+              to="/cart"
+              onClick={handleProtectedRouteClick()}
+              className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#87404a]/40 bg-white/[0.04] transition-all duration-300 hover:bg-white/[0.10] hover:border-[#a55862]"
+            >
               <HiOutlineShoppingBag size={20} />
               {cartCount ? (
                 <span className="absolute -right-0.5 -top-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-[#d44a59] to-[#bf2137] px-1 text-[10px] font-bold text-white shadow-[0_4px_10px_rgba(212,74,89,0.5)]">
@@ -324,8 +354,18 @@ function Header() {
             </Link>
           </div>
 
-          {user ? (
+          {isLoading ? (
             <div className="mt-4 px-4">
+              <div className="inline-flex w-full items-center gap-3 rounded-full border border-[#b96a63]/20 bg-white/[0.04] px-4 py-2.5">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-24 rounded-full" />
+                  <Skeleton className="h-3 w-16 rounded-full opacity-80" />
+                </div>
+              </div>
+            </div>
+          ) : user ? (
+            <div className="mt-4 flex flex-col gap-3 px-4">
               <Link
                 to="/profile"
                 onClick={() => setMenuOpen(false)}

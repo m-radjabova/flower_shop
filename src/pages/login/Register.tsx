@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import {
   HiOutlineDevicePhoneMobile,
@@ -32,6 +32,7 @@ const registerSchema = z
       .refine((value) => normalizeUzbekPhone(value).length === 9, {
         message: "Telefon raqamni to'liq kiriting",
       }),
+    referral_code: z.string().trim().max(32, "Referral code juda uzun").optional().or(z.literal("")),
     password: z.string().min(6, "Parol kamida 6 ta belgi bo'lishi kerak"),
     confirm_password: z.string().min(6, "Confirm password kiriting"),
   })
@@ -44,6 +45,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     login,
     state: { user },
@@ -64,6 +66,7 @@ function Register() {
   
   // Password strength
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const referralCodeFromUrl = searchParams.get("ref")?.trim().toUpperCase() ?? "";
   
   const {
     register,
@@ -77,6 +80,7 @@ function Register() {
       full_name: "",
       email: "",
       phone_number: "+998 ",
+      referral_code: referralCodeFromUrl,
       password: "",
       confirm_password: "",
     },
@@ -120,6 +124,7 @@ function Register() {
     await registerMutation.mutateAsync({
       ...values,
       phone_number: toApiPhone(values.phone_number),
+      referral_code: values.referral_code?.trim() || undefined,
     });
   };
 
@@ -284,6 +289,26 @@ function Register() {
             <p className="mt-2 flex items-center gap-1 text-xs text-red-400 animate-fadeIn">
               <span className="inline-block h-1 w-1 rounded-full bg-red-400"></span>
               {errors.phone_number.message}
+            </p>
+          )}
+        </div>
+
+        <div className="group">
+          <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
+            Referral code
+          </label>
+          <input
+            {...register("referral_code")}
+            placeholder="FLW-XXXXXXX"
+            className="h-14 w-full rounded-2xl border border-white/10 bg-white/8 px-4 text-[15px] font-medium uppercase text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] hover:border-white/20 focus:border-[#ff6b7e] focus:bg-white/12"
+          />
+          <p className="mt-2 text-xs text-[#c7a29b]">
+            Agar sizni do'stingiz taklif qilgan bo'lsa, referral code kiriting.
+          </p>
+          {errors.referral_code && (
+            <p className="mt-2 flex items-center gap-1 text-xs text-red-400 animate-fadeIn">
+              <span className="inline-block h-1 w-1 rounded-full bg-red-400"></span>
+              {errors.referral_code.message}
             </p>
           )}
         </div>

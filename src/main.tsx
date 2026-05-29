@@ -34,7 +34,6 @@ createRoot(document.getElementById("root")!).render(
           newestOnTop
           pauseOnFocusLoss={false}
           toastClassName="fs-toast"
-          bodyClassName="fs-toast-body"
           progressClassName="fs-toast-progress"
         />
       </CreateContextPro>

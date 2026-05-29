@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "owner" | "customer";
+export type UserRole = "admin" | "owner" | "courier" | "customer";
 
 export interface LoginPayload {
   email: string;
@@ -9,6 +9,7 @@ export interface RegisterPayload {
   full_name: string;
   email: string;
   phone_number: string;
+  referral_code?: string;
   password: string;
   confirm_password: string;
 }
@@ -24,7 +25,11 @@ export interface User {
   full_name: string;
   email: string;
   phone: string | null;
-  role: UserRole;
+  avatar_url: string | null;
+  referral_code: string | null;
+  referral_bonus_balance: string;
+  roles: UserRole[];
+  role?: UserRole;
   is_active: boolean;
   created_at: string;
   updated_at: string;

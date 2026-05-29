@@ -8,7 +8,9 @@ import {
   getBouquetPage,
   getBouquets,
   getCategories,
+  getAdminShops,
   getMyShops,
+  getMyReferralSummary,
   getMyOrders,
   getMyAddresses,
   getMyReviews,
@@ -16,11 +18,18 @@ import {
   getShopOrders,
   setPrimaryAddress,
   getShop,
+  updateShop,
   updateMyAddress,
   uploadImage,
   type BouquetQueryParams,
 } from "../api/catalog";
-import type { AddressCreatePayload, AddressUpdatePayload, OrderCreatePayload, ReviewCreatePayload } from "../types/catalog";
+import type {
+  AddressCreatePayload,
+  AddressUpdatePayload,
+  OrderCreatePayload,
+  ReviewCreatePayload,
+  Shop,
+} from "../types/catalog";
 
 export const categoryQueryKey = ["categories"];
 
@@ -84,6 +93,13 @@ export function useMyShops() {
   });
 }
 
+export function useAdminShops() {
+  return useQuery({
+    queryKey: ["shops", "admin"],
+    queryFn: getAdminShops,
+  });
+}
+
 export function useShopOrders(shopId: string | undefined) {
   return useQuery({
     queryKey: ["orders", "shop", shopId],
@@ -121,6 +137,14 @@ export function useMyReviews() {
     queryKey: ["reviews", "me"],
     queryFn: getMyReviews,
     refetchInterval: 1000 * 20,
+  });
+}
+
+export function useMyReferralSummary() {
+  return useQuery({
+    queryKey: ["referrals", "me"],
+    queryFn: getMyReferralSummary,
+    refetchInterval: 1000 * 30,
   });
 }
 
@@ -187,6 +211,20 @@ export function useSetPrimaryAddress() {
     mutationFn: (addressId: string) => setPrimaryAddress(addressId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["addresses", "me"] });
+    },
+  });
+}
+
+export function useUpdateShop() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ shopId, payload }: { shopId: string; payload: Partial<Pick<Shop, "status">> }) =>
+      updateShop(shopId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shops", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["shops", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["shop"] });
     },
   });
 }

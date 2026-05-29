@@ -1,5 +1,17 @@
 # React + TypeScript + Vite
 
+## Environment Variables
+
+Keep client configuration in local `.env` files and never commit secrets or keys directly into source files.
+
+Copy `.env.example` to `.env` and fill in only the values you actually use:
+
+```bash
+cp .env.example .env
+```
+
+If Firebase is needed, read values from `import.meta.env.VITE_FIREBASE_*` instead of hardcoding them in `src/*.ts` or `src/*.tsx`.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
