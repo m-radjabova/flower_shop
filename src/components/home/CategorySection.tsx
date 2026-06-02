@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   HiArrowRight,
   HiHeart,
@@ -33,6 +34,7 @@ function CategorySection({
   selectedCategoryId,
   onSelectCategory,
 }: CategorySectionProps) {
+  const { t } = useTranslation();
   return (
     <section
       id="categories"
@@ -46,7 +48,7 @@ function CategorySection({
 
           <div className="shrink-0 text-center">
             <h2 className="font-cormorant text-[2.2rem] italic leading-none text-[#f1ddd3] sm:text-[3rem]">
-              Shop by Category
+              {t("categorySection.shopByCategory")}
             </h2>
           </div>
 

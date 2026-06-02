@@ -10,9 +10,18 @@ import type {
   AddressCreatePayload,
   AddressOut,
   AddressUpdatePayload,
+  BouquetCreatePayload,
+  BouquetUpdatePayload,
   Review,
   ReviewCreatePayload,
+  ReviewModerationPayload,
+  ShopApplication,
+  ShopApplicationCreatePayload,
+  ShopApplicationReviewPayload,
+  ShopApplicationSubmitResponse,
+  ShopApplicationWithUser,
   Shop,
+  ShopUpdatePayload,
 } from "../types/catalog";
 
 export interface CategoryCreatePayload {
@@ -82,6 +91,11 @@ export async function getBouquet(bouquetId: string) {
   return data;
 }
 
+export async function getManagedBouquets(shopId: string) {
+  const { data } = await apiClient.get<Bouquet[]>(`/bouquets/manage/shop/${shopId}`);
+  return data;
+}
+
 export async function getShop(slug: string) {
   const { data } = await apiClient.get<Shop>(`/shops/${slug}`);
   return data;
@@ -99,7 +113,27 @@ export async function getMyShops() {
   return data;
 }
 
-export async function updateShop(shopId: string, payload: Partial<Pick<Shop, "status">>) {
+export async function getShopApplications() {
+  const { data } = await apiClient.get<ShopApplicationWithUser[]>("/shop-applications");
+  return data;
+}
+
+export async function getMyLatestShopApplication() {
+  const { data } = await apiClient.get<ShopApplication | null>("/shop-applications/me/latest");
+  return data;
+}
+
+export async function createShopApplication(payload: ShopApplicationCreatePayload) {
+  const { data } = await apiClient.post<ShopApplicationSubmitResponse>("/shop-applications", payload);
+  return data;
+}
+
+export async function reviewShopApplication(applicationId: string, payload: ShopApplicationReviewPayload) {
+  const { data } = await apiClient.patch<ShopApplicationWithUser>(`/shop-applications/${applicationId}/review`, payload);
+  return data;
+}
+
+export async function updateShop(shopId: string, payload: ShopUpdatePayload) {
   const { data } = await apiClient.patch<Shop>(`/shops/${shopId}`, payload);
   return data;
 }
@@ -134,6 +168,30 @@ export async function createReview(payload: ReviewCreatePayload) {
   return data;
 }
 
+export async function getManagedReviews(shopId: string) {
+  const { data } = await apiClient.get<Review[]>(`/reviews/manage/shop/${shopId}`);
+  return data;
+}
+
+export async function moderateReview(reviewId: string, payload: ReviewModerationPayload) {
+  const { data } = await apiClient.patch<Review>(`/reviews/${reviewId}/moderate`, payload);
+  return data;
+}
+
+export async function createBouquet(payload: BouquetCreatePayload) {
+  const { data } = await apiClient.post<Bouquet>("/bouquets", payload);
+  return data;
+}
+
+export async function updateBouquet(bouquetId: string, payload: BouquetUpdatePayload) {
+  const { data } = await apiClient.patch<Bouquet>(`/bouquets/${bouquetId}`, payload);
+  return data;
+}
+
+export async function deleteBouquet(bouquetId: string) {
+  await apiClient.delete(`/bouquets/${bouquetId}`);
+}
+
 export async function uploadImage(file: File) {
   const formData = new FormData();
   formData.append("file", file);
@@ -154,6 +212,11 @@ export async function getShopOrders(shopId: string) {
 
 export async function getMyOrders() {
   const { data } = await apiClient.get<OrderOut[]>("/orders/me");
+  return data;
+}
+
+export async function updateOrderStatus(orderId: string, payload: { status: OrderOut["status"] }) {
+  const { data } = await apiClient.patch<OrderOut>(`/orders/${orderId}/status`, payload);
   return data;
 }
 

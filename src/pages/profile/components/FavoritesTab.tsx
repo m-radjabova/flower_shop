@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { FaInstagram, FaTelegramPlane } from "react-icons/fa";
 import { HiOutlineHeart, HiOutlineShoppingBag, HiTrash } from "react-icons/hi2";
 import { toast } from "react-toastify";
 import type { Bouquet } from "../../../types/catalog";
 import { formatPrice } from "../../../utils/catalog";
 import { addToCart } from "../../../utils/cart";
 import { removeFavoriteBouquet } from "../../../utils/favorites";
+import { normalizeInstagramLink, normalizeTelegramLink } from "../../../utils/social";
 
 interface FavoriteItem {
   id: string;
@@ -38,6 +40,10 @@ function FavoritesTab({ favoriteItems }: FavoritesTabProps) {
         {!favoriteItems.length ? <p className="text-[#d8beb8]">Hozircha favorites yo'q.</p> : null}
         {favoriteItems.map((item) => (
           <article key={item.id} className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-[linear-gradient(180deg,rgba(20,7,9,0.96),rgba(14,4,6,0.98))] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            {(() => {
+              const shopInstagramUrl = item.bouquet.shop.instagram ? normalizeInstagramLink(item.bouquet.shop.instagram) : "";
+              const shopTelegramUrl = item.bouquet.shop.telegram ? normalizeTelegramLink(item.bouquet.shop.telegram) : "";
+              return (
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-start gap-4">
                 <img
@@ -55,6 +61,32 @@ function FavoritesTab({ favoriteItems }: FavoritesTabProps) {
                   <Link to={`/shops/${item.bouquet.shop.slug}`} className="mt-1 inline-block text-base text-[#d6ada6] transition hover:text-[#f4d7d1]">
                     {item.bouquet.shop.name}
                   </Link>
+                  {shopInstagramUrl || shopTelegramUrl ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {shopInstagramUrl ? (
+                        <a
+                          href={shopInstagramUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#f1d5cf]"
+                        >
+                          <FaInstagram />
+                          IG
+                        </a>
+                      ) : null}
+                      {shopTelegramUrl ? (
+                        <a
+                          href={shopTelegramUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-[#f1d5cf]"
+                        >
+                          <FaTelegramPlane />
+                          TG
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-[#c8a39b]">
                     <span className="rounded-full bg-white/[0.04] px-3 py-1.5">
                       {item.bouquet.category?.name ?? "Signature bouquet"}
@@ -92,6 +124,8 @@ function FavoritesTab({ favoriteItems }: FavoritesTabProps) {
                 </button>
               </div>
             </div>
+              );
+            })()}
           </article>
         ))}
       </div>

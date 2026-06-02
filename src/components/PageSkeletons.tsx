@@ -332,35 +332,88 @@ export function OwnerOrdersSkeleton() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#070102] text-[#fff6f4]">
       <section className="px-4 pb-16 pt-28 sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-6xl">
-          <Skeleton className="h-16 w-64 rounded-full" />
-          <div className="mt-6 rounded-2xl border border-[#61302d] bg-[#100607] p-4">
-            <Skeleton className="h-4 w-16 rounded-full" />
-            <Skeleton className="mt-3 h-12 w-full rounded-xl" />
+        <div className="mx-auto max-w-7xl">
+          <div className="rounded-[2.2rem] border border-[#61302d] bg-[linear-gradient(180deg,rgba(31,8,11,0.92),rgba(17,4,6,0.97))] p-6 sm:p-8">
+            <Skeleton className="h-4 w-28 rounded-full" />
+            <Skeleton className="mt-4 h-16 w-[32rem] max-w-full rounded-full" />
+            <Skeleton className="mt-4 h-5 w-[42rem] max-w-full rounded-full" />
+            <div className="mt-6 grid gap-3 sm:grid-cols-3 lg:max-w-[38rem]">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="rounded-2xl border border-[#5b2a31] bg-[#1a090c]/90 px-4 py-3">
+                  <Skeleton className="h-4 w-20 rounded-full" />
+                  <Skeleton className="mt-3 h-8 w-24 rounded-full" />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {Array.from({ length: 2 }).map((_, index) => (
-              <div key={index} className="rounded-2xl border border-[#61302d] bg-[#100607] p-4">
+
+          <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[1.6rem] border border-[#61302d] bg-[#100607] p-4">
+              <Skeleton className="h-4 w-16 rounded-full" />
+              <Skeleton className="mt-3 h-12 w-full rounded-xl" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[1.6rem] border border-[#61302d] bg-[#100607] p-4">
+                <Skeleton className="h-4 w-28 rounded-full" />
+                <Skeleton className="mt-3 h-12 w-full rounded-xl" />
+              </div>
+              <div className="rounded-[1.6rem] border border-[#61302d] bg-[#100607] p-4">
+                <Skeleton className="h-4 w-24 rounded-full" />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Skeleton key={index} className="h-9 w-20 rounded-full" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="rounded-[1.6rem] border border-[#61302d] bg-[#100607] p-4">
                 <Skeleton className="h-4 w-24 rounded-full" />
                 <Skeleton className="mt-3 h-10 w-20 rounded-full" />
               </div>
             ))}
           </div>
+
           <div className="mt-6 space-y-4">
             {Array.from({ length: 3 }).map((_, index) => (
-              <article key={index} className="rounded-2xl border border-[#61302d] bg-[#100607] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <Skeleton className="h-4 w-40 rounded-full" />
-                  <Skeleton className="h-6 w-20 rounded-full" />
+              <article key={index} className="overflow-hidden rounded-[2rem] border border-[#61302d] bg-[#100607]">
+                <div className="border-b border-white/6 px-5 py-5 sm:px-6">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="flex-1 space-y-3">
+                      <Skeleton className="h-5 w-48 rounded-full" />
+                      <Skeleton className="h-10 w-72 max-w-full rounded-full" />
+                      <div className="flex flex-wrap gap-2">
+                        <Skeleton className="h-8 w-28 rounded-full" />
+                        <Skeleton className="h-8 w-24 rounded-full" />
+                        <Skeleton className="h-8 w-36 rounded-full" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-20 w-full rounded-[1.4rem] lg:w-[230px]" />
+                  </div>
                 </div>
-                <Skeleton className="mt-3 h-5 w-52 rounded-full" />
-                <Skeleton className="mt-2 h-4 w-32 rounded-full" />
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  {Array.from({ length: 3 }).map((__, chipIndex) => (
-                    <Skeleton key={chipIndex} className="h-10 w-full rounded-lg" />
-                  ))}
+                <div className="grid gap-5 px-5 py-5 sm:px-6 xl:grid-cols-[1.1fr_0.9fr]">
+                  <div className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {Array.from({ length: 4 }).map((__, chipIndex) => (
+                        <Skeleton key={chipIndex} className="h-24 w-full rounded-2xl" />
+                      ))}
+                    </div>
+                    <Skeleton className="h-40 w-full rounded-2xl" />
+                  </div>
+                  <div className="space-y-4">
+                    <Skeleton className="h-8 w-28 rounded-full" />
+                    {Array.from({ length: 2 }).map((__, itemIndex) => (
+                      <div key={itemIndex} className="rounded-[1.4rem] border border-white/6 bg-white/[0.03] p-3">
+                        <Skeleton className="h-24 w-full rounded-[1rem]" />
+                        <Skeleton className="mt-3 h-5 w-40 rounded-full" />
+                        <Skeleton className="mt-2 h-4 w-28 rounded-full" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <Skeleton className="mt-3 h-8 w-28 rounded-full" />
               </article>
             ))}
           </div>

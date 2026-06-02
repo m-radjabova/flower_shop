@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 interface AuthShellProps {
   title: string;
@@ -17,6 +18,7 @@ function AuthShell({
   children,
   panelPosition = "center",
 }: AuthShellProps) {
+  const { t } = useTranslation();
   const alignmentClass =
     panelPosition === "right"
       ? "justify-start"
@@ -37,9 +39,9 @@ function AuthShell({
 
           <div className="mt-8 text-center">
             <h1 className="font-cormorant text-[2.75rem] font-semibold leading-none tracking-tight text-white sm:text-5xl">
-              {title}
+              {t(title) || title}
             </h1>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-[#d8b1ae]">{subtitle}</p>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-[#d8b1ae]">{t(subtitle) || subtitle}</p>
           </div>
 
           <div className="mt-8">{children}</div>

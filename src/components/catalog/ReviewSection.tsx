@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
 import {
   HiArrowUpTray,
@@ -71,6 +72,7 @@ function ReviewCard({ review }: { review: Review }) {
 }
 
 function ReviewForm({ bouquet, embedded = false }: { bouquet: Bouquet; embedded?: boolean }) {
+  const { t } = useTranslation();
   const [rating, setRating] = useState(5);
   const [uploadedImageUrl, setUploadedImageUrl] = useState("");
   const { register, handleSubmit, reset } = useForm<{ text: string }>({
@@ -105,15 +107,15 @@ function ReviewForm({ bouquet, embedded = false }: { bouquet: Bouquet; embedded?
             : "rounded-[1.7rem] border border-[#68413b] bg-[linear-gradient(145deg,#1b0a0b,#2a1011)] p-6"
         }
       >
-        <p className="font-cormorant text-3xl text-white">Share your experience</p>
+        <p className="font-cormorant text-3xl text-white">{t("reviews.yourReview")}</p>
         <p className="mt-2 leading-7 text-[#d3b4ad]">
-          Review yozish uchun accountga kiring. Keyin yulduzcha bosib fikringizni qoldira olasiz.
+          {t("reviews.loginToReview")}
         </p>
         <Link
           to="/login"
           className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#fff3e8] px-5 py-3 text-sm font-bold text-[#541714] transition hover:bg-white"
         >
-          Login to review
+          {t("auth.loginButton")}
           <HiOutlineArrowRight />
         </Link>
       </div>
@@ -180,7 +182,7 @@ function ReviewForm({ bouquet, embedded = false }: { bouquet: Bouquet; embedded?
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
         <textarea
           {...register("text")}
-          placeholder="Bu bouquet sizga nimasi bilan yoqdi?"
+          placeholder={t("reviews.placeholder")}
           className="min-h-44 w-full resize-none rounded-[1.25rem] border border-[#5d2d29] bg-[#080304] px-4 py-3 leading-7 text-white outline-none transition placeholder:text-[#8d6b64] focus:border-[#d48479]"
         />
         <label
@@ -201,7 +203,7 @@ function ReviewForm({ bouquet, embedded = false }: { bouquet: Bouquet; embedded?
             {uploadImage.isPending ? <HiArrowUpTray className="animate-bounce" /> : <HiPhoto />}
           </span>
           <span className="mt-4 font-semibold text-white">
-            {uploadImage.isPending ? "Uploading to ImageKit..." : "Upload review photo"}
+            {uploadImage.isPending ? t("reviews.uploadingToImageKit") : t("reviews.uploadPhoto")}
           </span>
           <span className="mt-1 text-sm leading-6 text-[#b9968f]">
             JPG, PNG, WEBP yoki GIF. Maksimum 6MB.
@@ -216,14 +218,11 @@ function ReviewForm({ bouquet, embedded = false }: { bouquet: Bouquet; embedded?
               type="button"
               onClick={() => setUploadedImageUrl("")}
               className="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur transition hover:bg-black/80"
-              aria-label="Remove uploaded image"
+              aria-label={t("reviews.removePhoto")}
             >
               <HiXMark />
             </button>
           </div>
-          <p className="px-4 py-3 text-sm text-[#b9968f]">
-            ImageKit upload tayyor. Review yuborilganda shu rasm birga saqlanadi.
-          </p>
         </div>
       ) : null}
       <button
@@ -231,13 +230,14 @@ function ReviewForm({ bouquet, embedded = false }: { bouquet: Bouquet; embedded?
         disabled={createReview.isPending || uploadImage.isPending}
         className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {createReview.isPending ? "Sending..." : "Submit review"}
+        {createReview.isPending ? t("reviews.sending") : t("reviews.submitReview")}
       </button>
     </form>
   );
 }
 
 function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
+  const { t } = useTranslation();
   const reviewsQuery = useReviews({ bouquetId: bouquet.id });
   const reviews = reviewsQuery.data ?? [];
   const isFullMode = mode === "full";
@@ -247,12 +247,12 @@ function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-5xl">
           <div className="text-center">
-            <p className="text-sm uppercase tracking-[0.28em] text-[#c39890]">Customer love</p>
+            <p className="text-sm uppercase tracking-[0.28em] text-[#c39890]">{t("reviews.verifiedReviews")}</p>
             <h2 className="mt-3 font-cormorant text-5xl leading-none text-white sm:text-6xl">
-              Tell us about {bouquet.name}
+              {t("reviews.discoverReviews").slice(0, 40)}...
             </h2>
             <p className="mx-auto mt-4 max-w-2xl leading-8 text-[#caa9a1]">
-              Yulduzcha bosing, qisqa fikr qoldiring va xohlasangiz rasm yuklang. Sizning review keyingi xaridorlarga yordam beradi.
+              {t("reviews.discoverReviews")}
             </p>
           </div>
 
@@ -260,14 +260,14 @@ function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
             <div className="pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full bg-[#c72f42]/20 blur-3xl" />
             <div className="relative rounded-[1.55rem] border border-[#7b413a] bg-[radial-gradient(circle_at_30%_20%,rgba(255,197,148,0.14),transparent_36%),linear-gradient(160deg,#2a0d10,#120607)] p-6">
               <span className="inline-flex rounded-full border border-[#8e4c45] bg-[#120607] px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-[#ffc8bc]">
-                Bouquet score
+                {t("reviews.reviewsAndRatings")}
               </span>
               <div className="mt-8 flex items-end gap-4">
                 <p className="text-7xl font-black leading-none text-white">{bouquet.rating}</p>
                 <div className="pb-2">
                   <RatingStars value={Math.round(Number(bouquet.rating))} />
                   <p className="mt-2 text-sm font-semibold text-[#caa9a1]">
-                    {bouquet.reviews_count} approved reviews
+                    {bouquet.reviews_count} {t("reviews.approvedReviews")}
                   </p>
                 </div>
               </div>
@@ -281,7 +281,7 @@ function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
                 to={`/bouquets/${bouquet.id}/reviews`}
                 className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#9d5149] bg-[#120607]/70 px-5 py-4 text-sm font-bold text-[#ffe1d8] transition hover:border-[#f0a093] hover:text-white"
               >
-                View all reviews
+                {t("catalog.viewAll")}
                 <HiOutlineArrowRight />
               </Link>
             </div>
@@ -299,14 +299,14 @@ function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
     <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-10">
       <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr]">
         <div>
-          <p className="text-sm uppercase tracking-[0.22em] text-[#b58e86]">Customer love</p>
-          <h2 className="mt-2 font-cormorant text-5xl text-white">Reviews for {bouquet.name}</h2>
+          <p className="text-sm uppercase tracking-[0.22em] text-[#b58e86]">{t("reviews.verifiedReviews")}</p>
+          <h2 className="mt-2 font-cormorant text-5xl text-white">{t("reviews.reviewsAndRatings")}</h2>
           <div className="mt-5 rounded-[1.7rem] border border-[#5d2d29] bg-[#120708] p-6">
             <div className="flex items-end gap-3">
               <p className="text-5xl font-bold text-white">{bouquet.rating}</p>
               <div className="pb-1">
                 <RatingStars value={Math.round(Number(bouquet.rating))} />
-                <p className="mt-1 text-sm text-[#b9978f]">{bouquet.reviews_count} approved reviews</p>
+                <p className="mt-1 text-sm text-[#b9978f]">{bouquet.reviews_count} {t("reviews.approvedReviews")}</p>
               </div>
             </div>
           </div>
@@ -314,7 +314,7 @@ function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
             to={`/bouquets/${bouquet.id}`}
             className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#7a3d37] px-5 py-3 text-sm font-bold text-[#ffe1d8] transition hover:border-[#d48479] hover:text-white"
           >
-            Write a review on bouquet page
+            {t("reviews.beFirst")}
             <HiOutlineArrowRight />
           </Link>
         </div>
@@ -326,8 +326,8 @@ function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
             reviews.map((review) => <ReviewCard key={review.id} review={review} />)
           ) : (
             <div className="rounded-[1.6rem] border border-dashed border-[#68413b] bg-[#120708] p-8 text-center">
-              <p className="font-cormorant text-4xl text-white">No reviews yet</p>
-              <p className="mt-3 text-[#caa9a1]">Birinchi review sizdan bo'lishi mumkin.</p>
+              <p className="font-cormorant text-4xl text-white">{t("reviews.noReviews")}</p>
+              <p className="mt-3 text-[#caa9a1]">{t("reviews.beFirst")}</p>
             </div>
           )}
         </div>

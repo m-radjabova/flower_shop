@@ -1,62 +1,400 @@
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { HiArrowRight, HiOutlineBuildingStorefront, HiShoppingBag } from "react-icons/hi2";
+import { HiArrowRight, HiOutlineBuildingStorefront, HiShoppingBag, HiSparkles } from "react-icons/hi2";
+import { useTranslation } from "react-i18next";
+import flowerIcon from "../../assets/flower_icon.png";
+import flowerIcon2 from "../../assets/flower_icon2.png";
+
+const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
+  id: i,
+  x: Math.random() * 100,
+  y: Math.random() * 100,
+  size: 4 + Math.random() * 12,
+  duration: 12 + Math.random() * 20,
+  delay: Math.random() * 10,
+  opacity: 0.15 + Math.random() * 0.3,
+  rotate: Math.random() * 360,
+}));
+
+const FLOWER_ICONS = [flowerIcon, flowerIcon2];
 
 function Hero() {
-  return (
-    <section className="relative isolate min-h-screen overflow-hidden [perspective:1200px]">
-      <div className="pointer-events-none absolute inset-0 " />
+  const { t } = useTranslation();
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [petals, setPetals] = useState<Array<{ id: number; x: number; delay: number; icon: string; size: number }>>([]);
 
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 pb-16 pt-28 sm:px-6 sm:pt-32 lg:px-10 lg:pb-20 lg:pt-36">
+  // ── Parallax scroll — spring for silk smooth feel ──
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 28 });
+  const textY = useTransform(smoothProgress, [0, 1], [0, 80]);
+  const opacity = useTransform(smoothProgress, [0, 0.65], [1, 0]);
+
+  // ── Falling petals ──
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPetals((prev) => [
+        ...prev,
+        {
+          id: Date.now() + Math.random(),
+          x: Math.random() * 100,
+          delay: 0,
+          icon: FLOWER_ICONS[Math.floor(Math.random() * FLOWER_ICONS.length)],
+          size: 14 + Math.random() * 18,
+        },
+      ]);
+      if (petals.length > 10) {
+        setPetals((prev) => prev.slice(-10));
+      }
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [petals.length]);
+
+  // ── Container variants ──
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.12, delayChildren: 0.2 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as const },
+    },
+  };
+
+  return (
+    <section
+      ref={sectionRef}
+      className="relative  isolate min-h-screen overflow-hidden"
+      
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+          backgroundSize: "80px 80px",
+        }}
+      />
+
+      {/* ── Hero decorations only ── */}
+      <div className="pointer-events-none absolute inset-x-0 top-24 bottom-0 z-0 overflow-hidden sm:top-28 lg:top-32">
+        {/* ── Floating particles ── */}
+        {PARTICLES.map((p) => (
+          <motion.div
+            key={p.id}
+            className="pointer-events-none absolute rounded-full"
+            style={{
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              width: p.size,
+              height: p.size,
+              background:
+                p.id % 3 === 0
+                  ? "radial-gradient(circle, rgba(217,181,111,0.4), transparent)"
+                  : p.id % 3 === 1
+                    ? "radial-gradient(circle, rgba(216,38,63,0.3), transparent)"
+                    : "radial-gradient(circle, rgba(255,200,220,0.25), transparent)",
+              boxShadow:
+                p.id % 2 === 0 ? "0 0 20px rgba(217,181,111,0.08)" : "0 0 20px rgba(216,38,63,0.06)",
+            }}
+            animate={{
+              y: [0, -30, 0],
+              x: [0, p.id % 2 === 0 ? 15 : -15, 0],
+              scale: [1, 1.15, 1],
+              opacity: [p.opacity, p.opacity * 1.6, p.opacity],
+              rotate: [p.rotate, p.rotate + 180, p.rotate + 360],
+            }}
+            transition={{
+              duration: p.duration,
+              repeat: Infinity,
+              delay: p.delay,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+
+        {/* ── Falling petals ── */}
+        <AnimatePresence>
+          {petals.map((petal) => (
+            <motion.div
+              key={petal.id}
+              className="pointer-events-none absolute z-20 select-none"
+              style={{ left: `${petal.x}%`, top: -40 }}
+              initial={{ y: -40, opacity: 0, rotate: 0 }}
+              animate={{
+                y: window.innerHeight + 40,
+                opacity: [0, 0.6, 0.6, 0],
+                rotate: [0, 120, 240, 360],
+                x: [0, petal.id % 2 === 0 ? 40 : -40, petal.id % 2 === 0 ? 80 : -80, 0],
+              }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: 8 + Math.random() * 5,
+                ease: "easeInOut",
+              }}
+            >
+              <img
+                src={petal.icon}
+                alt=""
+                className="block h-auto w-auto select-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.25)]"
+                style={{ width: `${petal.size}px` }}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {/* ── Decorative corner lines ── */}
+        <div className="pointer-events-none absolute left-8 top-8 z-10 h-16 w-[1px] bg-gradient-to-b from-[#d9b56f]/40 to-transparent sm:left-12 sm:top-12" />
+        <div className="pointer-events-none absolute left-8 top-8 z-10 h-[1px] w-16 bg-gradient-to-r from-[#d9b56f]/40 to-transparent sm:left-12 sm:top-12" />
+        <div className="pointer-events-none absolute right-8 top-8 z-10 h-16 w-[1px] bg-gradient-to-b from-[#d9b56f]/40 to-transparent sm:right-12 sm:top-12" />
+        <div className="pointer-events-none absolute right-8 top-8 z-10 h-[1px] w-16 bg-gradient-to-l from-[#d9b56f]/40 to-transparent sm:right-12 sm:top-12" />
+        <div className="pointer-events-none absolute bottom-8 left-8 z-10 h-16 w-[1px] bg-gradient-to-t from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:left-12" />
+        <div className="pointer-events-none absolute bottom-8 left-8 z-10 h-[1px] w-16 bg-gradient-to-r from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:left-12" />
+        <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-16 w-[1px] bg-gradient-to-t from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:right-12" />
+        <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-[1px] w-16 bg-gradient-to-l from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:right-12" />
+      </div>
+
+      {/* ── Main content ── */}
+      <motion.div
+        style={{ y: textY, opacity }}
+        className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 pb-16 pt-28 sm:px-6 sm:pt-32 lg:px-10 lg:pb-20 lg:pt-36"
+      >
         <motion.div
-          initial={{ opacity: 0, y: 34 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
           className="max-w-4xl text-center"
         >
-          <motion.p
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.7 }}
-            className="font-great-vibes inline-flex rounded-full border border-[#d9b56f]/35 bg-[#2a0d10]/70 px-5 py-2 text-xl tracking-[0.08em] text-[#e8c987] shadow-[0_0_35px_rgba(196,137,57,0.12)] backdrop-blur sm:text-2xl"
-          >
-            Fresh flowers, timeless emotions
-          </motion.p>
+          {/* ── Badge ── */}
+          <motion.div variants={itemVariants} className="mb-6 inline-flex items-center justify-center">
+            <motion.div
+              className="group relative inline-flex items-center gap-2.5 rounded-full border border-[#d9b56f]/30 bg-[#2a0d10]/60 px-5 py-2.5 backdrop-blur-md"
+              whileHover={{ scale: 1.03, borderColor: "rgba(217,181,111,0.5)" }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              {/* Glow ring */}
+              <motion.span
+                className="absolute inset-0 rounded-full opacity-0 blur-sm"
+                animate={{ opacity: [0, 0.4, 0] }}
+                transition={{ duration: 2.5, repeat: Infinity }}
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(217,181,111,0.2), rgba(216,38,63,0.1))",
+                }}
+              />
+              <HiSparkles className="relative text-[#e8c987] text-lg" />
+              <span className="font-great-vibes relative text-xl tracking-[0.06em] text-[#e8c987] sm:text-2xl">
+                {t("hero.freshFlowers")}
+              </span>
+              <HiSparkles className="relative text-[#e8c987] text-lg" />
+            </motion.div>
+          </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 26 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.28, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="font-great-vibes mt-7 text-[4.6rem] font-normal leading-[0.86] text-[#d8263f] drop-shadow-[0_16px_48px_rgba(0,0,0,0.45)] sm:text-[6.6rem] lg:text-[7.8rem]"
-          >
-            Flowers that <br /> speak from the heart
-          </motion.h1>
+          {/* ── Heading ── */}
+          <motion.div variants={itemVariants} className="relative">
+            {/* Decorative swoosh behind heading */}
+            <motion.svg
+              className="pointer-events-none absolute -left-12 -top-8 h-32 w-40 opacity-20 sm:-left-16 sm:-top-12 sm:h-44 sm:w-56"
+              viewBox="0 0 200 160"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              animate={{ rotate: [0, 3, 0, -3, 0], scale: [1, 1.02, 1] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <path
+                d="M10 140 C40 100, 60 40, 100 30 C140 20, 160 50, 190 20"
+                stroke="url(#goldGrad)"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                fill="none"
+                opacity="0.5"
+              />
+              <defs>
+                <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#d9b56f" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#d9b56f" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#d9b56f" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </motion.svg>
 
+            <motion.h1
+              className="font-great-vibes relative mt-5 text-[4.4rem] font-normal leading-[0.88] text-[#d8263f] drop-shadow-[0_16px_48px_rgba(0,0,0,0.5)] sm:text-[6.4rem] lg:text-[7.6rem]"
+              whileHover={{ scale: 1.008 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            >
+              {/* Title words staggered */}
+              <motion.span className="inline-block" style={{ textShadow: "0 4px 30px rgba(216,38,63,0.15)" }}>
+                {t("hero.title").split("").map((char, i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block"
+                    initial={{ opacity: 0, y: 60, rotateX: -30 }}
+                    animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                    transition={{
+                      delay: 0.5 + i * 0.035,
+                      duration: 0.6,
+                      ease: [0.16, 1, 0.3, 1] as const,
+                    }}
+                    whileHover={{
+                      color: "#e84860",
+                      textShadow: "0 0 40px rgba(216,38,63,0.4)",
+                      transition: { duration: 0.2 },
+                    }}
+                  >
+                    {char === " " ? "\u00A0" : char}
+                  </motion.span>
+                ))}
+              </motion.span>
+              <br />
+              <motion.span className="inline-block" style={{ textShadow: "0 4px 30px rgba(216,38,63,0.15)" }}>
+                {t("hero.title2").split("").map((char, i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block"
+                    initial={{ opacity: 0, y: 60, rotateX: -30 }}
+                    animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                    transition={{
+                      delay: 0.5 + (t("hero.title").length + i) * 0.035,
+                      duration: 0.6,
+                      ease: [0.16, 1, 0.3, 1] as const,
+                    }}
+                    whileHover={{
+                      color: "#e84860",
+                      textShadow: "0 0 40px rgba(216,38,63,0.4)",
+                      transition: { duration: 0.2 },
+                    }}
+                  >
+                    {char === " " ? "\u00A0" : char}
+                  </motion.span>
+                ))}
+              </motion.span>
+            </motion.h1>
+
+            {/* Decorative swoosh behind heading – right */}
+            <motion.svg
+              className="pointer-events-none absolute -bottom-6 -right-10 h-28 w-36 opacity-20 sm:-bottom-8 sm:-right-14 sm:h-40 sm:w-48"
+              viewBox="0 0 200 160"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              animate={{ rotate: [0, -3, 0, 3, 0], scale: [1, 1.02, 1] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+            >
+              <path
+                d="M10 20 C40 60, 60 120, 100 130 C140 140, 160 110, 190 140"
+                stroke="url(#goldGrad2)"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                fill="none"
+                opacity="0.5"
+              />
+              <defs>
+                <linearGradient id="goldGrad2" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#d9b56f" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#d9b56f" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#d9b56f" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+            </motion.svg>
+          </motion.div>
+
+          {/* ── CTA Buttons ── */}
           <motion.div
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.56, duration: 0.75 }}
-            className="mt-12 flex flex-col justify-center gap-4 sm:flex-row"
+            variants={itemVariants}
+            className="mt-12 flex flex-col justify-center gap-5 sm:flex-row"
           >
-            <Link
-              to="/#bouquets"
-              className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#ffc677]/25 bg-[linear-gradient(135deg,#8f111d,#c5243a_48%,#dc4156)] px-7 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#fff8ef] shadow-[0_18px_42px_rgba(159,21,35,0.36)] transition hover:-translate-y-0.5 active:translate-y-0"
+            {/* Primary CTA */}
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="relative"
             >
-              <span className="absolute inset-0 -translate-x-[120%] skew-x-[-12deg] bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.2),transparent)] transition-transform duration-700 group-hover:translate-x-[120%]" />
-              <HiShoppingBag />
-              <span className="relative z-10">Shop Now</span>
-              <HiArrowRight className="relative z-10 transition-transform group-hover:translate-x-1" />
-            </Link>
-            <Link
-              to="/#bouquets"
-              className="inline-flex h-15 items-center justify-center gap-3 rounded-2xl border border-[#dab56f]/35 bg-[#0c0304]/70 px-7 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#ead6c7] backdrop-blur transition hover:-translate-y-0.5 hover:border-[#efc77e]/70 hover:bg-[#270a0c]/80 hover:shadow-[0_18px_34px_rgba(217,181,111,0.1)] active:translate-y-0"
+              {/* Glow behind button */}
+              <motion.div
+                className="pointer-events-none absolute -inset-2 rounded-2xl opacity-0 blur-xl"
+                animate={{ opacity: [0, 0.3, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(217,181,111,0.15), rgba(216,38,63,0.1))",
+                }}
+              />
+              <Link
+                to="/#bouquets"
+                className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#ffc677]/25 bg-[linear-gradient(135deg,#8f111d,#c5243a_48%,#dc4156)] px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#fff8ef] shadow-[0_18px_42px_rgba(159,21,35,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(159,21,35,0.5)] active:translate-y-0"
+              >
+                <span className="absolute inset-0 -translate-x-[120%] skew-x-[-12deg] bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.2),transparent)] transition-transform duration-700 group-hover:translate-x-[120%]" />
+                <HiShoppingBag className="relative z-10 text-base" />
+                <span className="relative z-10">{t("hero.shopNow")}</span>
+                <motion.span
+                  className="relative z-10"
+                  animate={{ x: [0, 3, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <HiArrowRight />
+                </motion.span>
+              </Link>
+            </motion.div>
+
+            {/* Secondary CTA */}
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
             >
-              <HiOutlineBuildingStorefront />
-              Explore Shops
-            </Link>
+              <Link
+                to="/#bouquets"
+                className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#dab56f]/30 bg-[#0c0304]/60 px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#ead6c7] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#efc77e]/60 hover:bg-[#270a0c]/70 hover:shadow-[0_18px_34px_rgba(217,181,111,0.12)] active:translate-y-0"
+              >
+                <motion.span
+                  className="absolute inset-0"
+                  animate={{
+                    background: [
+                      "linear-gradient(110deg, transparent, rgba(217,181,111,0.03), transparent)",
+                      "linear-gradient(110deg, transparent, rgba(217,181,111,0.07), transparent)",
+                      "linear-gradient(110deg, transparent, rgba(217,181,111,0.03), transparent)",
+                    ],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                />
+                <HiOutlineBuildingStorefront className="relative z-10 text-base" />
+                <span className="relative z-10">{t("hero.exploreShops")}</span>
+                <motion.span
+                  className="relative z-10 opacity-0 transition-all duration-300 group-hover:opacity-100"
+                  animate={{ x: [0, 4, 0] }}
+                  transition={{ duration: 1.8, repeat: Infinity, delay: 0.5 }}
+                >
+                  <HiArrowRight />
+                </motion.span>
+              </Link>
+            </motion.div>
+          </motion.div>
+
+          {/* ── Scroll indicator ── */}
+          <motion.div
+            variants={itemVariants}
+            className="mt-16 flex flex-col items-center gap-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 2.5, duration: 1 }}
+          >
+            <span className="text-[0.6rem] uppercase tracking-[0.2em] text-[#ead6c7]/30">
+              Scroll
+            </span>
+            <motion.div
+              className="h-8 w-[1px] bg-gradient-to-b from-[#d9b56f]/30 to-transparent"
+              animate={{ height: [8, 24, 8], opacity: [0.3, 0.6, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
           </motion.div>
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   );
 }

@@ -49,17 +49,14 @@ function AdminUsers() {
     return Array.from({ length: to - from + 1 }, (_, index) => from + index);
   }, [page, totalPages]);
 
-  const toggleRole = async (userId: string, currentRoles: UserRole[], role: UserRole) => {
+  const changeRole = async (userId: string, currentRole: UserRole, role: UserRole) => {
     const actionKey = `role:${userId}:${role}`;
     if (submittingActions[actionKey]) return;
-    const nextRoles = currentRoles.includes(role)
-      ? currentRoles.filter((item) => item !== role)
-      : [...currentRoles, role];
-    const normalizedRoles: UserRole[] = nextRoles.length ? nextRoles : ["customer"];
+    if (currentRole === role) return;
 
     try {
       setSubmittingActions((prev) => ({ ...prev, [actionKey]: true }));
-      await updateUserMutation.mutateAsync({ userId, payload: { roles: normalizedRoles } });
+      await updateUserMutation.mutateAsync({ userId, payload: { role } });
       toast.success("User role yangilandi");
     } catch {
       toast.error("User rolini yangilab bo'lmadi");
@@ -140,12 +137,12 @@ function AdminUsers() {
 
             <div className="mt-5 flex flex-wrap gap-3">
               {roleOptions.map((option) => {
-                const active = user.roles.includes(option.role);
+                const active = user.role === option.role;
                 return (
                   <button
                     key={option.role}
                     type="button"
-                    onClick={() => toggleRole(user.id, user.roles, option.role)}
+                    onClick={() => changeRole(user.id, user.role, option.role)}
                     disabled={Boolean(submittingActions[`role:${user.id}:${option.role}`])}
                     className={`inline-flex h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition disabled:opacity-60 ${
                       active

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { clearStoredAuth, getMe, getStoredAccessToken, logoutUser, normalizeUser, persistTokens } from "../api/auth";
+import { toast } from "react-toastify";
+import { clearStoredAuth, getMe, logoutUser, normalizeUser, persistTokens } from "../api/auth";
+import { getStoredAccessToken, setStoredCurrentUserId } from "../api/authStorage";
 import { MyContext } from "../context/MyContext";
 import type { LoginResponse, User } from "../types/types";
+import { useOrderRealtime } from "./useOrderRealtime";
 
 export interface TypeState {
   user: User | null;
@@ -49,11 +52,25 @@ function CreateContextPro({ children }: { children: ReactNode }) {
     isLoading: true,
   });
 
+  useOrderRealtime({
+    scope: state.user?.role === "admin" ? "admin" : "me",
+    enabled: Boolean(state.user),
+    onEvent: ({ event, order }) => {
+      if (event === "order.created") {
+        toast.info(`Buyurtma keldi: #${order.id.slice(0, 8)}`);
+        return;
+      }
+
+      toast.success(`Buyurtma yangilandi: #${order.id.slice(0, 8)}`);
+    },
+  });
+
   const refreshUser = useCallback(async () => {
     const requestId = ++authRequestIdRef.current;
 
     if (!getStoredAccessToken()) {
       queryClient.clear();
+      setStoredCurrentUserId(null);
       if (requestId === authRequestIdRef.current) {
         dispatch({ type: "SET_USER", payload: null });
         dispatch({ type: "SET_LOADING", payload: false });
@@ -65,12 +82,15 @@ function CreateContextPro({ children }: { children: ReactNode }) {
 
     try {
       const me = await getMe();
+      const normalized = normalizeUser(me);
+      setStoredCurrentUserId(normalized.id);
       if (requestId === authRequestIdRef.current) {
-        dispatch({ type: "SET_USER", payload: normalizeUser(me) });
+        dispatch({ type: "SET_USER", payload: normalized });
       }
     } catch {
       if (requestId === authRequestIdRef.current) {
         clearStoredAuth();
+        setStoredCurrentUserId(null);
         queryClient.clear();
         dispatch({ type: "SET_USER", payload: null });
       }
@@ -87,9 +107,11 @@ function CreateContextPro({ children }: { children: ReactNode }) {
 
   const login = useCallback((tokens: LoginResponse, user: User) => {
     authRequestIdRef.current += 1;
+    const normalized = normalizeUser(user);
     persistTokens(tokens);
+    setStoredCurrentUserId(normalized.id);
     queryClient.clear();
-    dispatch({ type: "SET_USER", payload: normalizeUser(user) });
+    dispatch({ type: "SET_USER", payload: normalized });
     dispatch({ type: "SET_LOADING", payload: false });
   }, [queryClient]);
 
@@ -101,6 +123,7 @@ function CreateContextPro({ children }: { children: ReactNode }) {
     } catch {
       // local logout still completes
     } finally {
+      setStoredCurrentUserId(null);
       clearStoredAuth();
       queryClient.clear();
       dispatch({ type: "LOGOUT" });

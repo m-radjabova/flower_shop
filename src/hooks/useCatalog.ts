@@ -1,7 +1,10 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  createBouquet,
+  createShopApplication,
   createOrder,
   createMyAddress,
+  deleteBouquet,
   deleteMyAddress,
   createReview,
   getBouquet,
@@ -9,15 +12,23 @@ import {
   getBouquets,
   getCategories,
   getAdminShops,
+  getManagedBouquets,
+  getManagedReviews,
+  getShopApplications,
+  getMyLatestShopApplication,
   getMyShops,
   getMyReferralSummary,
   getMyOrders,
   getMyAddresses,
+  updateOrderStatus,
   getMyReviews,
+  moderateReview,
   getReviews,
   getShopOrders,
+  reviewShopApplication,
   setPrimaryAddress,
   getShop,
+  updateBouquet,
   updateShop,
   updateMyAddress,
   uploadImage,
@@ -26,9 +37,15 @@ import {
 import type {
   AddressCreatePayload,
   AddressUpdatePayload,
+  BouquetCreatePayload,
+  BouquetUpdatePayload,
   OrderCreatePayload,
+  OrderOut,
   ReviewCreatePayload,
-  Shop,
+  ReviewModerationPayload,
+  ShopApplicationCreatePayload,
+  ShopApplicationReviewPayload,
+  ShopUpdatePayload,
 } from "../types/catalog";
 
 export const categoryQueryKey = ["categories"];
@@ -93,10 +110,33 @@ export function useMyShops() {
   });
 }
 
+export function useManagedBouquets(shopId: string | undefined) {
+  return useQuery({
+    queryKey: ["bouquets", "manage", shopId],
+    queryFn: () => getManagedBouquets(shopId ?? ""),
+    enabled: Boolean(shopId),
+  });
+}
+
 export function useAdminShops() {
   return useQuery({
     queryKey: ["shops", "admin"],
     queryFn: getAdminShops,
+  });
+}
+
+export function useShopApplications() {
+  return useQuery({
+    queryKey: ["shop-applications", "admin"],
+    queryFn: getShopApplications,
+    refetchInterval: 1000 * 20,
+  });
+}
+
+export function useMyLatestShopApplication() {
+  return useQuery({
+    queryKey: ["shop-applications", "me", "latest"],
+    queryFn: getMyLatestShopApplication,
   });
 }
 
@@ -106,6 +146,20 @@ export function useShopOrders(shopId: string | undefined) {
     queryFn: () => getShopOrders(shopId ?? ""),
     enabled: Boolean(shopId),
     refetchInterval: 1000 * 20,
+  });
+}
+
+export function useUpdateOrderStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ orderId, payload }: { orderId: string; payload: { status: OrderOut["status"] } }) =>
+      updateOrderStatus(orderId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders", "shop"] });
+      queryClient.invalidateQueries({ queryKey: ["orders", "me"] });
+    },
   });
 }
 
@@ -129,6 +183,15 @@ export function useReviews(params: { shopId?: string; bouquetId?: string }) {
     queryKey: ["reviews", params],
     queryFn: () => getReviews(params),
     enabled: Boolean(params.shopId || params.bouquetId),
+  });
+}
+
+export function useManagedReviews(shopId: string | undefined) {
+  return useQuery({
+    queryKey: ["reviews", "manage", shopId],
+    queryFn: () => getManagedReviews(shopId ?? ""),
+    enabled: Boolean(shopId),
+    refetchInterval: 1000 * 20,
   });
 }
 
@@ -156,6 +219,21 @@ export function useCreateReview() {
     onSuccess: (_review, payload) => {
       queryClient.invalidateQueries({ queryKey: ["reviews"] });
       queryClient.invalidateQueries({ queryKey: ["bouquet", payload.bouquet_id] });
+      queryClient.invalidateQueries({ queryKey: ["bouquets"] });
+      queryClient.invalidateQueries({ queryKey: ["shop"] });
+    },
+  });
+}
+
+export function useModerateReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ reviewId, payload }: { reviewId: string; payload: ReviewModerationPayload }) =>
+      moderateReview(reviewId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["reviews", "manage"] });
       queryClient.invalidateQueries({ queryKey: ["bouquets"] });
       queryClient.invalidateQueries({ queryKey: ["shop"] });
     },
@@ -219,9 +297,74 @@ export function useUpdateShop() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ shopId, payload }: { shopId: string; payload: Partial<Pick<Shop, "status">> }) =>
+    mutationFn: ({ shopId, payload }: { shopId: string; payload: ShopUpdatePayload }) =>
       updateShop(shopId, payload),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shops", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["shops", "me"] });
+      queryClient.invalidateQueries({ queryKey: ["shop"] });
+    },
+  });
+}
+
+export function useCreateShopApplication() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ShopApplicationCreatePayload) => createShopApplication(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shop-applications", "me", "latest"] });
+    },
+  });
+}
+
+export function useCreateBouquet() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: BouquetCreatePayload) => createBouquet(payload),
+    onSuccess: (bouquet) => {
+      queryClient.invalidateQueries({ queryKey: ["bouquets", "manage", bouquet.shop_id] });
+      queryClient.invalidateQueries({ queryKey: ["bouquets"] });
+    },
+  });
+}
+
+export function useUpdateBouquet() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ bouquetId, payload }: { bouquetId: string; payload: BouquetUpdatePayload }) =>
+      updateBouquet(bouquetId, payload),
+    onSuccess: (bouquet) => {
+      queryClient.invalidateQueries({ queryKey: ["bouquets", "manage", bouquet.shop_id] });
+      queryClient.invalidateQueries({ queryKey: ["bouquets"] });
+      queryClient.invalidateQueries({ queryKey: ["bouquet", bouquet.id] });
+    },
+  });
+}
+
+export function useDeleteBouquet() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ bouquetId }: { bouquetId: string; shopId: string }) => deleteBouquet(bouquetId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["bouquets", "manage", variables.shopId] });
+      queryClient.invalidateQueries({ queryKey: ["bouquets"] });
+    },
+  });
+}
+
+export function useReviewShopApplication() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ applicationId, payload }: { applicationId: string; payload: ShopApplicationReviewPayload }) =>
+      reviewShopApplication(applicationId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shop-applications", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["shop-applications", "me", "latest"] });
       queryClient.invalidateQueries({ queryKey: ["shops", "admin"] });
       queryClient.invalidateQueries({ queryKey: ["shops", "me"] });
       queryClient.invalidateQueries({ queryKey: ["shop"] });

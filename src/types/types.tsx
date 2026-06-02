@@ -28,8 +28,7 @@ export interface User {
   avatar_url: string | null;
   referral_code: string | null;
   referral_bonus_balance: string;
-  roles: UserRole[];
-  role?: UserRole;
+  role: UserRole;
   is_active: boolean;
   created_at: string;
   updated_at: string;

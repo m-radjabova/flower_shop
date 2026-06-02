@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { useTranslation } from "react-i18next";
 import { HiOutlineEnvelope, HiOutlineEye, HiOutlineEyeSlash, HiOutlineLockClosed, HiOutlineSparkles } from "react-icons/hi2";
 import { toast } from "react-toastify";
 import loginBg from "../../assets/login_bg.png";
@@ -20,6 +21,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 function Login() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isFocusedEmail, setIsFocusedEmail] = useState(false);
@@ -48,16 +50,16 @@ function Login() {
         persistTokens(tokens);
         const me = await getMe();
         login(tokens, me);
-        toast.success("Muvaffaqiyatli login qilindi");
+        toast.success(t("auth.loginSuccess"));
         navigate(getPostLoginRoute(me), { replace: true });
       } catch (error) {
         clearStoredAuth();
-        toast.error(getErrorMessage(error, "Profilni yuklashda xatolik yuz berdi"));
+        toast.error(getErrorMessage(error, t("auth.profileLoadError")));
       }
     },
     onError: (error) => {
       clearStoredAuth();
-      toast.error(getErrorMessage(error, "Email yoki parol noto'g'ri"));
+      toast.error(getErrorMessage(error, t("auth.loginError")));
     },
   });
 
@@ -67,22 +69,22 @@ function Login() {
   };
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getPostLoginRoute(user)} replace />;
   }
 
   return (
     <AuthShell
-      title="Welcome Back"
-      subtitle="Login to continue to your flower shop account"
+      title={t("auth.welcomeBack")}
+      subtitle={t("auth.loginSubtitle")}
       backgroundImage={loginBg}
       footer={
         <>
-          Don&apos;t have an account?{" "}
+          {t("auth.dontHaveAccount")}{" "}
           <Link
             to="/register"
             className="font-semibold text-[#ff6b7e] transition hover:text-[#ff8fa0]"
           >
-            Sign up
+            {t("auth.signUp")}
           </Link>
         </>
       }
@@ -91,7 +93,7 @@ function Login() {
         {/* Email Field */}
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
-            Email address
+            {t("auth.emailAddress")}
           </label>
           <div className={`relative rounded-2xl transition-all duration-300 ${
             isFocusedEmail ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
@@ -106,7 +108,7 @@ function Login() {
               {...register("email")}
               type="email"
               autoComplete="email"
-              placeholder="hello@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               onFocus={() => setIsFocusedEmail(true)}
               onBlur={() => setIsFocusedEmail(false)}
               className={`relative h-14 w-full rounded-2xl border bg-white/8 pl-12 pr-4 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e] ${
@@ -129,7 +131,7 @@ function Login() {
         {/* Password Field */}
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
-            Password
+            {t("auth.password")}
           </label>
           <div className={`relative rounded-2xl transition-all duration-300 ${
             isFocusedPassword ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
@@ -144,7 +146,7 @@ function Login() {
               {...register("password")}
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
-              placeholder="••••••••"
+              placeholder={t("auth.passwordPlaceholder")}
               onFocus={() => setIsFocusedPassword(true)}
               onBlur={() => setIsFocusedPassword(false)}
               className={`relative h-14 w-full rounded-2xl border bg-white/8 pl-12 pr-14 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e] ${
@@ -188,12 +190,12 @@ function Login() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span>Loading...</span>
+                <span>{t("auth.loading")}</span>
               </>
             ) : (
               <>
                 <HiOutlineSparkles className="text-base" />
-                <span>Login</span>
+                <span>{t("auth.loginButton")}</span>
               </>
             )}
           </span>

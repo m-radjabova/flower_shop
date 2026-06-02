@@ -97,10 +97,10 @@ function HelloAdmin() {
   ];
 
   const roleDistribution = [
-    { label: "Admin", value: users.filter((item) => item.roles.includes("admin")).length, color: "#ff8a9a" },
-    { label: "Owner", value: users.filter((item) => item.roles.includes("owner")).length, color: "#f2c98d" },
-    { label: "Courier", value: users.filter((item) => item.roles.includes("courier")).length, color: "#96e2cf" },
-    { label: "Customer", value: users.filter((item) => item.roles.includes("customer")).length, color: "#89b9ff" },
+    { label: "Admin", value: users.filter((item) => item.role === "admin").length, color: "#ff8a9a" },
+    { label: "Owner", value: users.filter((item) => item.role === "owner").length, color: "#f2c98d" },
+    { label: "Courier", value: users.filter((item) => item.role === "courier").length, color: "#96e2cf" },
+    { label: "Customer", value: users.filter((item) => item.role === "customer").length, color: "#89b9ff" },
   ].filter((item) => item.value > 0);
 
   const shopDistribution = [

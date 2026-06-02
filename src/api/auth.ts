@@ -42,7 +42,7 @@ export interface AdminUserUpdatePayload {
   full_name?: string;
   email?: string;
   phone?: string | null;
-  roles?: UserRole[];
+  role?: UserRole;
   is_active?: boolean;
 }
 
@@ -124,10 +124,9 @@ export async function updateUser(userId: string, payload: AdminUserUpdatePayload
 }
 
 export function normalizeUser(user: User): User {
-  const normalizedRoles = user.roles?.length ? user.roles : user.role ? [user.role] : (["customer"] as UserRole[]);
   return {
     ...user,
-    roles: normalizedRoles,
+    role: user.role ?? ("customer" as UserRole),
   };
 }
 

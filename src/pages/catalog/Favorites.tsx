@@ -1,23 +1,125 @@
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import { FaInstagram, FaTelegramPlane, FaHeart, FaRegHeart, FaShoppingBag, FaStar, FaTrashAlt, FaRegStar, FaSortAmountDown, FaTh, FaList } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { addToCart } from "../../utils/cart";
 import {
-  HiHeart,
-  HiOutlineBars3BottomLeft,
-  HiOutlineHeart,
-  HiOutlineShoppingBag,
-  HiOutlineSquares2X2,
-  HiStar,
+  HiOutlineSparkles,
+  HiMiniGift,
+  HiOutlineRocketLaunch,
 } from "react-icons/hi2";
 import { useFavoriteItems } from "../../hooks/useFavorites";
 import { formatPrice } from "../../utils/catalog";
 import { removeFavoriteBouquet } from "../../utils/favorites";
+import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 
 type SortValue = "recent" | "priceAsc" | "priceDesc" | "ratingDesc";
 
+/* ─── Decorative floating particles ─── */
+const FloatingHearts = () => (
+  <div className="pointer-events-none absolute inset-0 overflow-hidden">
+    {[...Array(6)].map((_, i) => (
+      <motion.div
+        key={i}
+        className="absolute text-[#ff6077]/10"
+        style={{
+          left: `${10 + i * 18}%`,
+          top: `${20 + (i % 3) * 25}%`,
+          fontSize: `${1.2 + (i % 3) * 0.6}rem`,
+        }}
+        animate={{
+          y: [0, -18, 0],
+          opacity: [0.3, 0.8, 0.3],
+          scale: [1, 1.15, 1],
+        }}
+        transition={{
+          duration: 3.5 + i * 0.5,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: i * 0.6,
+        }}
+      >
+        <FaHeart />
+      </motion.div>
+    ))}
+  </div>
+);
+
+/* ─── Animated heart pulse icon ─── */
+const HeartPulse = ({ count }: { count: number }) => (
+  <motion.div
+    key={count}
+    initial={{ scale: 1 }}
+    animate={{ scale: [1, 1.25, 1] }}
+    transition={{ duration: 0.45, ease: "easeOut" }}
+    className="inline-flex items-center gap-2"
+  >
+    <FaHeart className="text-[#ff6077] drop-shadow-[0_0_8px_rgba(255,96,119,0.5)]" />
+    <span className="text-lg font-bold tracking-wide">{count} items</span>
+  </motion.div>
+);
+
+/* ─── Star rating display ─── */
+const RatingStars = ({ rating }: { rating: number | string }) => {
+  const num = Number(rating) || 0;
+  return (
+    <div className="flex items-center gap-0.5">
+      {[...Array(5)].map((_, i) => (
+        <motion.span
+          key={i}
+          initial={{ scale: 1 }}
+          whileHover={{ scale: 1.25 }}
+          className={i < Math.floor(num) ? "text-amber-400" : "text-gray-600"}
+        >
+          {i < Math.floor(num) ? <FaStar size={12} /> : <FaRegStar size={12} />}
+        </motion.span>
+      ))}
+    </div>
+  );
+};
+
+/* ─── DiscountBadge ─── */
+const DiscountBadge = ({ oldPrice, price }: { oldPrice?: string | null; price: string }) => {
+  if (!oldPrice) return null;
+  const discountPercent = Math.round((1 - Number(price) / Number(oldPrice)) * 100);
+  if (discountPercent <= 0) return null;
+  return (
+    <motion.span
+      initial={{ x: -20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 200 }}
+      className="absolute -left-1 top-4 z-10 inline-flex items-center gap-1 rounded-r-full bg-gradient-to-r from-emerald-500 to-emerald-400 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-500/30"
+    >
+      <HiOutlineRocketLaunch size={10} />
+      -{discountPercent}%
+    </motion.span>
+  );
+};
+
+/* ─── Sort select ─── */
+
+/* ─── Card variants for staggered animation ─── */
+const cardVariants = {
+  hidden: { opacity: 0, y: 30, scale: 0.96 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.06,
+      duration: 0.45,
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
+    },
+  }),
+  exit: { opacity: 0, scale: 0.9, y: -20, transition: { duration: 0.25 } },
+};
+
+/* ─── Main Component ─── */
 function Favorites() {
+  const { t } = useTranslation();
   const [view, setView] = useState<"grid" | "list">("grid");
   const { register, watch } = useForm<{ sortBy: SortValue }>({
     defaultValues: { sortBy: "recent" },
@@ -27,7 +129,6 @@ function Favorites() {
 
   const sortedFavorites = useMemo(() => {
     const list = [...favoriteItems];
-
     switch (sortBy) {
       case "priceAsc":
         list.sort((a, b) => Number(a.bouquet.price) - Number(b.bouquet.price));
@@ -43,168 +144,434 @@ function Favorites() {
         list.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
         break;
     }
-
     return list;
   }, [favoriteItems, sortBy]);
 
+  const sortOptions: { value: SortValue; label: string }[] = [
+    { value: "recent", label: t("sort.recent") },
+    { value: "priceAsc", label: t("sort.priceAsc") },
+    { value: "priceDesc", label: t("sort.priceDesc") },
+    { value: "ratingDesc", label: t("sort.topRated") },
+  ];
+
+  const handleRemove = (id: string, name: string) => {
+    removeFavoriteBouquet(id);
+    toast.info(`${name} ${t("bouquetSection.removedFromFavorites")}`);
+  };
+
+  const handleAddToCart = (bouquet: any) => {
+    addToCart(bouquet);
+    toast.success(`${bouquet.name} added to cart`);
+  };
+
+  const containerClass =
+    view === "grid"
+      ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+      : "flex flex-col gap-4";
+
   return (
-    <main className="min-h-screen overflow-hidden bg-transparent text-[#fff6f4]">
-      <section className="relative min-h-screen px-4 pb-16 pt-28 sm:px-6 lg:px-10">
-        <div className="relative z-10 mx-auto max-w-[1320px]">
-          <div className="text-center">
-            <h1 className="font-cormorant text-6xl text-[#fff3ee] sm:text-7xl">My Favorites</h1>
-            <p className="mt-3 text-lg text-[#d8beb8]">Your most loved bouquets, all in one place.</p>
+    <main className="relative min-h-screen overflow-hidden bg-transparent text-[#fff6f4]">
+      {/* Background decorative gradient */}
+      <div className="pointer-events-none fixed inset-0">
+        <div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-[#ff6077]/5 blur-[120px]" />
+        <div className="absolute -right-32 bottom-32 h-[400px] w-[400px] rounded-full bg-[#c03b47]/5 blur-[120px]" />
+      </div>
+
+      <section className="relative z-10 min-h-screen px-4 pb-20 pt-24 sm:px-6 lg:px-10">
+        <div className="relative mx-auto max-w-[1400px]">
+          {/* ─── Hero Header ─── */}
+          <div className="relative overflow-hidden  px-6 py-10 sm:px-10 sm:py-14">
+            <FloatingHearts />
+
+            <div className="relative z-10 text-center">
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+              >
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#ff6077]/30 bg-[#ff6077]/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-[#ff9b88]">
+                  <HiOutlineSparkles size={14} />
+                  Your Collection
+                </span>
+              </motion.div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="mt-5 font-great-vibes text-[clamp(3.2rem,7vw,6.4rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]"
+              >
+                My{" "}
+                <span className="bg-gradient-to-r from-[#ff6077] to-[#ff9b88] bg-clip-text text-transparent">
+                  Favorites
+                </span>
+              </motion.h1>
+            </div>
           </div>
 
-          <div className="mt-10 rounded-[2rem] p-4 sm:p-6">
+          {/* ─── Controls Bar ─── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="mt-8 rounded-2xl px-5 py-4 backdrop-blur-lg sm:px-6"
+          >
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="inline-flex items-center gap-3 rounded-full border border-[#7b3a36] bg-transparent px-5 py-3 text-[#f8d9d2]">
-                <HiHeart className="text-[#ff6077]" />
-                <span className="text-lg font-semibold">{favoriteItems.length} items</span>
+              {/* Items count */}
+              <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825]/60 bg-[#2b1012]/40 px-5 py-2.5 text-[#f8d9d2]">
+                <HeartPulse count={favoriteItems.length} />
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="inline-flex rounded-2xl border border-[#61312d] bg-transparent p-1">
-                  <button
-                    type="button"
-                    onClick={() => setView("grid")}
-                    className={`inline-flex h-11 w-11 items-center justify-center rounded-xl transition ${
-                      view === "grid" ? "bg-[#2b1012]/65 text-[#ffd5ce]" : "text-[#ab8a82] hover:text-white"
-                    }`}
-                  >
-                    <HiOutlineSquares2X2 />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView("list")}
-                    className={`inline-flex h-11 w-11 items-center justify-center rounded-xl transition ${
-                      view === "list" ? "bg-[#2b1012]/65 text-[#ffd5ce]" : "text-[#ab8a82] hover:text-white"
-                    }`}
-                  >
-                    <HiOutlineBars3BottomLeft />
-                  </button>
-                </div>
-
-                <select
-                  {...register("sortBy")}
-                  className="h-12 rounded-2xl border border-[#61312d] bg-transparent px-4 text-[#f8d9d2] outline-none transition focus:border-[#b56961]"
-                >
-                  <option value="recent">Recently Added</option>
-                  <option value="priceAsc">Price: Low to High</option>
-                  <option value="priceDesc">Price: High to Low</option>
-                  <option value="ratingDesc">Top Rated</option>
-                </select>
-              </div>
-            </div>
-
-            {sortedFavorites.length ? (
-              <div
-                className={`mt-6 grid gap-5 ${
-                  view === "grid" ? "md:grid-cols-2 xl:grid-cols-4" : "grid-cols-1"
-                }`}
-              >
-                {sortedFavorites.map((item) => {
-                  const bouquet = item.bouquet;
-
-                  return (
-                    <article
-                      key={item.id}
-                      className={`group relative overflow-hidden rounded-[1.5rem] border border-[#5f2825] bg-transparent ${
-                        view === "list" ? "grid gap-4 p-4 md:grid-cols-[280px_1fr_auto]" : "flex h-full flex-col"
+                {/* View toggle */}
+                <div className="inline-flex rounded-xl border border-[#5f2825]/60 bg-[#1c0a0b]/60 p-1">
+                  {[
+                    { mode: "grid" as const, icon: FaTh },
+                    { mode: "list" as const, icon: FaList },
+                  ].map(({ mode, icon: Icon }) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setView(mode)}
+                      className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-sm transition-all duration-300 ${
+                        view === mode
+                          ? "bg-gradient-to-br from-[#8f1220] to-[#bb2435] text-white shadow-lg shadow-[#8f1220]/40"
+                          : "text-[#ab8a82] hover:text-white hover:bg-[#2b1012]/50"
                       }`}
                     >
-                      <Link to={`/bouquets/${bouquet.id}`} className={view === "list" ? "" : "block"}>
-                        <img
-                          src={bouquet.image}
-                          alt={bouquet.name}
-                          className={`object-cover transition duration-500 group-hover:scale-105 ${
-                            view === "list"
-                              ? "h-52 w-full rounded-[1.1rem] md:h-full"
-                              : "h-[260px] w-full border-b border-[#3e1d1b]"
-                          }`}
-                        />
-                      </Link>
+                      <Icon />
+                    </button>
+                  ))}
+                </div>
 
-                      <div className={view === "list" ? "flex flex-col justify-center" : "flex flex-1 flex-col p-5"}>
-                        <Link
-                          to={`/bouquets/${bouquet.id}`}
-                          className="h-[5rem] overflow-hidden font-cormorant text-[2.75rem] leading-[0.9] text-white transition hover:text-[#ffb7ab] sm:h-[5.6rem] sm:text-5xl"
+                {/* Sort select */}
+                <div className="relative">
+                  <select
+                    {...register("sortBy")}
+                    className="h-11 appearance-none rounded-xl border border-[#5f2825]/60 bg-[#1c0a0b]/70 pl-4 pr-10 text-sm font-medium text-[#f8d9d2] outline-none backdrop-blur-sm transition-all duration-300 hover:border-[#c03b47]/60 focus:border-[#ff6077]/60 focus:shadow-[0_0_20px_rgba(255,96,119,0.15)]"
+                  >
+                    {sortOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value} className="bg-[#1c0a0b]">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <FaSortAmountDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#ab8a82] text-xs" />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* ─── Items Grid/List ─── */}
+          <AnimatePresence mode="wait">
+            {sortedFavorites.length ? (
+              <motion.div
+                key={view + sortBy}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className={`mt-6 ${containerClass}`}
+              >
+                <AnimatePresence>
+                  {sortedFavorites.map((item, index) => {
+                    const bouquet = item.bouquet;
+                    const shopInstagramUrl = bouquet.shop.instagram
+                      ? normalizeInstagramLink(bouquet.shop.instagram)
+                      : "";
+                    const shopTelegramUrl = bouquet.shop.telegram
+                      ? normalizeTelegramLink(bouquet.shop.telegram)
+                      : "";
+
+                    if (view === "list") {
+                      return (
+                        <motion.article
+                          key={item.id}
+                          custom={index}
+                          variants={cardVariants}
+                          layout
+                          className="group relative flex flex-col gap-0 overflow-hidden rounded-2xl border border-[#3d1c1b]/50 bg-gradient-to-br from-[#0f0507]/90 via-[#1a090c]/80 to-[#0f0507]/90 transition-all duration-500 hover:border-[#c03b47]/40 hover:shadow-[0_8px_40px_rgba(192,59,71,0.15)] sm:flex-row"
                         >
-                          {bouquet.name}
-                        </Link>
-                        <Link
-                          to={`/shops/${bouquet.shop.slug}`}
-                          className="mt-2 block text-lg text-[#c8a8a0] transition hover:text-[#f4d5ce]"
-                        >
-                          {bouquet.shop.name}
-                        </Link>
-                        <div className="mt-3 flex items-center gap-2 text-[#f2b15e]">
-                          <HiStar />
-                          <span className="font-semibold">{bouquet.rating}</span>
-                          <span className="text-[#ad8b84]">({bouquet.reviews_count})</span>
+                          {/* Image */}
+                          <div className="relative w-full overflow-hidden sm:w-[280px]">
+                            <DiscountBadge oldPrice={bouquet.old_price} price={bouquet.price} />
+                            <Link to={`/bouquets/${bouquet.id}`}>
+                              <motion.img
+                                whileHover={{ scale: 1.08 }}
+                                transition={{ duration: 0.6 }}
+                                src={bouquet.image}
+                                alt={bouquet.name}
+                                className="h-56 w-full object-cover transition-all duration-500 sm:h-full sm:min-h-[240px]"
+                              />
+                            </Link>
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex flex-1 flex-col justify-center px-5 py-4 sm:px-6">
+                            <Link
+                              to={`/bouquets/${bouquet.id}`}
+                              className="font-cormorant text-3xl font-bold leading-tight text-white transition-colors hover:text-[#ff9b88] sm:text-4xl"
+                            >
+                              {bouquet.name}
+                            </Link>
+                            <Link
+                              to={`/shops/${bouquet.shop.slug}`}
+                              className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-[#c8a8a0] transition-colors hover:text-[#ffb7ab]"
+                            >
+                              <HiMiniGift size={14} />
+                              {bouquet.shop.name}
+                            </Link>
+
+                            {/* Social + Rating row */}
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
+                              <RatingStars rating={bouquet.rating} />
+                              <span className="text-sm font-semibold text-amber-400">{bouquet.rating}</span>
+                              <span className="text-xs text-[#ad8b84]">({bouquet.reviews_count})</span>
+                              {(shopInstagramUrl || shopTelegramUrl) && (
+                                <div className="ml-auto flex gap-1.5">
+                                  {shopInstagramUrl && (
+                                    <a
+                                      href={shopInstagramUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#5f2825]/60 text-[10px] text-[#f8d9d2] transition-all hover:border-[#ff6077] hover:bg-[#ff6077]/10 hover:text-[#ff6077]"
+                                    >
+                                      <FaInstagram />
+                                    </a>
+                                  )}
+                                  {shopTelegramUrl && (
+                                    <a
+                                      href={shopTelegramUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#5f2825]/60 text-[10px] text-[#f8d9d2] transition-all hover:border-[#ff6077] hover:bg-[#ff6077]/10 hover:text-[#ff6077]"
+                                    >
+                                      <FaTelegramPlane />
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-between gap-4">
+                              <motion.span
+                                key={bouquet.price}
+                                initial={{ scale: 1.1 }}
+                                animate={{ scale: 1 }}
+                                className="text-3xl font-extrabold tracking-tight text-white"
+                              >
+                                {formatPrice(bouquet.price)}
+                              </motion.span>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex flex-row items-center justify-end gap-2 border-t border-[#3d1c1b]/40 px-5 py-3 sm:flex-col sm:justify-center sm:border-l sm:border-t-0 sm:px-4">
+                            <button
+                              type="button"
+                              onClick={() => handleAddToCart(bouquet)}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#c03b47]/50 bg-gradient-to-br from-[#8f1220]/90 to-[#bb2435]/90 text-white shadow-lg shadow-[#c03b47]/20 transition-all duration-300 hover:shadow-[0_0_25px_rgba(192,59,71,0.4)] active:scale-95"
+                              title="Add to cart"
+                            >
+                              <FaShoppingBag size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemove(item.id, bouquet.name)}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#5f2825]/60 text-[#f8d9d2] transition-all duration-300 hover:border-[#ff6077]/50 hover:bg-[#ff6077]/10 hover:text-[#ff6077] active:scale-95"
+                              title="Remove from favorites"
+                            >
+                              <FaTrashAlt size={13} />
+                            </button>
+                          </div>
+                        </motion.article>
+                      );
+                    }
+
+                    /* ─── Grid card ─── */
+                    return (
+                      <motion.article
+                        key={item.id}
+                        custom={index}
+                        variants={cardVariants}
+                        layout
+                        className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#3d1c1b]/50 bg-gradient-to-br from-[#0f0507]/90 via-[#1a090c]/80 to-[#0f0507]/90 transition-all duration-500 hover:border-[#c03b47]/40 hover:shadow-[0_8px_40px_rgba(192,59,71,0.15)] hover:-translate-y-1"
+                      >
+                        {/* Image wrapper */}
+                        <div className="relative overflow-hidden">
+                          <DiscountBadge oldPrice={bouquet.old_price} price={bouquet.price} />
+                          <Link to={`/bouquets/${bouquet.id}`}>
+                            <motion.img
+                              whileHover={{ scale: 1.1 }}
+                              transition={{ duration: 0.6 }}
+                              src={bouquet.image}
+                              alt={bouquet.name}
+                              className="h-[260px] w-full object-cover transition-all duration-500"
+                            />
+                          </Link>
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0f0507]/70 via-transparent to-transparent" />
+
+                          {/* Remove button (overlay) */}
+                          <motion.button
+                            type="button"
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            whileHover={{ scale: 1.1 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            onClick={() => handleRemove(item.id, bouquet.name)}
+                            className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[#ff6077]/30 bg-[#1c0a0b]/80 text-[#ff6077] backdrop-blur-sm transition-all duration-300 hover:bg-[#ff6077]/20 hover:border-[#ff6077]/60"
+                            title="Remove"
+                          >
+                            <FaTrashAlt size={13} />
+                          </motion.button>
                         </div>
-                        <p className="mt-4 text-[2.65rem] font-bold leading-none text-white">{formatPrice(bouquet.price)}</p>
-                        {view === "grid" ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              addToCart(bouquet);
-                              toast.success(`${bouquet.name} cartga qo'shildi`);
-                            }}
-                            className="mt-10 inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#c03b47] bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-base font-semibold uppercase tracking-[0.08em] text-white"
-                          >
-                            <HiOutlineShoppingBag />
-                            Add to cart
-                          </button>
-                        ) : null}
-                      </div>
 
-                      <div className={view === "list" ? "flex flex-col justify-between py-2" : "px-5 pb-5"}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            removeFavoriteBouquet(item.id);
-                            toast.info(`${bouquet.name} favoritesdan olib tashlandi`);
-                          }}
-                          className={`inline-flex items-center justify-center rounded-full border border-[#8a4e49] bg-transparent text-[#ffd5ce] transition hover:border-[#ff6f7f] hover:text-[#ff6077] ${
-                            view === "list" ? "h-11 w-11 self-end" : "absolute right-4 top-4 h-11 w-11"
-                          }`}
-                        >
-                          <HiOutlineHeart />
-                        </button>
-
-                        {view === "list" ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              addToCart(bouquet);
-                              toast.success(`${bouquet.name} cartga qo'shildi`);
-                            }}
-                            className="mt-10 inline-flex h-12 items-center justify-center gap-3 rounded-xl border border-[#c03b47] bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] px-6 text-sm font-semibold uppercase tracking-[0.08em] text-white md:mt-0"
+                        {/* Content */}
+                        <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
+                          <Link
+                            to={`/bouquets/${bouquet.id}`}
+                            className="font-cormorant text-[1.6rem] font-bold leading-tight text-white transition-colors hover:text-[#ff9b88] line-clamp-2"
                           >
-                            <HiOutlineShoppingBag />
-                            Add to cart
-                          </button>
-                        ) : null}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                            {bouquet.name}
+                          </Link>
+                          <Link
+                            to={`/shops/${bouquet.shop.slug}`}
+                            className="mt-1 inline-flex items-center gap-1 text-xs text-[#c8a8a0] transition-colors hover:text-[#ffb7ab]"
+                          >
+                            <HiMiniGift size={12} />
+                            {bouquet.shop.name}
+                          </Link>
+
+                          {/* Rating */}
+                          <div className="mt-3 flex items-center gap-2">
+                            <RatingStars rating={bouquet.rating} />
+                            <span className="text-xs font-semibold text-amber-400">{bouquet.rating}</span>
+                            <span className="text-[10px] text-[#ad8b84]">({bouquet.reviews_count})</span>
+                          </div>
+
+                          {/* Social links */}
+                          {(shopInstagramUrl || shopTelegramUrl) && (
+                            <div className="mt-2 flex gap-1.5">
+                              {shopInstagramUrl && (
+                                <a
+                                  href={shopInstagramUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#5f2825]/60 text-[8px] text-[#f8d9d2] transition-all hover:border-[#ff6077] hover:text-[#ff6077]"
+                                >
+                                  <FaInstagram />
+                                </a>
+                              )}
+                              {shopTelegramUrl && (
+                                <a
+                                  href={shopTelegramUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#5f2825]/60 text-[8px] text-[#f8d9d2] transition-all hover:border-[#ff6077] hover:text-[#ff6077]"
+                                >
+                                  <FaTelegramPlane />
+                                </a>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Price & Add to cart */}
+                          <div className="mt-auto flex items-end justify-between gap-2 pt-4">
+                            <motion.span
+                              key={bouquet.price}
+                              initial={{ scale: 1.1 }}
+                              animate={{ scale: 1 }}
+                              className="text-[1.8rem] font-extrabold tracking-tight text-white"
+                            >
+                              {formatPrice(bouquet.price)}
+                            </motion.span>
+                            <motion.button
+                              type="button"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.92 }}
+                              onClick={() => handleAddToCart(bouquet)}
+                              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#c03b47]/50 bg-gradient-to-br from-[#8f1220]/90 to-[#bb2435]/90 text-white shadow-lg shadow-[#c03b47]/20 transition-all duration-300 hover:shadow-[0_0_25px_rgba(192,59,71,0.4)]"
+                              title="Add to cart"
+                            >
+                              <FaShoppingBag size={14} />
+                            </motion.button>
+                          </div>
+                        </div>
+                      </motion.article>
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
             ) : (
-              <div className="mt-6 rounded-[1.5rem] border border-dashed border-[#74403a] bg-transparent p-10 text-center">
-                <HiOutlineHeart className="mx-auto text-5xl text-[#c88f88]" />
-                <h2 className="mt-4 font-cormorant text-5xl text-[#fff3ed]">No favorites yet</h2>
-                <p className="mt-2 text-[#c9aba4]">Save bouquets you love and they will appear here.</p>
-                <Link
-                  to="/#bouquets"
-                  className="mt-6 inline-flex h-12 items-center justify-center rounded-xl border border-[#c03b47] bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] px-6 text-sm font-semibold uppercase tracking-[0.08em] text-white"
-                >
-                  Explore bouquets
-                </Link>
-              </div>
+              /* ─── Empty State ─── */
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.4 }}
+                className="relative mt-8 overflow-hidden rounded-[2rem] border border-dashed border-[#5f2825]/50 bg-gradient-to-br from-[#0f0507]/50 via-[#1a090c]/40 to-[#0f0507]/50 px-8 py-16 text-center sm:px-12 sm:py-20"
+              >
+                {/* Floating hearts decoration */}
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  {[...Array(8)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute text-[#ff6077]/8"
+                      style={{
+                        left: `${5 + i * 12}%`,
+                        top: `${10 + (i % 4) * 22}%`,
+                        fontSize: `${1 + (i % 3) * 0.5}rem`,
+                      }}
+                      animate={{
+                        y: [0, -15, 0],
+                        opacity: [0.2, 0.6, 0.2],
+                      }}
+                      transition={{
+                        duration: 3 + i * 0.4,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: i * 0.5,
+                      }}
+                    >
+                      <FaHeart />
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="relative z-10 mx-auto max-w-md">
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.08, 1],
+                      rotate: [0, 5, -5, 0],
+                    }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-[#ff6077]/30 bg-[#ff6077]/5"
+                  >
+                    <FaRegHeart className="text-4xl text-[#ff6077]/60 drop-shadow-[0_0_12px_rgba(255,96,119,0.3)]" />
+                  </motion.div>
+
+                  <h2 className="mt-6 font-cormorant text-4xl font-bold text-[#fff3ed] sm:text-5xl">
+                    No favorites yet
+                  </h2>
+                  <p className="mt-3 text-base leading-relaxed text-[#c9aba4]">
+                    Start exploring our beautiful collection and save the bouquets that steal your heart.
+                    They'll all appear right here.
+                  </p>
+
+                  <Link
+                    to="/#bouquets"
+                    className="group relative mt-8 inline-flex h-12 items-center gap-2.5 overflow-hidden rounded-xl border border-[#c03b47] bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] px-8 text-sm font-bold uppercase tracking-[0.1em] text-white shadow-lg shadow-[#c03b47]/30 transition-all duration-300 hover:shadow-[0_0_30px_rgba(192,59,71,0.4)] active:scale-[0.97]"
+                  >
+                    <span className="relative z-10 flex items-center gap-2">
+                      <HiOutlineSparkles size={16} />
+                      Explore Bouquets
+                    </span>
+                    <div className="absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-white/0 via-white/15 to-white/0 transition-transform duration-700 group-hover:translate-x-full" />
+                  </Link>
+                </div>
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
       </section>
     </main>

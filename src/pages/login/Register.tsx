@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
+import { useTranslation } from "react-i18next";
 import {
   HiOutlineDevicePhoneMobile,
   HiOutlineEnvelope,
@@ -44,6 +45,7 @@ const registerSchema = z
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 function Register() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const {
@@ -106,16 +108,16 @@ function Register() {
         persistTokens(tokens);
         const me = await getMe();
         login(tokens, me);
-        toast.success("Account yaratildi");
+        toast.success(t("auth.registerSuccess"));
         navigate(getPostLoginRoute(me), { replace: true });
       } catch (error) {
         clearStoredAuth();
-        toast.error(getErrorMessage(error, "Profilni yuklashda xatolik yuz berdi"));
+        toast.error(getErrorMessage(error, t("auth.profileLoadError")));
       }
     },
     onError: (error) => {
       clearStoredAuth();
-      toast.error(getErrorMessage(error, "Register qilishda xatolik yuz berdi"));
+      toast.error(getErrorMessage(error, t("auth.registerError")));
     },
   });
 
@@ -137,7 +139,7 @@ function Register() {
   };
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getPostLoginRoute(user)} replace />;
   }
 
   const getStrengthColor = () => {
@@ -148,26 +150,26 @@ function Register() {
   };
 
   const getStrengthText = () => {
-    if (passwordStrength <= 2) return "Weak";
-    if (passwordStrength <= 3) return "Medium";
-    if (passwordStrength <= 4) return "Strong";
-    return "Very Strong";
+    if (passwordStrength <= 2) return t("auth.weak");
+    if (passwordStrength <= 3) return t("auth.medium");
+    if (passwordStrength <= 4) return t("auth.strong");
+    return t("auth.veryStrong");
   };
 
   return (
     <AuthShell
-      title="Create Account"
-      subtitle="Sign up to get started"
+      title={t("auth.createAccount")}
+      subtitle={t("auth.registerSubtitle")}
       backgroundImage={registerBg}
       panelPosition="left"
       footer={
         <>
-          Already have an account?{" "}
+          {t("auth.alreadyHaveAccount")}{" "}
           <Link
             to="/login"
             className="font-semibold text-[#ff6b7e] transition hover:text-[#ff8fa0]"
           >
-            Login
+            {t("auth.loginLink")}
           </Link>
         </>
       }
@@ -176,7 +178,7 @@ function Register() {
         {/* Full Name Field */}
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
-            Full Name
+            {t("auth.fullName")}
           </label>
           <div className={`relative rounded-2xl transition-all duration-300 ${
             focusedFields.full_name ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
@@ -189,7 +191,7 @@ function Register() {
             }`} />
             <input
               {...register("full_name")}
-              placeholder="John Doe"
+              placeholder={t("auth.fullNamePlaceholder")}
               onFocus={() => handleFocus("full_name")}
               onBlur={() => handleBlur("full_name")}
               className={`relative h-14 w-full rounded-2xl border bg-white/8 pl-12 pr-4 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e] ${
@@ -212,7 +214,7 @@ function Register() {
         {/* Email Field */}
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
-            Email address
+            {t("auth.emailAddress")}
           </label>
           <div className={`relative rounded-2xl transition-all duration-300 ${
             focusedFields.email ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
@@ -227,7 +229,7 @@ function Register() {
               {...register("email")}
               type="email"
               autoComplete="email"
-              placeholder="hello@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               onFocus={() => handleFocus("email")}
               onBlur={() => handleBlur("email")}
               className={`relative h-14 w-full rounded-2xl border bg-white/8 pl-12 pr-4 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e] ${
@@ -250,7 +252,7 @@ function Register() {
         {/* Phone Field */}
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
-            Phone number
+            {t("auth.phoneNumber")}
           </label>
           <div className={`relative rounded-2xl transition-all duration-300 ${
             focusedFields.phone_number ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
@@ -273,7 +275,7 @@ function Register() {
                   shouldValidate: true,
                 });
               }}
-              placeholder="+998 99 123 45 67"
+              placeholder={t("auth.phonePlaceholder")}
               onFocus={() => handleFocus("phone_number")}
               onBlur={() => handleBlur("phone_number")}
               className={`relative h-14 w-full rounded-2xl border bg-white/8 pl-12 pr-4 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e] ${
@@ -295,15 +297,15 @@ function Register() {
 
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
-            Referral code
+            {t("auth.referralCode")}
           </label>
           <input
             {...register("referral_code")}
-            placeholder="FLW-XXXXXXX"
+            placeholder={t("auth.referralCodePlaceholder")}
             className="h-14 w-full rounded-2xl border border-white/10 bg-white/8 px-4 text-[15px] font-medium uppercase text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] hover:border-white/20 focus:border-[#ff6b7e] focus:bg-white/12"
           />
           <p className="mt-2 text-xs text-[#c7a29b]">
-            Agar sizni do'stingiz taklif qilgan bo'lsa, referral code kiriting.
+            {t("auth.referralCodeHint")}
           </p>
           {errors.referral_code && (
             <p className="mt-2 flex items-center gap-1 text-xs text-red-400 animate-fadeIn">
@@ -316,7 +318,7 @@ function Register() {
         {/* Password Field */}
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
-            Password
+            {t("auth.password")}
           </label>
           <div className={`relative rounded-2xl transition-all duration-300 ${
             focusedFields.password ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
@@ -331,7 +333,7 @@ function Register() {
               {...register("password")}
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="Create a strong password"
+              placeholder={t("auth.createStrongPassword")}
               onFocus={() => handleFocus("password")}
               onBlur={() => {
                 handleBlur("password");
@@ -384,7 +386,7 @@ function Register() {
         {/* Confirm Password Field */}
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
-            Confirm Password
+            {t("auth.confirmPassword")}
           </label>
           <div className={`relative rounded-2xl transition-all duration-300 ${
             focusedFields.confirm_password ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
@@ -399,7 +401,7 @@ function Register() {
               {...register("confirm_password")}
               type={showConfirmPassword ? "text" : "password"}
               autoComplete="new-password"
-              placeholder="Confirm your password"
+              placeholder={t("auth.confirmPassword")}
               onFocus={() => handleFocus("confirm_password")}
               onBlur={() => handleBlur("confirm_password")}
               className={`relative h-14 w-full rounded-2xl border bg-white/8 pl-12 pr-14 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e] ${
@@ -446,12 +448,12 @@ function Register() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span>Creating Account...</span>
+                <span>{t("auth.creatingAccount")}</span>
               </>
             ) : (
               <>
                 <HiOutlineSparkles className="text-base" />
-                <span>Sign Up</span>
+                <span>{t("auth.signUpButton")}</span>
               </>
             )}
           </span>
@@ -459,13 +461,13 @@ function Register() {
         
         {/* Terms and Conditions */}
         <p className="text-center text-xs text-white/40">
-          By signing up, you agree to our{" "}
+          {t("auth.termsAgree")}{" "}
           <Link to="/terms" className="text-[#ff6b7e] transition hover:text-[#ff8fa0]">
-            Terms of Service
+            {t("auth.termsOfService")}
           </Link>{" "}
-          and{" "}
+          {t("auth.and")}{" "}
           <Link to="/privacy" className="text-[#ff6b7e] transition hover:text-[#ff8fa0]">
-            Privacy Policy
+            {t("auth.privacyPolicy")}
           </Link>
         </p>
       </form>

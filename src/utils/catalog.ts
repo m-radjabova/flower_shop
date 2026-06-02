@@ -9,7 +9,13 @@ export function formatPrice(value: string) {
 }
 
 export function getBouquetImages(bouquet: Bouquet) {
-  return Array.from(new Set([bouquet.image, ...(bouquet.images ?? [])].filter(Boolean)));
+  const addonImageSet = new Set((bouquet.addon_options ?? []).map((item) => item.image).filter(Boolean));
+  return Array.from(
+    new Set([
+      bouquet.image,
+      ...(bouquet.images ?? []).filter((image) => !addonImageSet.has(image)),
+    ].filter(Boolean)),
+  );
 }
 
 export function isNewBouquet(createdAt: string, days = 3) {

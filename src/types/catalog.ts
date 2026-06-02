@@ -14,6 +14,8 @@ export interface ShopSummary {
   slug: string;
   logo: string | null;
   city: string | null;
+  instagram: string | null;
+  telegram: string | null;
   rating: string;
   reviews_count: number;
   status: "pending" | "active" | "blocked";
@@ -23,6 +25,22 @@ export interface CategorySummary {
   id: string;
   name: string;
   slug: string;
+}
+
+export type BouquetSizeKey = "small" | "medium" | "large" | "premium";
+
+export interface BouquetSizeOption {
+  key: BouquetSizeKey;
+  label: string;
+  price: string;
+  image: string;
+}
+
+export interface BouquetAddonOption {
+  id: string;
+  name: string;
+  price: string;
+  image: string;
 }
 
 export interface Bouquet {
@@ -38,6 +56,8 @@ export interface Bouquet {
   image: string;
   images: string[];
   size: string | null;
+  size_options: BouquetSizeOption[];
+  addon_options: BouquetAddonOption[];
   stock: number;
   status: "active" | "inactive" | "sold_out";
   rating: string;
@@ -46,6 +66,41 @@ export interface Bouquet {
   updated_at: string;
   shop: ShopSummary;
   category: CategorySummary | null;
+}
+
+export interface BouquetCreatePayload {
+  shop_id: string;
+  category_id?: string | null;
+  name: string;
+  slug?: string;
+  description?: string;
+  compound?: string;
+  price: string;
+  old_price?: string | null;
+  image?: string;
+  images?: string[];
+  size?: string;
+  size_options?: BouquetSizeOption[];
+  addon_options?: BouquetAddonOption[];
+  stock: number;
+  status: "active" | "inactive" | "sold_out";
+}
+
+export interface BouquetUpdatePayload {
+  category_id?: string | null;
+  name?: string;
+  slug?: string;
+  description?: string;
+  compound?: string;
+  price?: string;
+  old_price?: string | null;
+  image?: string;
+  images?: string[];
+  size?: string;
+  size_options?: BouquetSizeOption[];
+  addon_options?: BouquetAddonOption[];
+  stock?: number;
+  status?: "active" | "inactive" | "sold_out";
 }
 
 export interface BouquetPage {
@@ -76,6 +131,8 @@ export interface Shop {
   city: string | null;
   latitude: string | null;
   longitude: string | null;
+  instagram: string | null;
+  telegram: string | null;
   working_hours: string | null;
   rating: string;
   reviews_count: number;
@@ -83,6 +140,72 @@ export interface Shop {
   created_at: string;
   updated_at: string;
   owner: ShopOwnerSummary;
+}
+
+export interface ShopUpdatePayload {
+  name?: string;
+  slug?: string;
+  description?: string;
+  logo?: string;
+  banner?: string;
+  phone?: string;
+  address?: string;
+  city?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+  instagram?: string | null;
+  telegram?: string | null;
+  working_hours?: string | null;
+  status?: "pending" | "active" | "blocked";
+}
+
+export interface ShopApplication {
+  id: string;
+  user_id: string;
+  shop_name: string;
+  phone: string;
+  city: string | null;
+  address: string;
+  latitude: string | null;
+  longitude: string | null;
+  description: string | null;
+  instagram: string | null;
+  telegram: string | null;
+  logo: string | null;
+  banner: string | null;
+  status: "pending" | "approved" | "rejected";
+  admin_comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShopApplicationWithUser extends ShopApplication {
+  user: ShopOwnerSummary;
+}
+
+export interface ShopApplicationCreatePayload {
+  shop_name: string;
+  owner_full_name?: string;
+  phone: string;
+  city?: string;
+  address: string;
+  latitude?: string | null;
+  longitude?: string | null;
+  description?: string;
+  instagram?: string;
+  telegram?: string;
+  logo?: string;
+  banner?: string;
+}
+
+export interface ShopApplicationReviewPayload {
+  status: "approved" | "rejected";
+  admin_comment?: string;
+}
+
+export interface ShopApplicationSubmitResponse {
+  application: ShopApplication;
+  user: import("./types").User;
 }
 
 export interface ReviewUserSummary {
@@ -104,6 +227,7 @@ export interface Review {
   created_at: string;
   updated_at: string;
   user: ReviewUserSummary;
+  bouquet: { id: string; name: string; image: string } | null;
 }
 
 export interface ReviewCreatePayload {
@@ -113,6 +237,11 @@ export interface ReviewCreatePayload {
   rating: number;
   text?: string;
   image?: string;
+}
+
+export interface ReviewModerationPayload {
+  is_approved?: boolean;
+  is_verified?: boolean;
 }
 
 export interface ImageUploadResponse {
@@ -126,6 +255,8 @@ export interface OrderItemCreatePayload {
   bouquet_id: string;
   bouquet_name: string;
   bouquet_image?: string;
+  selected_size?: BouquetSizeOption;
+  selected_addons?: BouquetAddonOption[];
   price: string;
   quantity: number;
 }
@@ -148,6 +279,8 @@ export interface OrderItemOut {
   bouquet_id: string | null;
   bouquet_name: string;
   bouquet_image: string | null;
+  selected_size: BouquetSizeOption | null;
+  selected_addons: BouquetAddonOption[];
   price: string;
   quantity: number;
   total_price: string;

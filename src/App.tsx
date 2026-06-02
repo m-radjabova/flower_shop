@@ -20,8 +20,14 @@ import AdminUsers from "./pages/admin/users/AdminUsers";
 import Home from "./pages/home/Home";
 import Login from "./pages/login/Login";
 import Register from "./pages/login/Register";
+import OwnerDashboard from "./pages/owner/OwnerDashboard";
+import OwnerLayout from "./pages/owner/OwnerLayout";
+import OwnerBouquets from "./pages/owner/OwnerBouquets";
 import OwnerOrders from "./pages/owner/OwnerOrders";
+import OwnerReviews from "./pages/owner/OwnerReviews";
+import OwnerShop from "./pages/owner/OwnerShop";
 import Profile from "./pages/profile/Profile";
+import ShopApplicationPage from "./pages/profile/ShopApplicationPage";
 
 function App() {
   return (
@@ -60,13 +66,30 @@ function App() {
             )}
           />
           <Route
-            path="/owner/orders"
+            path="/shop-application"
             element={(
-              <ProtectedRoute role={["owner", "admin"]}>
-                <OwnerOrders />
+              <ProtectedRoute role={["customer", "owner", "admin"]}>
+                <ShopApplicationPage />
               </ProtectedRoute>
             )}
           />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+
+        <Route
+          path="/owner"
+          element={(
+            <ProtectedRoute role={["owner", "admin"]}>
+              <OwnerLayout />
+            </ProtectedRoute>
+          )}
+        >
+          <Route index element={<Navigate to="/owner/dashboard" replace />} />
+          <Route path="dashboard" element={<OwnerDashboard />} />
+          <Route path="shop" element={<OwnerShop />} />
+          <Route path="bouquets" element={<OwnerBouquets />} />
+          <Route path="orders" element={<OwnerOrders />} />
+          <Route path="reviews" element={<OwnerReviews />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 

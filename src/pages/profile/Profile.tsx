@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import {
   HiArrowLeftOnRectangle,
   HiTrash,
@@ -21,6 +22,7 @@ import {
   useMyAddresses,
   useMyOrders,
   useMyReferralSummary,
+  useMyLatestShopApplication,
   useMyReviews,
   useSetPrimaryAddress,
   useUpdateAddress,
@@ -43,7 +45,7 @@ import {
 import AddressesTab from "./components/AddressesTab";
 import FavoritesTab from "./components/FavoritesTab";
 import OrdersTab from "./components/OrdersTab";
-import { getOrderStatusMeta, getRepeatOrderAvailability, type ProfileTab, tabs } from "./components/profileHelpers";
+import { getOrderStatusMeta, getRepeatOrderAvailability, getTabs, type ProfileTab } from "./components/profileHelpers";
 import SettingsTab from "./components/SettingsTab";
 import { HiGift } from "react-icons/hi2";
 
@@ -140,6 +142,8 @@ function buildRepeatBouquet(order: OrderOut, item: OrderOut["items"][number]): B
     image: item.bouquet_image ?? "/logo2.png",
     images: item.bouquet_image ? [item.bouquet_image] : ["/logo2.png"],
     size: null,
+    size_options: item.selected_size ? [item.selected_size] : [],
+    addon_options: item.selected_addons ?? [],
     stock: 99,
     status: "active",
     rating: "0",
@@ -152,6 +156,8 @@ function buildRepeatBouquet(order: OrderOut, item: OrderOut["items"][number]): B
       slug: order.shop_id,
       logo: null,
       city: null,
+      instagram: null,
+      telegram: null,
       rating: "0",
       reviews_count: 0,
       status: "active",
@@ -161,6 +167,7 @@ function buildRepeatBouquet(order: OrderOut, item: OrderOut["items"][number]): B
 }
 
 function Profile() {
+  const { t } = useTranslation();
   const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
   const MAX_AVATAR_SIZE_BYTES = 6 * 1024 * 1024;
   const {
@@ -189,11 +196,14 @@ function Profile() {
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>("");
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [highlightedOrderId, setHighlightedOrderId] = useState<string | null>(null);
   const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const [preferredCheckoutAddress, setPreferredCheckoutAddressState] = useState<StoredCheckoutAddress | null>(() => getPreferredCheckoutAddress());
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<LeafletMap | null>(null);
+  const orderSnapshotRef = useRef<Record<string, string>>({});
+  const highlightTimeoutRef = useRef<number | null>(null);
   const accountForm = useForm<AccountFormValues>({
     defaultValues: {
       full_name: "",
@@ -208,6 +218,8 @@ function Profile() {
       confirm_password: "",
     },
   });
+
+  const tabsMemo = useMemo(() => getTabs(t), [t]);
   const addressForm = useForm<AddressFormValues>({
     defaultValues: {
       title: "",
@@ -220,11 +232,14 @@ function Profile() {
   });
   const addressLatitude = addressForm.watch("latitude");
   const addressLongitude = addressForm.watch("longitude");
+  const isOwnerAccount = hasAnyRole(user, ["owner"]);
+  const visibleTabs = isOwnerAccount ? tabsMemo.filter((tab) => tab.key === "settings") : tabsMemo;
 
-  const orders = ordersQuery.data ?? [];
-  const addresses = addressesQuery.data ?? [];
+  const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data]);
+  const addresses = useMemo(() => addressesQuery.data ?? [], [addressesQuery.data]);
   const myReviewsCount = myReviewsQuery.data?.length ?? 0;
   const referralSummary = referralQuery.data;
+  const latestShopApplicationQuery = useMyLatestShopApplication();
   const recommendedBouquets = recommendedQuery.data ?? [];
   const safeRecommendedIndex = recommendedBouquets.length
     ? recommendedIndex % recommendedBouquets.length
@@ -251,11 +266,57 @@ function Profile() {
     .join("") ?? "U";
 
   const firstName = user?.full_name?.split(/\s+/)[0] ?? "Guest";
-  const canOpenAdminDashboard = hasAnyRole(user, ["admin"]);
+  const canOpenOwnerDashboard = isOwnerAccount;
+  const latestShopApplication = latestShopApplicationQuery.data;
   const referralLink = useMemo(() => {
     if (!referralSummary?.referral_code || typeof window === "undefined") return "";
     return `${window.location.origin}/register?ref=${referralSummary.referral_code}`;
   }, [referralSummary?.referral_code]);
+  const referralRewardAmount = referralSummary?.reward_amount ?? "$10.00";
+  const referralJourney = [
+    {
+      title: "1. Share your link",
+      description: "Send your referral link or code to a friend.",
+    },
+    {
+      title: "2. Friend registers",
+      description: "The link opens the register page and auto-fills your code.",
+    },
+    {
+      title: "3. First order = reward",
+      description: "When your friend places the first order, both bonuses are credited.",
+    },
+  ];
+
+  useEffect(() => {
+    const nextSnapshot = Object.fromEntries(
+      orders.map((order) => [order.id, `${order.updated_at}|${order.status}|${order.payment_status}`]),
+    );
+
+    if (Object.keys(orderSnapshotRef.current).length > 0) {
+      const changedOrder = orders.find((order) => orderSnapshotRef.current[order.id] !== nextSnapshot[order.id]);
+      if (changedOrder) {
+        setHighlightedOrderId(changedOrder.id);
+        if (highlightTimeoutRef.current !== null) {
+          window.clearTimeout(highlightTimeoutRef.current);
+        }
+        highlightTimeoutRef.current = window.setTimeout(() => {
+          setHighlightedOrderId((current) => (current === changedOrder.id ? null : current));
+          highlightTimeoutRef.current = null;
+        }, 3500);
+      }
+    }
+
+    orderSnapshotRef.current = nextSnapshot;
+  }, [orders]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     accountForm.reset({
@@ -264,6 +325,12 @@ function Profile() {
       phone: user?.phone ?? "",
     });
   }, [accountForm, user?.full_name, user?.email, user?.phone]);
+
+  useEffect(() => {
+    if (isOwnerAccount) {
+      setActiveTab("settings");
+    }
+  }, [isOwnerAccount]);
 
   useEffect(() => {
     if (!selectedAvatarFile) {
@@ -293,7 +360,7 @@ function Profile() {
     setAvatarError("");
 
     if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-      const message = "Faqat JPG, PNG, WEBP yoki GIF rasm yuklash mumkin";
+      const message = t("avatarTypeError");
       setAvatarError(message);
       toast.error(message);
       resetAvatarSelection();
@@ -301,7 +368,7 @@ function Profile() {
     }
 
     if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      const message = "Avatar hajmi 6MB dan oshmasligi kerak";
+      const message = t("avatarSizeError");
       setAvatarError(message);
       toast.error(message);
       resetAvatarSelection();
@@ -309,22 +376,22 @@ function Profile() {
     }
 
     setSelectedAvatarFile(file);
-    setAvatarStatus("Preview tayyor. Tasdiqlasangiz upload qilinadi.");
+    setAvatarStatus(t("avatarReady"));
   };
 
   const handleAvatarUpload = async () => {
     if (!selectedAvatarFile) return;
 
     setIsAvatarSubmitting(true);
-    setAvatarStatus("Avatar yuklanmoqda...");
+    setAvatarStatus(t("avatarUploading"));
     try {
       const updatedUser = await uploadMyAvatar(selectedAvatarFile);
       dispatch({ type: "SET_USER", payload: updatedUser });
       resetAvatarSelection();
-      setAvatarStatus("Avatar muvaffaqiyatli yangilandi");
-      toast.success("Avatar yangilandi");
+      setAvatarStatus(t("avatarUploaded"));
+      toast.success(t("avatarUploaded"));
     } catch (error) {
-      const message = getErrorMessage(error, "Avatar yuklashda xatolik");
+      const message = getErrorMessage(error, t("avatarUploadError"));
       setAvatarStatus("");
       setAvatarError(message);
       toast.error(message);
@@ -336,14 +403,14 @@ function Profile() {
   const handleAvatarDelete = async () => {
     setAvatarError("");
     setIsAvatarSubmitting(true);
-    setAvatarStatus("Avatar o'chirilmoqda...");
+    setAvatarStatus(t("avatarDeleting"));
     try {
       const updatedUser = await deleteMyAvatar();
       dispatch({ type: "SET_USER", payload: updatedUser });
-      setAvatarStatus("Avatar o'chirildi");
-      toast.success("Avatar o'chirildi");
+      setAvatarStatus(t("avatarDeleted"));
+      toast.success(t("avatarDeleted"));
     } catch (error) {
-      const message = getErrorMessage(error, "Avatarni o'chirib bo'lmadi");
+      const message = getErrorMessage(error, t("avatarDeleteError"));
       setAvatarStatus("");
       setAvatarError(message);
       toast.error(message);
@@ -354,44 +421,44 @@ function Profile() {
 
   const handleInviteFriends = async () => {
     if (!referralLink) {
-      toast.info("Referral link tayyor emas");
+      toast.info(t("referralNotReady"));
       return;
     }
 
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Muslima Boutique Referral",
-          text: "Sign up with my referral link and after your first order we both get a $10 bonus.",
+          title: t("referralTitle"),
+          text: t("referralShareText"),
           url: referralLink,
         });
         return;
       }
 
       await navigator.clipboard.writeText(referralLink);
-      toast.success("Referral link nusxalandi");
+      toast.success(t("referralLinkCopied"));
     } catch {
-      toast.error("Referral linkni ulashib bo'lmadi");
+      toast.error(t("referralLinkError"));
     }
   };
 
   const handleCopyReferralCode = async () => {
     if (!referralSummary?.referral_code) {
-      toast.info("Referral code hali tayyor emas");
+      toast.info(t("referralNotReady"));
       return;
     }
 
     try {
       await navigator.clipboard.writeText(referralSummary.referral_code);
-      toast.success("Referral code nusxalandi");
+      toast.success(t("referralCodeCopied"));
     } catch {
-      toast.error("Referral code nusxalanmadi");
+      toast.error(t("referralCodeError"));
     }
   };
 
   const handleAccountSave = accountForm.handleSubmit(async (values) => {
     if (!values.full_name.trim() || !values.email.trim()) {
-      toast.error("Full name va email majburiy");
+      toast.error(t("profileRequired"));
       return;
     }
 
@@ -402,25 +469,25 @@ function Profile() {
         phone: values.phone.trim() || null,
       });
       dispatch({ type: "SET_USER", payload: updatedUser });
-      toast.success("Profil ma'lumotlari saqlandi");
+      toast.success(t("profileSaved"));
     } catch (error) {
-      toast.error(getErrorMessage(error, "Profilni saqlab bo'lmadi"));
+      toast.error(getErrorMessage(error, t("profileSaveError")));
     }
   });
 
   const handlePasswordSave = passwordForm.handleSubmit(async (values) => {
     if (!values.current_password || !values.new_password || !values.confirm_password) {
-      toast.error("Parol maydonlarini to'liq to'ldiring");
+      toast.error(t("passwordFieldsRequired"));
       return;
     }
 
     if (values.new_password.length < 6) {
-      toast.error("Yangi parol kamida 6 ta belgidan iborat bo'lsin");
+      toast.error(t("newPasswordPlaceholder"));
       return;
     }
 
     if (values.new_password !== values.confirm_password) {
-      toast.error("Yangi parollar mos emas");
+      toast.error(t("passwordMismatch"));
       return;
     }
 
@@ -434,9 +501,9 @@ function Profile() {
         new_password: "",
         confirm_password: "",
       });
-      toast.success("Parol muvaffaqiyatli yangilandi");
+      toast.success(t("passwordUpdated"));
     } catch (error) {
-      toast.error(getErrorMessage(error, "Parolni yangilab bo'lmadi"));
+      toast.error(getErrorMessage(error, t("passwordUpdateError")));
     }
   });
 
@@ -444,23 +511,23 @@ function Profile() {
     const repeatAvailability = getRepeatOrderAvailability(order.created_at);
 
     if (!repeatAvailability.canRepeat) {
-      toast.info("Repeat order faqat buyurtmadan keyingi 2 soat ichida mumkin");
+      toast.info(t("repeatOrderExpired"));
       return;
     }
 
     const firstItem = order.items[0];
 
     if (!firstItem) {
-      toast.info("Bu orderda qayta qo'shish uchun mahsulot topilmadi");
+      toast.info(t("repeatOrderEmpty"));
       return;
     }
 
     addToCart(buildRepeatBouquet(order, firstItem), firstItem.quantity);
     if (order.items.length > 1) {
-      toast.success(`${firstItem.bouquet_name} cartga qo'shildi. Cart hozircha bitta bouquet bilan ishlaydi.`);
+      toast.success(t("repeatOrderMultiple", { name: firstItem.bouquet_name }));
       return;
     }
-    toast.success(`${firstItem.bouquet_name} cartga qo'shildi`);
+    toast.success(t("repeatOrderAdded", { name: firstItem.bouquet_name }));
   };
 
   const resetAddressForm = () => {
@@ -470,7 +537,7 @@ function Profile() {
 
   const handleAddressSubmit = addressForm.handleSubmit(async (values) => {
     if (!values.title.trim() || !values.address_line.trim()) {
-      toast.error("Title va address majburiy");
+      toast.error(t("addressFieldsRequired"));
       return;
     }
     try {
@@ -486,7 +553,7 @@ function Profile() {
             longitude: values.longitude ?? undefined,
           },
         });
-        toast.success("Address yangilandi");
+        toast.success(t("addressUpdated"));
       } else {
         await createAddressMutation.mutateAsync({
           title: values.title.trim(),
@@ -497,11 +564,11 @@ function Profile() {
           longitude: values.longitude ?? undefined,
           is_primary: addresses.length === 0,
         });
-        toast.success("Address qo'shildi");
+        toast.success(t("addressAdded"));
       }
       resetAddressForm();
     } catch (error) {
-      toast.error((error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? "Address saqlanmadi");
+      toast.error((error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? t("addressSaveError"));
     }
   });
 
@@ -587,9 +654,9 @@ function Profile() {
           }
         });
       } catch {
-        toast.error("Xarita yuklanmadi");
-      }
-    };
+      toast.error(t("mapLoadError"));
+    }
+  };
 
     setupMap();
     return () => {
@@ -599,13 +666,32 @@ function Profile() {
       leafletMapRef.current?.remove();
       leafletMapRef.current = null;
     };
-  }, [activeTab, addressForm, addressLatitude, addressLongitude]);
+  }, [activeTab, addressForm, addressLatitude, addressLongitude, t]);
 
   const renderCenterContent = () => {
+    if (isOwnerAccount) {
+      return (
+        <SettingsTab
+          accountForm={accountForm}
+          onAccountSave={handleAccountSave}
+          onManageAddresses={() => setActiveTab("addresses")}
+          onPasswordSave={handlePasswordSave}
+          onResetAccountForm={() => accountForm.reset({
+            full_name: user?.full_name ?? "",
+            email: user?.email ?? "",
+            phone: user?.phone ?? "",
+          })}
+          passwordForm={passwordForm}
+          profileCompletion={profileCompletion}
+        />
+      );
+    }
+
     if (activeTab === "orders") {
       return (
         <OrdersTab
           expandedOrderId={expandedOrderId}
+          highlightedOrderId={highlightedOrderId}
           isLoading={isOrdersLoading}
           onRepeatOrder={handleRepeatOrder}
           onToggleExpanded={(orderId) => setExpandedOrderId((current) => current === orderId ? null : orderId)}
@@ -666,394 +752,627 @@ function Profile() {
       );
     }
 
-    if (activeTab === "settings") {
-      return (
-        <SettingsTab
-          accountForm={accountForm}
-          onAccountSave={handleAccountSave}
-          onManageAddresses={() => setActiveTab("addresses")}
-          onPasswordSave={handlePasswordSave}
-          onResetAccountForm={() => accountForm.reset({
-            full_name: user?.full_name ?? "",
-            email: user?.email ?? "",
-            phone: user?.phone ?? "",
-          })}
-          passwordForm={passwordForm}
-          profileCompletion={profileCompletion}
-        />
-      );
-    }
-
     if (isOrdersLoading || isReviewsLoading) {
       return <ProfileDashboardSkeleton />;
     }
 
     return (
-      <>
-        <section className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-6">
-          <h1 className="font-cormorant text-[4.1rem] leading-none text-[#fff2ee] sm:text-[4.7rem]">Hello, {firstName} <span className="text-[2.7rem] sm:text-[3.1rem]">👋</span></h1>
-          <p className="mt-2 text-base text-[#d8beb8] sm:text-lg">Welcome back! Here's what's happening with your account today.</p>
+      <div className="space-y-5">
+        {/* Welcome Hero */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0a0f] via-[#200e14] to-[#15080c] p-6 sm:p-8">
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#ff4d6d]/5 blur-3xl" />
+          <div className="absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-[#c7233f]/5 blur-3xl" />
+          <div className="relative">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">👋</span>
+              <h1 className="font-cormorant text-[2.8rem] leading-tight text-white sm:text-[3.5rem]">
+                Hello, {firstName}
+              </h1>
+            </div>
+            <p className="mt-2 max-w-lg text-base text-[#c4a39b] sm:text-lg">
+              Welcome back! Here's what's happening with your account today.
+            </p>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                value: orders.length,
-                hoverText: `${orders.length} Orders`,
-                icon: <HiOutlineShoppingBagCard />,
-                iconClassName: "bg-[#251007] text-[#e8b478]",
-              },
-              {
-                value: favoriteItems.length,
-                hoverText: `${favoriteItems.length} Favorites`,
-                icon: <HiOutlineHeartCard />,
-                iconClassName: "bg-[#21080f] text-[#f0b38f]",
-              },
-              {
-                value: myReviewsCount,
-                hoverText: `${myReviewsCount} Reviews`,
-                icon: <HiStar />,
-                iconClassName: "bg-[#1c0b07] text-[#e8b478]",
-              },
-              {
-                value: 3,
-                hoverText: "3 Gift Cards",
-                icon: <HiOutlineGift />,
-                iconClassName: "bg-[#251007] text-[#e8b478]",
-              },
-            ].map((stat) => (
-              <div
-                key={stat.hoverText}
-                className="group relative flex min-h-[100px] items-center justify-center overflow-visible rounded-[1.6rem] border border-[#3a171c] bg-[linear-gradient(180deg,rgba(24,7,9,0.98),rgba(15,4,6,0.96))] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#6a3941]"
-              >
-                <span
-                  className={`inline-flex h-20 w-20 items-center justify-center rounded-[2rem] text-6xl shadow-[0_20px_40px_rgba(0,0,0,0.22)] transition-transform duration-300 group-hover:scale-105 ${stat.iconClassName}`}
+            {/* Quick Stats */}
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                {
+                  value: orders.length,
+                  label: "Orders",
+                  icon: <HiOutlineShoppingBagCard className="text-xl" />,
+                  gradient: "from-[#2a1014] to-[#1a0809]",
+                  iconBg: "bg-[#3a161c]",
+                  iconText: "text-[#ff8fa3]",
+                },
+                {
+                  value: favoriteItems.length,
+                  label: "Favorites",
+                  icon: <HiOutlineHeartCard className="text-xl" />,
+                  gradient: "from-[#1a0f14] to-[#12080c]",
+                  iconBg: "bg-[#2d1422]",
+                  iconText: "text-[#e88bdf]",
+                },
+                {
+                  value: myReviewsCount,
+                  label: "Reviews",
+                  icon: <HiStar className="text-xl" />,
+                  gradient: "from-[#1c1408] to-[#120d05]",
+                  iconBg: "bg-[#2e200c]",
+                  iconText: "text-[#ffc56b]",
+                },
+                {
+                  value: referralSummary?.successful_referrals ?? 0,
+                  label: "Referrals",
+                  icon: <HiOutlineGift className="text-xl" />,
+                  gradient: "from-[#0c1a14] to-[#081210]",
+                  iconBg: "bg-[#122a1e]",
+                  iconText: "text-[#6beba3]",
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className={`group relative overflow-hidden rounded-2xl bg-gradient-to-b ${stat.gradient} border border-white/5 p-4 transition-all duration-300 hover:border-white/10 hover:shadow-lg`}
                 >
-                  {stat.icon}
-                </span>
-
-                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-3 -translate-x-1/2 translate-y-2 whitespace-nowrap rounded-xl border border-[#6a4349] bg-[rgba(40,12,18,0.98)] px-4 py-2 text-sm font-medium text-[#f7dfd9] opacity-0 shadow-[0_14px_32px_rgba(0,0,0,0.28)] transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                  {stat.hoverText}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-white">{stat.value}</p>
+                      <p className="mt-1 text-xs font-medium uppercase tracking-wider text-[#a08782]">{stat.label}</p>
+                    </div>
+                    <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.iconBg} ${stat.iconText} transition-transform duration-300 group-hover:scale-110`}>
+                      {stat.icon}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </section>
+        </div>
 
-        <section className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-6">
+        {/* Recent Orders */}
+        <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-6">
           <div className="flex items-center justify-between">
-            <p className="font-cormorant text-4xl text-white">Recent Orders</p>
-            <button type="button" onClick={() => setActiveTab("orders")} className="text-sm font-semibold text-[#ff6d84]">View All Orders</button>
+            <div>
+              <h2 className="font-cormorant text-3xl text-white">Recent Orders</h2>
+              <p className="mt-1 text-sm text-[#a08782]">Your latest purchases</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab("orders")}
+              className="rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-[#ff8fa3] transition-colors hover:bg-white/10"
+            >
+              View All
+            </button>
           </div>
-          <div className="mt-4 space-y-3">
-            {!orders.length ? <p className="text-[#d8beb8]">Hozircha order yo'q.</p> : null}
-            {orders.slice(0, 4).map((order) => (
-              <article key={order.id} className="flex items-center justify-between rounded-xl bg-[#130708] p-3">
-                <div className="flex items-center gap-3">
+          <div className="mt-5 space-y-3">
+            {!orders.length ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-12 text-center">
+                <HiOutlineShoppingBagCard className="text-4xl text-[#5a3a3e]" />
+                <p className="mt-3 text-[#a08782]">Hozircha order yo'q.</p>
+              </div>
+            ) : null}
+            {orders.slice(0, 4).map((order, index) => (
+              <article
+                key={order.id}
+                className={`group flex items-center justify-between rounded-2xl border bg-white/[0.02] p-4 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.04] ${
+                  highlightedOrderId === order.id
+                    ? "border-[#ff8ea3]/40 ring-2 ring-[#ff8ea3]/25 shadow-[0_0_0_1px_rgba(255,142,163,0.14)]"
+                    : "border-white/5"
+                }`}
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <div className="flex items-center gap-4">
                   {order.items[0]?.bouquet_image ? (
-                    <img
-                      src={order.items[0].bouquet_image}
-                      alt={order.items[0]?.bouquet_name ?? "Bouquet"}
-                      className="h-14 w-14 rounded-lg object-cover"
-                    />
+                    <div className="relative h-14 w-14 overflow-hidden rounded-xl">
+                      <img
+                        src={order.items[0].bouquet_image}
+                        alt={order.items[0]?.bouquet_name ?? "Bouquet"}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      />
+                    </div>
                   ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-[#2a1014] text-xs text-[#d7b7b0]">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 text-xs text-[#8f6d68]">
                       No image
                     </div>
                   )}
-                  <div>
-                  <p className="font-semibold text-white">{order.items[0]?.bouquet_name ?? "Bouquet"}</p>
-                  <p className="text-sm text-[#c9a59e]">Order #{order.id.slice(0, 8)}</p>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-white">{order.items[0]?.bouquet_name ?? "Bouquet"}</p>
+                    <p className="mt-0.5 text-sm text-[#a08782]">#{order.id.slice(0, 8)}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className={`inline-flex rounded-full border px-2 py-1 text-xs uppercase ${getOrderStatusMeta(order.status).className}`}>
+                <div className="flex items-center gap-4">
+                  <span className={`hidden rounded-full border px-2.5 py-1 text-xs uppercase sm:inline-block ${getOrderStatusMeta(order.status).className}`}>
                     {getOrderStatusMeta(order.status).label}
-                  </p>
-                  <p className="text-2xl font-semibold text-white">{formatPrice(order.total_price)}</p>
+                  </span>
+                  <p className="text-right text-lg font-bold text-white">{formatPrice(order.total_price)}</p>
                 </div>
               </article>
             ))}
           </div>
-        </section>
+        </div>
 
-        <section className="rounded-[1.6rem] bg-[linear-gradient(90deg,rgba(67,8,16,0.95),rgba(30,5,9,0.96))] p-6">
-          <div className="flex flex-wrap items-start justify-between gap-5">
-            <div className="flex flex-1 items-start gap-4">
-              <span className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-[#3a1016] text-3xl text-[#ff5f79]"><HiGift /></span>
-              <div className="flex-1">
-                <p className="font-cormorant text-5xl text-white">Give $10, Get $10</p>
-                <p className="text-[#d5b2ac]">Invite your friends and both get bonus after first order.</p>
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  <div className="rounded-xl bg-[#2a0e14] px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-[#bc8e8d]">Bonus balance</p>
-                    <p className="mt-1 text-2xl font-semibold text-white">
+        {/* Referral Section – Redesigned */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-br from-[#1c0910] via-[#1a0b13] to-[#12060a] p-0">
+          {/* ── Hero Banner ── */}
+          <div className="relative overflow-hidden bg-gradient-to-r from-[#c7233f] via-[#e8344f] to-[#ff4d6d] px-6 py-8 sm:px-10 sm:py-10">
+            <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-black/10 blur-2xl" />
+            <div className="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-[#ff4d6d]/20 to-transparent" />
+
+            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl text-white shadow-lg shadow-black/10 backdrop-blur-sm">
+                  <HiGift />
+                </span>
+                <div>
+                  <h2 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">Give $10, Get $10</h2>
+                  <p className="mt-1 max-w-md text-sm text-white/80 sm:text-base">
+                    Invite your friends and both get a bonus after their first order.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleInviteFriends}
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-white px-8 font-semibold text-[#c7233f] shadow-lg shadow-black/10 transition-all duration-300 hover:shadow-xl hover:brightness-110 active:scale-[0.97]"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                Share Invite Link
+              </button>
+            </div>
+          </div>
+
+          {/* ── Content ── */}
+          <div className="space-y-5 p-6 sm:p-8">
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-b from-[#1e1018] to-[#160a10] p-4 transition-all duration-300 hover:border-[#ff6d84]/20 hover:shadow-lg hover:shadow-[#ff6d84]/5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2a1018] text-[#ff6d84] transition-transform duration-300 group-hover:scale-110">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-2xl font-bold text-white">
                       {referralSummary ? formatPrice(referralSummary.bonus_balance) : "$0.00"}
                     </p>
-                  </div>
-                  <div className="rounded-xl bg-[#2a0e14] px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-[#bc8e8d]">Successful</p>
-                    <p className="mt-1 text-2xl font-semibold text-white">{referralSummary?.successful_referrals ?? 0}</p>
-                  </div>
-                  <div className="rounded-xl bg-[#2a0e14] px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-[#bc8e8d]">Pending</p>
-                    <p className="mt-1 text-2xl font-semibold text-white">{referralSummary?.pending_referrals ?? 0}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">Balance</p>
                   </div>
                 </div>
-                <div className="mt-4 rounded-xl border border-white/10 bg-[#220b10] px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-[#bc8e8d]">Your referral code</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <p className="text-lg font-semibold tracking-[0.18em] text-[#ffe4dd]">
-                      {referralSummary?.referral_code ?? "Loading..."}
-                    </p>
+              </div>
+
+              <div className="group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-b from-[#0f1a15] to-[#0a1210] p-4 transition-all duration-300 hover:border-[#6beba3]/20 hover:shadow-lg hover:shadow-[#6beba3]/5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#122a1e] text-[#6beba3] transition-transform duration-300 group-hover:scale-110">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{referralSummary?.successful_referrals ?? 0}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">Successful</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-b from-[#1a1408] to-[#120f05] p-4 transition-all duration-300 hover:border-[#ffd59a]/20 hover:shadow-lg hover:shadow-[#ffd59a]/5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2e200c] text-[#ffc56b] transition-transform duration-300 group-hover:scale-110">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p className="text-2xl font-bold text-white">{referralSummary?.pending_referrals ?? 0}</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">Pending</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Referral Code & Link */}
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a08782]">Your referral code</p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <span className="rounded-xl bg-gradient-to-r from-[#2a1018] to-[#1e0c12] px-5 py-2.5 font-mono text-xl font-bold tracking-[0.15em] text-[#ffe0dd] ring-1 ring-white/10">
+                      {referralSummary?.referral_code ?? "········"}
+                    </span>
                     <button
                       type="button"
                       onClick={handleCopyReferralCode}
-                      className="inline-flex h-9 items-center justify-center rounded-lg bg-[#3a1419] px-3 text-sm font-semibold text-[#ffd9d2]"
+                      className="flex items-center gap-1.5 rounded-xl bg-white/5 px-4 py-2.5 text-sm font-medium text-[#ff8fa3] transition-all hover:bg-white/10 active:scale-95"
                     >
-                      Copy code
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                      Copy
                     </button>
                   </div>
-                  <p className="mt-2 text-sm text-[#caa49d]">
-                    Share link: <span className="break-all text-[#f7ddd7]">{referralLink || "Preparing link..."}</span>
+                  <p className="mt-3 break-all text-xs text-[#6b5050]">
+                    {referralLink || "Preparing link..."}
                   </p>
                 </div>
-                {referralSummary?.referred_friends.length ? (
-                  <div className="mt-4 rounded-xl border border-white/10 bg-[#220b10] px-4 py-3">
-                    <p className="text-sm font-semibold text-white">Recent invited friends</p>
-                    <div className="mt-3 space-y-2">
-                      {referralSummary.referred_friends.map((friend) => (
-                        <div key={friend.id} className="flex items-center justify-between gap-3 rounded-lg bg-[#2d1015] px-3 py-2">
-                          <div>
-                            <p className="font-medium text-[#fff1ed]">{friend.full_name}</p>
-                            <p className="text-sm text-[#caa49d]">{friend.email}</p>
-                          </div>
-                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${friend.reward_granted ? "bg-[#143424] text-[#9ef0c2]" : "bg-[#3a2610] text-[#ffd59a]"}`}>
-                            {friend.reward_granted ? "Rewarded" : "Pending"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
               </div>
             </div>
-            <button type="button" onClick={handleInviteFriends} className="inline-flex h-12 items-center justify-center rounded-xl bg-gradient-to-r from-[#8f1220] to-[#bb2435] px-6 font-semibold text-white">
-              Invite Friends
-            </button>
+
+            {/* How it works */}
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-white">How it works</p>
+                <span className="rounded-full bg-gradient-to-r from-[#c7233f]/20 to-[#ff4d6d]/10 px-3 py-1 text-xs font-semibold text-[#ff8fa3] ring-1 ring-[#ff4d6d]/20">
+                  {referralRewardAmount} each
+                </span>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {referralJourney.map((step, index) => (
+                  <div key={step.title} className="relative">
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#c7233f] to-[#ff4d6d] text-sm font-bold text-white shadow-md shadow-[#c7233f]/20">
+                        {index + 1}
+                      </span>
+                      <div className="pt-0.5">
+                        <p className="text-sm font-semibold text-white">{step.title.replace(/^\d+\.\s*/, "")}</p>
+                        <p className="mt-1.5 text-xs leading-relaxed text-[#a08782]">{step.description}</p>
+                      </div>
+                    </div>
+                    {index < referralJourney.length - 1 && (
+                      <div className="absolute left-4 top-8 hidden h-[calc(100%-2rem)] w-px bg-gradient-to-b from-[#ff4d6d]/30 to-transparent md:block" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Invited Friends */}
+            {referralSummary?.referred_friends.length ? (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-white">Invited Friends</p>
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-white">
+                      {referralSummary.referred_friends.length}
+                    </span>
+                  </div>
+                  <div className="flex gap-2 text-[10px] font-semibold uppercase tracking-[0.15em]">
+                    <span className="flex items-center gap-1.5 rounded-full bg-[#2a160b] px-2.5 py-1 text-[#ffd59a]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#ffd59a]" /> Pending
+                    </span>
+                    <span className="flex items-center gap-1.5 rounded-full bg-[#10231a] px-2.5 py-1 text-[#9ef0c2]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#9ef0c2]" /> Rewarded
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {referralSummary.referred_friends.map((friend) => (
+                    <div key={friend.id} className="group flex items-center gap-3 rounded-xl bg-white/[0.03] px-4 py-3 transition-colors hover:bg-white/[0.05]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#3a161c] to-[#2a0e14] text-sm font-bold text-white">
+                        {friend.full_name?.charAt(0)?.toUpperCase() ?? "?"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[#fff1ed]">{friend.full_name}</p>
+                        <p className="truncate text-xs text-[#6b5050]">{friend.email}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${
+                        friend.reward_granted
+                          ? "bg-[#143424] text-[#9ef0c2] ring-1 ring-[#2f6a4f]/30"
+                          : "bg-[#3a2610] text-[#ffd59a] ring-1 ring-[#7f5a41]/20"
+                      }`}>
+                        {friend.reward_granted ? "✓ Rewarded" : "Pending"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
-        </section>
-      </>
+        </div>
+      </div>
     );
   };
 
   return (
-    <main className="min-h-screen bg-transparent px-4 pb-14 pt-28 text-[#fff6f4] sm:px-6 lg:px-10">
-      <div className="mx-auto grid max-w-[1500px] gap-6 xl:grid-cols-[250px_1fr_380px]">
-        <aside className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-4">
-          <div className="space-y-1">
-            {tabs.map((tab) => {
+    <main className="min-h-screen bg-transparent px-4 pb-16 pt-28 text-[#fff6f4] sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-[1500px]">
+        {/* Mobile Profile Header */}
+        <div className="mb-6 xl:hidden">
+          <div className="flex items-center gap-4 rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-5">
+                <div className="relative shrink-0">
+              {avatarPreviewUrl ? (
+                <img src={avatarPreviewUrl} alt="Avatar preview" className="h-20 w-20 rounded-full object-cover ring-2 ring-[#ff6d84]/50" />
+              ) : user?.avatar_url ? (
+                <img src={user.avatar_url} alt="avatar" className="h-20 w-20 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#3a161c] to-[#2a0e14] text-2xl font-bold text-white">{userInitials}</div>
+              )}
+              <button
+                type="button"
+                disabled={isAvatarSubmitting}
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] text-white shadow-lg disabled:opacity-60"
+              >
+                <HiOutlineCamera className="text-sm" />
+              </button>
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarSelect(event.target.files?.[0] ?? null)} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xl font-bold text-white">{user?.full_name}</p>
+              <p className="truncate text-sm text-[#a08782]">{user?.email}</p>
+            </div>
+            <button type="button" onClick={logout} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[#ff8fa3] transition-colors hover:bg-white/10">
+                <HiArrowLeftOnRectangle className="text-lg" />
+              </button>
+          </div>
+        </div>
+
+        {/* Mobile Tab Navigation */}
+        {!isOwnerAccount ? (
+        <div className="mb-6 xl:hidden">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {visibleTabs.map((tab) => {
               const active = activeTab === tab.key;
               return (
                 <button
                   key={tab.key}
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${active ? "bg-[#5a101a] text-white" : "text-[#f0d2cd] hover:bg-white/[0.06]"}`}
+                  className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    active
+                      ? "bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] text-white shadow-lg shadow-[#c7233f]/20"
+                      : "border border-white/5 bg-white/[0.03] text-[#c4a39b] hover:bg-white/[0.06]"
+                  }`}
                 >
-                  <span className="text-lg">{tab.icon}</span>
-                  <span className="text-xl font-medium">{tab.label}</span>
+                  <span className="text-base">{tab.icon}</span>
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
           </div>
+        </div>
+        ) : null}
 
-          {canOpenAdminDashboard ? (
-            <div className="mt-4 border-t border-white/10 pt-4">
-              <Link
-                to="/admin"
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#8b5b3d] bg-[#1a0a0c] font-semibold text-[#f3c890] transition hover:border-[#c98f61] hover:bg-[#221013]"
-              >
-                Open Admin Dashboard
-              </Link>
-            </div>
-          ) : null}
-
-          <div className="mt-4 border-t border-white/10 pt-4">
-            <button type="button" onClick={logout} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#ff7485] to-[#df5065] text-lg font-semibold text-white">
-              <HiArrowLeftOnRectangle /> Log Out
-            </button>
-          </div>
-
-          <div className="mt-6 rounded-xl bg-[#120607] p-4">
-            <p className="font-cormorant text-4xl text-white">Need Help?</p>
-            <p className="mt-2 text-[#d2b0aa]">Our support team is here to help you.</p>
-            <button type="button" className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-[#2e0f13] font-semibold text-[#ffe3dd]">Contact Support</button>
-          </div>
-        </aside>
-
-        <section className="space-y-5">{renderCenterContent()}</section>
-
-        <aside className="space-y-5">
-          <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="relative mx-auto h-24 w-24 shrink-0 sm:mx-0 sm:h-20 sm:w-20">
-                {avatarPreviewUrl ? (
-                  <img src={avatarPreviewUrl} alt="Avatar preview" className="h-24 w-24 rounded-full object-cover ring-2 ring-[#ff7f93] sm:h-20 sm:w-20" />
-                ) : user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="avatar" className="h-24 w-24 rounded-full object-cover sm:h-20 sm:w-20" />
-                ) : (
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#2f1015] text-3xl font-bold sm:h-20 sm:w-20 sm:text-2xl">{userInitials}</div>
-                )}
-                {isAvatarSubmitting ? (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 text-xs font-semibold text-white">
-                    Loading...
-                  </div>
-                ) : null}
-                <button type="button" disabled={isAvatarSubmitting} onClick={() => avatarInputRef.current?.click()} className="absolute -bottom-1 -right-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#af2338] text-white shadow-[0_8px_20px_rgba(175,35,56,0.35)] disabled:opacity-60 sm:h-8 sm:w-8"><HiOutlineCamera /></button>
-                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarSelect(event.target.files?.[0] ?? null)} />
-              </div>
-              <div className="min-w-0 flex-1 text-center sm:pt-0.5 sm:text-left">
-                <div>
-                  <p className="font-cormorant text-[3rem] leading-[0.92] text-white sm:text-[3.35rem]">{user?.full_name}</p>
-                </div>
-
-                <div className="mt-2 space-y-1 text-[#dcc0bb]">
-                  <p className="truncate text-base sm:text-[1.02rem]">{user?.email}</p>
-                  <p className="text-base sm:text-[1.02rem]">{user?.phone ?? "+998 __ ___ __ __"}</p>
-                  <p className="text-base sm:text-[1.02rem]">Tashkent, Uzbekistan</p>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[0.82rem] uppercase tracking-[0.18em] text-[#bfa19a] sm:justify-start">
-                  <span>JPG, PNG, WEBP, GIF</span>
-                  <span className="hidden h-1 w-1 rounded-full bg-[#7d5652] sm:block" />
-                  <span>Max 6MB</span>
-                </div>
-
-                {selectedAvatarFile ? (
-                  <p className="mt-2 text-sm text-[#f7ddd7]">
-                    Tanlangan fayl: {selectedAvatarFile.name}
-                  </p>
-                ) : null}
-                {avatarStatus ? <p className="mt-2 rounded-xl border border-[#23543d] bg-[#10291e] px-3 py-2 text-sm text-[#9ef0c2]">{avatarStatus}</p> : null}
-                {avatarError ? <p className="mt-2 rounded-xl border border-[#6f2d39] bg-[#2c0f15] px-3 py-2 text-sm text-[#ff9eae]">{avatarError}</p> : null}
-                {selectedAvatarFile ? (
-                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+        {/* Desktop 3-column layout */}
+        <div className={`grid gap-6 ${isOwnerAccount ? "xl:grid-cols-[260px_1fr]" : "xl:grid-cols-[260px_1fr_380px]"}`}>
+          {/* Left Sidebar - Desktop */}
+          <aside className="hidden xl:block">
+            <div className="sticky top-28 space-y-5">
+              {/* User Card */}
+              <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-5">
+                <div className="flex flex-col items-center text-center">
+                  <div className="relative">
+                    {avatarPreviewUrl ? (
+                      <img src={avatarPreviewUrl} alt="Avatar preview" className="h-24 w-24 rounded-full object-cover ring-2 ring-[#ff6d84]/50" />
+                    ) : user?.avatar_url ? (
+                      <img src={user.avatar_url} alt="avatar" className="h-24 w-24 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#3a161c] to-[#2a0e14] text-3xl font-bold text-white">{userInitials}</div>
+                    )}
                     <button
                       type="button"
-                      onClick={handleAvatarUpload}
                       disabled={isAvatarSubmitting}
-                      className="inline-flex h-10 items-center justify-center rounded-xl bg-[#a31528] px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(163,21,40,0.22)] transition hover:brightness-105 disabled:opacity-60"
-                    >
-                      Save avatar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetAvatarSelection}
-                      disabled={isAvatarSubmitting}
-                      className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-transparent px-4 text-sm font-medium text-[#ffd4cd] transition hover:bg-white/[0.04] disabled:opacity-60"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : user?.avatar_url ? (
-                  <div className="mt-4 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-                    <button
-                      type="button"
                       onClick={() => avatarInputRef.current?.click()}
-                      disabled={isAvatarSubmitting}
-                      className="inline-flex h-10 items-center justify-center rounded-xl bg-[#a31528] px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(163,21,40,0.22)] transition hover:brightness-105 disabled:opacity-60"
+                      className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] text-white shadow-lg shadow-[#c7233f]/30 transition-transform hover:scale-110 disabled:opacity-60"
                     >
-                      Change avatar
+                      <HiOutlineCamera className="text-sm" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={handleAvatarDelete}
-                      disabled={isAvatarSubmitting}
-                      className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-1 text-sm font-medium text-[#cfa7a1] transition hover:text-[#ffd4cd] disabled:opacity-60"
-                    >
-                      <HiTrash />
-                      Remove avatar
-                    </button>
+                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarSelect(event.target.files?.[0] ?? null)} />
                   </div>
-                ) : (
+
+                  {isAvatarSubmitting ? (
+                    <p className="mt-3 text-xs text-[#a08782]">{t("common.loading")}</p>
+                  ) : null}
+
+                  {selectedAvatarFile ? (
+                    <p className="mt-3 max-w-full truncate text-sm text-[#c4a39b]">{selectedAvatarFile.name}</p>
+                  ) : null}
+                  {avatarStatus ? <p className="mt-2 rounded-lg bg-[#123420] px-3 py-1.5 text-xs text-[#9ef0c2]">{avatarStatus}</p> : null}
+                  {avatarError ? <p className="mt-2 rounded-lg bg-[#3a1118] px-3 py-1.5 text-xs text-[#ff9eae]">{avatarError}</p> : null}
+
+                  {selectedAvatarFile ? (
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={handleAvatarUpload} disabled={isAvatarSubmitting} className="rounded-lg bg-[#c7233f] px-4 py-1.5 text-xs font-medium text-white transition hover:brightness-110 disabled:opacity-60">
+                        {t("saveAvatar")}
+                      </button>
+                      <button type="button" onClick={resetAvatarSelection} disabled={isAvatarSubmitting} className="rounded-lg border border-white/10 px-4 py-1.5 text-xs font-medium text-[#c4a39b] transition hover:bg-white/5 disabled:opacity-60">
+                        {t("cancel")}
+                      </button>
+                    </div>
+                  ) : user?.avatar_url ? (
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={isAvatarSubmitting} className="rounded-lg bg-white/5 px-4 py-1.5 text-xs font-medium text-[#c4a39b] transition hover:bg-white/10 disabled:opacity-60">
+                        {t("changeAvatar")}
+                      </button>
+                      <button type="button" onClick={handleAvatarDelete} disabled={isAvatarSubmitting} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-[#8f6d68] transition hover:text-[#ff9eae] disabled:opacity-60">
+                        <HiTrash className="text-sm" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={isAvatarSubmitting} className="mt-3 rounded-lg bg-white/5 px-4 py-1.5 text-xs font-medium text-[#c4a39b] transition hover:bg-white/10 disabled:opacity-60">
+                      {t("uploadAvatar")}
+                    </button>
+                  )}
+
+                  <p className="mt-3 text-[0.65rem] uppercase tracking-[0.2em] text-[#6b5050]">{t("avatarInfo")}</p>
+                </div>
+              </div>
+
+              {/* Navigation */}
+              {!isOwnerAccount ? (
+              <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-3">
+                <nav className="space-y-1">
+                  {visibleTabs.map((tab) => {
+                    const active = activeTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setActiveTab(tab.key)}
+                        className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition-all duration-200 ${
+                          active
+                            ? "bg-gradient-to-r from-[#c7233f]/20 to-[#ff4d6d]/10 text-white shadow-sm"
+                            : "text-[#a08782] hover:bg-white/[0.04] hover:text-white"
+                        }`}
+                      >
+                        <span className={`text-lg ${active ? "text-[#ff6d84]" : ""}`}>{tab.icon}</span>
+                        <span>{tab.label}</span>
+                        {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#ff4d6d]" />}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+              ) : null}
+
+              {/* Logout */}
+              <button
+                type="button"
+                onClick={logout}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/5 bg-white/[0.03] py-3 text-sm font-medium text-[#ff8fa3] transition-all duration-200 hover:border-[#ff8fa3]/20 hover:bg-[#ff8fa3]/5"
+              >
+                <HiArrowLeftOnRectangle />
+                {t("logOut")}
+              </button>
+
+              {/* Help Card */}
+              <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-5">
+                <h3 className="font-cormorant text-2xl text-white">{t("needHelp")}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#8f6d68]">
+                  {canOpenOwnerDashboard
+                    ? t("ownerDashboardHelp")
+                    : latestShopApplication?.status === "pending"
+                      ? t("sellerPending")
+                      : t("sellerDefault")}
+                </p>
+                {latestShopApplication?.admin_comment ? (
+                  <div className="mt-3 rounded-xl border border-[#ff8fa3]/10 bg-[#ff8fa3]/5 px-3 py-2">
+                    <p className="text-xs text-[#ff8fa3]">{t("adminComment")} {latestShopApplication.admin_comment}</p>
+                  </div>
+                ) : null}
+                <Link
+                  to={canOpenOwnerDashboard ? "/owner/dashboard" : "/shop-application"}
+                  className="mt-4 flex items-center justify-center rounded-xl bg-white/5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                >
+                  {canOpenOwnerDashboard ? t("openOwnerDashboard") : t("contactSupport")}
+                </Link>
+              </div>
+            </div>
+          </aside>
+
+          {/* Center Content */}
+          <section className="min-w-0 space-y-5">
+            {renderCenterContent()}
+          </section>
+
+          {!isOwnerAccount ? (
+          <>
+          {/* Right Sidebar - Desktop */}
+          <aside className="hidden xl:block">
+            <div className="sticky top-28 space-y-5">
+              {/* Profile Completion */}
+              <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-cormorant text-2xl text-white">{t("profileCompletion")}</h3>
+                  <span className={`text-sm font-semibold ${profileCompletion === 100 ? "text-[#6beba3]" : "text-[#ffc56b]"}`}>
+                    {profileCompletion}%
+                  </span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/5">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] transition-all duration-500"
+                    style={{ width: `${profileCompletion}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-sm text-[#8f6d68]">
+                  {profileCompletion === 100
+                    ? t("profileComplete")
+                    : t("profileIncomplete")}
+                </p>
+                {profileCompletion < 100 && (
                   <button
                     type="button"
-                    onClick={() => avatarInputRef.current?.click()}
-                    disabled={isAvatarSubmitting}
-                    className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-[#a31528] px-5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(163,21,40,0.22)] transition hover:brightness-105 disabled:opacity-60"
+                    onClick={() => setActiveTab("settings")}
+                    className="mt-4 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#c7233f]/20 transition-all hover:shadow-xl hover:shadow-[#c7233f]/30"
                   >
-                    Upload avatar
+                    {t("completeProfile")}
                   </button>
                 )}
               </div>
-            </div>
-          </div>
 
-          <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(27,8,10,0.95),rgba(12,3,4,0.96))] p-5">
-            <div className="flex items-center justify-between">
-              <p className="font-cormorant text-4xl text-white">Account Completion</p>
-              <p className="text-[#ceb1aa]">{profileCompletion}% Complete</p>
-            </div>
-            <div className="mt-4 h-2.5 rounded-full bg-[#35161a]">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#ff4c6f] to-[#c7233f]" style={{ width: `${profileCompletion}%` }} />
-            </div>
-            <p className="mt-3 text-[#d8beb8]">Complete your profile to get personalized recommendations.</p>
-            <button type="button" onClick={() => setActiveTab("profile")} className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#8f1220] to-[#bb2435] font-semibold text-white">Complete Profile</button>
-          </div>
-          <div className="rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(52,8,16,0.96),rgba(18,4,6,0.96))] p-5">
-            <div className="flex items-center justify-between">
-              <p className="font-cormorant text-4xl text-[#f3d9a8]">Recommended Bouquets</p>
-              <div className="flex items-center gap-1.5">
-                {recommendedBouquets.slice(0, 5).map((bouquet, index) => (
-                  <button
-                    key={bouquet.id}
-                    type="button"
-                    onClick={() => setRecommendedIndex(index)}
-                    className={`h-2.5 w-2.5 rounded-full ${
-                      index === safeRecommendedIndex ? "bg-[#ff6580]" : "bg-[#6f3942]"
-                    }`}
-                    aria-label={`Show ${bouquet.name}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {recommendedQuery.isLoading ? <RecommendedBouquetSkeleton /> : null}
-
-            {!recommendedQuery.isLoading && activeRecommended ? (
-              <article className="mt-4 overflow-hidden rounded-xl bg-[#20090d]">
-                <img
-                  src={activeRecommended.image}
-                  alt={activeRecommended.name}
-                  className="h-44 w-full object-cover"
-                />
-                <div className="p-4">
-                  <p className="font-cormorant text-3xl text-white">{activeRecommended.name}</p>
-                  <p className="text-[#dfbcb1]">{activeRecommended.shop.name}</p>
-                  <div className="mt-3 flex items-center justify-between">
-                    <p className="text-3xl font-semibold text-[#ffe0b3]">
-                      {formatPrice(activeRecommended.price)}
-                    </p>
-                    <Link
-                      to={`/bouquets/${activeRecommended.id}`}
-                      className="inline-flex h-10 items-center justify-center rounded-lg bg-[#3a1612] px-4 text-sm font-semibold text-[#ffe0b3]"
-                    >
-                      View
-                    </Link>
+              {/* Recommended Bouquets */}
+              <div className="overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609]">
+                <div className="p-5 pb-0">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-cormorant text-2xl text-white">{t("forYou")}</h3>
+                    <div className="flex gap-1.5">
+                      {recommendedBouquets.slice(0, 5).map((bouquet, index) => (
+                        <button
+                          key={bouquet.id}
+                          type="button"
+                          onClick={() => setRecommendedIndex(index)}
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            index === safeRecommendedIndex ? "w-5 bg-[#ff6d84]" : "w-1.5 bg-white/15"
+                          }`}
+                          aria-label={t("showBouquet", { name: bouquet.name })}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </article>
-            ) : null}
 
-            {!recommendedQuery.isLoading && !activeRecommended ? (
-              <div className="mt-4 rounded-xl bg-[#20090d] p-4 text-[#e8c5bb]">
-                Tavsiya etiladigan bouquetlar hozircha yo'q.
+                {recommendedQuery.isLoading ? (
+                  <div className="p-5">
+                    <RecommendedBouquetSkeleton />
+                  </div>
+                ) : null}
+
+                {!recommendedQuery.isLoading && activeRecommended ? (
+                  <div className="p-5 pt-3">
+                    <article className="group overflow-hidden rounded-2xl bg-white/[0.03] border border-white/5">
+                      <div className="relative h-48 overflow-hidden">
+                        <img
+                          src={activeRecommended.image}
+                          alt={activeRecommended.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-3 left-3 right-3">
+                          <p className="font-cormorant text-2xl text-white">{activeRecommended.name}</p>
+                          <p className="text-sm text-white/70">{activeRecommended.shop.name}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-4">
+                        <p className="text-xl font-bold text-white">{formatPrice(activeRecommended.price)}</p>
+                        <Link
+                          to={`/bouquets/${activeRecommended.id}`}
+                          className="rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                        >
+                          View →
+                        </Link>
+                      </div>
+                    </article>
+                  </div>
+                ) : null}
+
+                {!recommendedQuery.isLoading && !activeRecommended ? (
+                  <div className="p-5">
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-8 text-center text-sm text-[#8f6d68]">
+                      Tavsiya etiladigan bouquetlar yo'q.
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-        </aside>
+            </div>
+          </aside>
+          </>
+          ) : null}
+        </div>
       </div>
-
     </main>
   );
 }

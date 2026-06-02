@@ -1,4 +1,5 @@
 import type { Bouquet } from "../types/catalog";
+import { CURRENT_USER_ID_KEY } from "../api/authStorage";
 
 export const FAVORITES_STORAGE_KEY = "flower-shop-favorites-v1";
 export const FAVORITES_UPDATED_EVENT = "favorites:updated";
@@ -18,9 +19,15 @@ function emitFavoritesUpdated() {
   window.dispatchEvent(new CustomEvent(FAVORITES_UPDATED_EVENT));
 }
 
+function getFavoritesStorageKey() {
+  if (!isBrowser()) return FAVORITES_STORAGE_KEY;
+  const currentUserId = window.localStorage.getItem(CURRENT_USER_ID_KEY);
+  return currentUserId ? `${FAVORITES_STORAGE_KEY}:${currentUserId}` : `${FAVORITES_STORAGE_KEY}:guest`;
+}
+
 export function getFavoriteItems(): FavoriteBouquetItem[] {
   if (!isBrowser()) return [];
-  const raw = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
+  const raw = window.localStorage.getItem(getFavoritesStorageKey());
   if (!raw) return [];
 
   try {
@@ -34,7 +41,7 @@ export function getFavoriteItems(): FavoriteBouquetItem[] {
 
 function saveFavoriteItems(items: FavoriteBouquetItem[]) {
   if (!isBrowser()) return;
-  window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(items));
+  window.localStorage.setItem(getFavoritesStorageKey(), JSON.stringify(items));
   emitFavoritesUpdated();
 }
 

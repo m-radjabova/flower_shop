@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { HiOutlineBuildingStorefront, HiOutlineMagnifyingGlass, HiOutlineMapPin, HiOutlinePhone, HiOutlineSparkles } from "react-icons/hi2";
+import { HiOutlineBuildingStorefront, HiOutlineMagnifyingGlass, HiOutlineMapPin, HiOutlinePhone, HiOutlineSparkles, HiXMark } from "react-icons/hi2";
 import { toast } from "react-toastify";
 import { useAdminShops, useUpdateShop } from "../../../hooks/useCatalog";
 import AdminSearchPanel from "../components/AdminSearchPanel";
@@ -19,6 +19,7 @@ function AdminShops() {
   const debouncedSearch = useDebounce(search.trim(), 450);
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "active" | "blocked">("all");
   const [submittingStatus, setSubmittingStatus] = useState<Record<string, boolean>>({});
+  const [blockTargetShop, setBlockTargetShop] = useState<{ id: string; name: string } | null>(null);
 
   const pendingCount = shops.filter((shop) => shop.status === "pending").length;
   const activeCount = shops.filter((shop) => shop.status === "active").length;
@@ -46,6 +47,12 @@ function AdminShops() {
     } finally {
       setSubmittingStatus((prev) => ({ ...prev, [shopId]: false }));
     }
+  };
+
+  const handleConfirmBlock = async () => {
+    if (!blockTargetShop) return;
+    await handleStatusChange(blockTargetShop.id, "blocked");
+    setBlockTargetShop(null);
   };
 
   return (
@@ -91,7 +98,7 @@ function AdminShops() {
               onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
               className="h-12 rounded-2xl border border-[#4a1d22] bg-[#180709] px-4 text-white outline-none"
             >
-              <option value="all">All statuses</option>
+              <option value="all">All</option>
               <option value="pending">Pending</option>
               <option value="active">Active</option>
               <option value="blocked">Blocked</option>
@@ -161,7 +168,7 @@ function AdminShops() {
                 {shop.status !== "blocked" ? (
                   <button
                     type="button"
-                    onClick={() => handleStatusChange(shop.id, "blocked")}
+                    onClick={() => setBlockTargetShop({ id: shop.id, name: shop.name })}
                     disabled={Boolean(submittingStatus[shop.id])}
                     className="inline-flex h-11 items-center justify-center rounded-full border border-[#8c4651] bg-[#2a1015] px-5 text-sm font-semibold text-[#f3c4cb] transition hover:border-[#b45c69] disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -183,6 +190,49 @@ function AdminShops() {
           ))}
         </div>
       )}
+
+      {blockTargetShop ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[#643335] bg-[#100507] p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-[#c79f97]">Security Confirmation</p>
+                <h3 className="mt-2 font-cormorant text-3xl leading-tight text-white">Block this shop?</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBlockTargetShop(null)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#714243] text-[#f6d6ce]"
+                aria-label="Close confirmation modal"
+              >
+                <HiXMark />
+              </button>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-[#ddb8b0]">
+              Siz rostan ham <span className="font-semibold text-white">{blockTargetShop.name}</span> do‘konini bloklamoqchimisiz?
+              Bu amal shop faoliyatini to‘xtatadi.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setBlockTargetShop(null)}
+                disabled={Boolean(submittingStatus[blockTargetShop.id])}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[#6b3a3c] bg-transparent px-5 text-sm font-semibold text-[#f1d5cb] transition hover:border-[#8e4d50] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBlock}
+                disabled={Boolean(submittingStatus[blockTargetShop.id])}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[#8c4651] bg-[#2a1015] px-5 text-sm font-semibold text-[#f3c4cb] transition hover:border-[#b45c69] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submittingStatus[blockTargetShop.id] ? "Blocking..." : "Yes, block"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

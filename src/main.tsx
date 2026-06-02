@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
 import App from "./App";
 import CreateContextPro from "./hooks/CreateContextPro";
+import "./i18n";
 import "./index.css";
 import "react-toastify/dist/ReactToastify.css";
 

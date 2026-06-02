@@ -1,20 +1,41 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
-  HiArrowLeft,
-  HiOutlineClock,
-  HiOutlineEnvelope,
-  HiOutlineGift,
+  FaInstagram,
+  FaTelegramPlane,
+  FaTruck,
+  FaCheckCircle,
+  FaRegClock,
+  FaMapMarkerAlt,
+  FaPhoneAlt,
+  FaShareAlt,
+  FaShoppingBag,
+  FaStar,
+  FaLeaf,
+  FaAward,
+  FaStore,
+  FaChevronDown,
+  FaRegCalendarAlt,
+} from "react-icons/fa";
+import {
+  HiOutlineArrowLeft,
+  HiOutlineShoppingBag,
   HiOutlineMapPin,
-  HiOutlinePhone,
-  HiOutlineSparkles,
-  HiStar,
+  HiOutlineClock,
 } from "react-icons/hi2";
+import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
 import NotFound from "../../components/NotFound";
 import { ShopDetailSkeleton } from "../../components/PageSkeletons";
 import { useBouquets, useShop } from "../../hooks/useCatalog";
 import { formatPrice } from "../../utils/catalog";
+import { addToCart } from "../../utils/cart";
 import { formatUzbekPhone } from "../../utils/phone";
+import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
+import type { Bouquet } from "../../types/catalog";
 
+// ─── Helpers ───────────────────────────────────────────────
 function buildMapUrl(latitude: string, longitude: string) {
   const lat = Number(latitude);
   const lon = Number(longitude);
@@ -22,246 +43,759 @@ function buildMapUrl(latitude: string, longitude: string) {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${box}&layer=mapnik&marker=${lat},${lon}`;
 }
 
-function FloralFlourish({ className = "" }: { className?: string }) {
+function formatMemberSince(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently joined";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function isNew(createdAt: string) {
+  return Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+}
+
+// ─── Animation Variants ────────────────────────────────────
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+};
+
+// ─── Bouquet Card ──────────────────────────────────────────
+function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
+  const { t } = useTranslation();
+  const [isHovered, setIsHovered] = useState(false);
+  const isNewBouquet = isNew(bouquet.created_at);
+  const hasDiscount = Boolean(bouquet.old_price);
+  const isPopular = Number(bouquet.rating) >= 4.5 && bouquet.reviews_count >= 10;
+
   return (
-    <svg viewBox="0 0 220 60" className={className} fill="none" aria-hidden="true">
-      <path d="M8 30c26-22 52-22 78 0s52 22 78 0 32-22 48 0" stroke="url(#flourish-gradient)" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M52 22c5-10 14-12 19-4-11 1-14 9-12 16-7-2-12-7-7-12Z" fill="#f0c89c" fillOpacity=".35" />
-      <path d="M164 22c5-10 14-12 19-4-11 1-14 9-12 16-7-2-12-7-7-12Z" fill="#ff8b9f" fillOpacity=".35" />
-      <defs>
-        <linearGradient id="flourish-gradient" x1="8" y1="30" x2="212" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#f0c89c" stopOpacity=".15" />
-          <stop offset=".5" stopColor="#fff2ee" stopOpacity=".65" />
-          <stop offset="1" stopColor="#ff8b9f" stopOpacity=".2" />
-        </linearGradient>
-      </defs>
-    </svg>
+    <motion.article
+      variants={itemVariants}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="group relative overflow-hidden rounded-[1.8rem] border border-[#4a2020]/60 bg-gradient-to-b from-[#1e0b0d] to-[#120608] shadow-lg transition-all duration-500 hover:border-[#cb5c57]/40 hover:shadow-[0_20px_60px_rgba(203,92,87,0.15)]"
+    >
+      <Link to={`/bouquets/${bouquet.id}`} className="block">
+        <div className="relative overflow-hidden">
+          <motion.img
+            src={bouquet.image}
+            alt={bouquet.name}
+            className="h-72 w-full object-cover sm:h-80"
+            animate={{ scale: isHovered ? 1.08 : 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#120608] via-transparent to-transparent opacity-70" />
+
+          {/* Badges */}
+          <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+            {isNewBouquet && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-emerald-500/20">
+                <FaLeaf className="text-[0.5rem]" />
+                {t("catalog.new")}
+              </span>
+            )}
+            {isPopular && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-amber-500/20">
+                <FaStar className="text-[0.5rem]" />
+                {t("catalog.popular")}
+              </span>
+            )}
+            {hasDiscount && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-rose-600/20">
+                {t("shopDetail.sale")}
+              </span>
+            )}
+          </div>
+
+          {/* Quick add button on hover */}
+          <motion.button
+            type="button"
+              onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              addToCart(bouquet);
+              toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`);
+            }}
+            className="absolute right-4 bottom-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#cb5c57] to-[#a3322e] text-white shadow-xl shadow-[#cb5c57]/20"
+            initial={{ opacity: 0, scale: 0.5, y: 10 }}
+            animate={{ opacity: isHovered ? 1 : 0, scale: isHovered ? 1 : 0.5, y: isHovered ? 0 : 10 }}
+            transition={{ duration: 0.25 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <HiOutlineShoppingBag className="text-lg" />
+          </motion.button>
+
+          {/* Category tag */}
+          {bouquet.category && (
+            <span className="absolute left-4 bottom-4 rounded-full border border-white/10 bg-black/30 px-3.5 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
+              {bouquet.category.name}
+            </span>
+          )}
+        </div>
+      </Link>
+
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <Link to={`/bouquets/${bouquet.id}`}>
+              <h3 className="font-cormorant text-2xl font-semibold leading-tight text-white transition-colors duration-300 hover:text-[#f0a89a]">
+                {bouquet.name}
+              </h3>
+            </Link>
+              <div className="mt-2 flex items-center gap-2 text-sm text-[#dbb8b0]">
+              <div className="flex items-center gap-1">
+                <FaStar className="text-[0.7rem] text-amber-400" />
+                <span className="font-semibold text-white">{bouquet.rating}</span>
+              </div>
+              <span className="text-[#8a6a63]">·</span>
+              <span className="text-[#8a6a63]">{bouquet.reviews_count} {t("catalog.reviews")}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-end justify-between border-t border-[#4a2020]/30 pt-4">
+          <div className="flex items-end gap-2.5">
+            <span className="text-2xl font-bold text-white">{formatPrice(bouquet.price)}</span>
+            {hasDiscount && (
+              <span className="pb-0.5 text-sm font-medium text-[#8a6a63] line-through">
+                {formatPrice(bouquet.old_price!)}
+              </span>
+            )}
+          </div>
+          <span className={`flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] ${bouquet.stock > 0 ? "text-emerald-400" : "text-rose-400"}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${bouquet.stock > 0 ? "bg-emerald-400" : "bg-rose-400"}`} />
+            {bouquet.stock > 0 ? t("shopDetail.inStock") : t("shopDetail.soldOut")}
+          </span>
+        </div>
+      </div>
+    </motion.article>
   );
 }
 
-function ShopDetail() {
-  const { slug } = useParams();
-  const { data: shop, isLoading, isError } = useShop(slug);
-  const shopBouquets = useBouquets({ shopId: shop?.id });
+// ─── Navigation Pills ──────────────────────────────────────
+const sectionIds = ["bouquets", "about-shop", "reviews", "policies"] as const;
 
-  if (isLoading) {
-    return <ShopDetailSkeleton />;
-  }
-
-  if (isError || !shop) {
-    return <NotFound />;
-  }
-
-  const hasCoordinates = Boolean(shop.latitude && shop.longitude);
-  const mapUrl = hasCoordinates ? buildMapUrl(shop.latitude ?? "", shop.longitude ?? "") : null;
+function NavPills({
+  activeSection,
+  scrollToSection,
+  counts,
+}: {
+  activeSection: string;
+  scrollToSection: (id: string) => void;
+  counts: { bouquets: number; reviews: number };
+}) {
+  const { t } = useTranslation();
+  const items = [
+    { id: "bouquets", label: t("shopDetail.bouquets"), icon: <FaShoppingBag className="text-xs" />, value: counts.bouquets },
+    { id: "about-shop", label: t("shopDetail.about"), icon: <FaStore className="text-xs" />, value: null },
+    { id: "reviews", label: t("shopDetail.reviews"), icon: <FaStar className="text-xs" />, value: counts.reviews },
+    { id: "policies", label: t("shopDetail.info"), icon: <FaRegClock className="text-xs" />, value: null },
+  ];
 
   return (
-    <main className="min-h-screen bg-[#070102] text-[#fff6f4]">
-      <section className="relative px-4 pb-20 pt-28 sm:px-6 lg:px-10">
-        <div className="absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(circle_at_50%_0%,rgba(190,58,58,0.34),transparent_55%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(255,209,186,0.08),transparent_16%),radial-gradient(circle_at_88%_12%,rgba(255,115,144,0.10),transparent_18%)]" />
-        <div className="relative z-10 mx-auto max-w-7xl">
-          <Link
-            to="/#bouquets"
-            className="inline-flex items-center gap-2 rounded-full border border-[#6d3430] bg-[#170809]/80 px-4 py-2 text-sm font-semibold text-[#f5d6cd] transition hover:border-[#bd756c] hover:text-white"
+    <div className="flex flex-wrap gap-2 rounded-[1.6rem] border border-[#4a2020]/50 bg-[#120608]/80 p-1.5 backdrop-blur-xl">
+      {items.map((item) => {
+        const isActive = activeSection === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => scrollToSection(item.id)}
+            className={`relative flex items-center gap-2.5 rounded-[1.2rem] px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
+              isActive
+                ? "bg-gradient-to-r from-[#cb5c57] to-[#a3322e] text-white shadow-lg shadow-[#cb5c57]/20"
+                : "text-[#cfa89e] hover:text-white hover:bg-white/5"
+            }`}
           >
-            <HiArrowLeft />
-            Back to catalog
-          </Link>
+            {item.icon}
+            <span>{item.label}</span>
+            {item.value !== null && (
+              <span className={`ml-0.5 rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${
+                isActive ? "bg-white/20 text-white" : "bg-[#4a2020]/40 text-[#cfa89e]"
+              }`}>
+                {item.value}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-          <div className="mt-8 overflow-hidden rounded-[2.2rem] border border-[#63302d] bg-[#140708] shadow-[0_30px_90px_rgba(0,0,0,0.38)]">
-            <div className="relative min-h-[24rem]">
+// ─── Stat Card ────────────────────────────────────────────
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
+  return (
+    <motion.div
+      variants={itemVariants}
+      className="group rounded-[1.4rem] border border-[#4a2020]/40 bg-gradient-to-br from-[#1a0a0c] to-[#100608] p-5 transition-all duration-300 hover:border-[#cb5c57]/30 hover:shadow-[0_10px_40px_rgba(203,92,87,0.08)]"
+    >
+      <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
+        {icon}
+      </div>
+      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-xs font-medium uppercase tracking-[0.15em] text-[#a88680]">{label}</p>
+    </motion.div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────
+function ShopDetail() {
+  const { t } = useTranslation();
+  const [activeSection, setActiveSection] = useState("bouquets");
+  const { slug } = useParams();
+  const { data: shop, isLoading, isError } = useShop(slug);
+  const shopBouquetsQuery = useBouquets({ shopId: shop?.id });
+
+  // Intersection Observer for active section
+  useEffect(() => {
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((element): element is HTMLElement => Boolean(element));
+
+    if (!elements.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (visibleEntry?.target.id) {
+          setActiveSection(visibleEntry.target.id);
+        }
+      },
+      { rootMargin: "-20% 0px -50% 0px", threshold: [0.1, 0.3, 0.5] },
+    );
+
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [shop]);
+
+  const bouquets = useMemo(
+    () =>
+      [...(shopBouquetsQuery.data ?? [])].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ),
+    [shopBouquetsQuery.data],
+  );
+
+  if (isLoading) return <ShopDetailSkeleton />;
+  if (isError || !shop) return <NotFound />;
+
+  const hasCoordinates = Boolean(shop.latitude && shop.longitude);
+  const mapUrl = hasCoordinates ? buildMapUrl(shop.latitude!, shop.longitude!) : null;
+  const instagramUrl = shop.instagram ? normalizeInstagramLink(shop.instagram) : "";
+  const telegramUrl = shop.telegram ? normalizeTelegramLink(shop.telegram) : "";
+
+  const averagePrice = bouquets.length
+    ? formatPrice(
+        String(bouquets.reduce((acc, b) => acc + Number(b.price), 0) / bouquets.length),
+      )
+    : formatPrice("0");
+
+  const inStockCount = bouquets.filter((b) => b.stock > 0).length;
+  const topRatedCount = bouquets.filter((b) => Number(b.rating) >= 4.5).length;
+  const newBouquetsCount = bouquets.filter((b) => isNew(b.created_at)).length;
+  const minPrice = bouquets.length ? Math.min(...bouquets.map((b) => Number(b.price))) : 0;
+  const maxPrice = bouquets.length ? Math.max(...bouquets.map((b) => Number(b.price))) : 0;
+  const minPriceFormatted = formatPrice(String(minPrice));
+  const maxPriceFormatted = formatPrice(String(maxPrice));
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: shop.name, text: t("shopDetail.shareMessage", { name: shop.name }), url: shareUrl });
+        return;
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success(t("shopDetail.shopLinkCopied"));
+    } catch {
+      toast.error(t("shopDetail.couldNotShare"));
+    }
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    setActiveSection(sectionId);
+  };
+
+  return (
+    <main className="min-h-screen bg-[#070102] text-[#fff4f1]">
+      {/* Ambient background effects */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#cb5c57]/5 blur-[120px]" />
+        <div className="absolute -right-40 bottom-0 h-[400px] w-[400px] rounded-full bg-[#ff9b88]/3 blur-[100px]" />
+        <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#a3322e]/3 blur-[150px]" />
+      </div>
+
+      <div className="relative z-10">
+        {/* ─── HERO SECTION ─────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="relative overflow-hidden px-4 pb-8 pt-28 sm:px-6 lg:px-10"
+        >
+          <div className="mx-auto max-w-[1500px]">
+            {/* Back button */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              <Link
+                to="/#bouquets"
+                className="group inline-flex items-center gap-2 rounded-full border border-[#4a2020]/40 bg-[#120608]/60 px-4 py-2 text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
+              >
+                <HiOutlineArrowLeft className="transition-transform duration-300 group-hover:-translate-x-0.5" />
+                {t("shopDetail.backToShops")}
+              </Link>
+            </motion.div>
+
+            {/* Hero Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.15 }}
+              className="relative mt-6 overflow-hidden rounded-[2.4rem] border border-[#4a2020]/40 shadow-[0_30px_80px_rgba(0,0,0,0.4)]"
+            >
+              {/* Background Image */}
               <img
-                src={shop.banner ?? shop.logo ?? "https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=1400&q=80"}
+                src={shop.banner ?? shop.logo ?? "https://images.unsplash.com/photo-1519378058457-4c29a0a2efac?auto=format&fit=crop&w=1400&q=80"}
                 alt={shop.name}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,1,2,0.92),rgba(8,1,2,0.5),rgba(8,1,2,0.18))]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(255,215,186,0.16),transparent_22%),radial-gradient(circle_at_28%_80%,rgba(255,95,121,0.18),transparent_26%)]" />
-              <div className="relative flex min-h-[24rem] flex-col justify-end p-6 sm:p-10">
-                <div className="flex flex-wrap items-end gap-5">
-                  {shop.logo ? (
-                    <img
-                      src={shop.logo}
-                      alt={`${shop.name} logo`}
-                      className="h-24 w-24 rounded-[2rem] border border-white/25 object-cover shadow-[0_18px_40px_rgba(0,0,0,0.4)]"
-                    />
-                  ) : null}
-                  <div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="rounded-full bg-[#fff3e8] px-4 py-2 text-sm font-bold text-[#4f1513]">
-                        {shop.city ?? "Flower shop"}
-                      </span>
-                      <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/25 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
-                        <HiStar className="text-[#f3b55f]" />
-                        {shop.rating} ({shop.reviews_count})
-                      </span>
-                    </div>
-                    <h1 className="mt-4 font-cormorant text-5xl font-semibold leading-none text-white sm:text-7xl">
-                      {shop.name}
-                    </h1>
-                    <div className="mt-4 flex flex-wrap gap-3 text-sm text-[#f7ddd6]">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 backdrop-blur">
-                        <HiOutlineSparkles className="text-[#ffb7a8]" />
-                        Signature floral studio
-                      </span>
-                      <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-4 py-2 backdrop-blur">
-                        <HiOutlineGift className="text-[#ffb7a8]" />
-                        Same-day gifting ready
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <FloralFlourish className="mt-6 h-10 w-full max-w-[22rem] opacity-90" />
-              </div>
-            </div>
 
-            <div className="grid gap-6 p-5 sm:p-8 lg:grid-cols-[1fr_0.9fr]">
-              <div>
-                <p className="text-lg leading-9 text-[#dfc1ba]">
-                  {shop.description ?? "A local flower shop with curated bouquets and fresh seasonal arrangements."}
-                </p>
-                <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-[#5d2d29] bg-[linear-gradient(180deg,rgba(23,8,10,0.96),rgba(15,5,7,0.98))] p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[#a9857d]">Bouquets</p>
-                    <p className="mt-3 text-3xl font-semibold text-white">{shopBouquets.data?.length ?? 0}</p>
+              {/* Overlays */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0a0203] via-[#120608]/92 to-[#1a080a]/70" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0203] via-transparent to-transparent" />
+              <div className="absolute top-0 right-0 h-1/2 w-1/2 bg-gradient-to-bl from-[#cb5c57]/8 to-transparent" />
+
+              {/* Decorative floating elements */}
+              <div className="pointer-events-none absolute top-10 right-10 h-32 w-32 rounded-full border border-[#cb5c57]/10" />
+              <div className="pointer-events-none absolute bottom-20 left-1/4 h-20 w-20 rounded-full border border-[#ff9b88]/8" />
+
+              <div className="relative z-10 flex min-h-[26rem] flex-col justify-between gap-8 p-6 sm:p-8 lg:min-h-[32rem] lg:p-12">
+                {/* Top Row */}
+                <div className="flex flex-wrap items-start justify-between gap-5">
+                  <div className="flex items-start gap-5 sm:gap-7">
+                    {/* Logo */}
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5, delay: 0.3 }}
+                    >
+                      {shop.logo ? (
+                        <img
+                          src={shop.logo}
+                          alt={`${shop.name} logo`}
+                          className="h-28 w-28 rounded-[2rem] border-2 border-[#d9a86d]/60 object-cover shadow-[0_20px_50px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
+                        />
+                      ) : (
+                        <div className="flex h-28 w-28 items-center justify-center rounded-[2rem] border-2 border-[#d9a86d]/60 bg-gradient-to-br from-[#2b1012] to-[#1a0809] font-cormorant text-4xl font-bold text-[#f7d9a6] shadow-[0_20px_50px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36 sm:text-5xl">
+                          {shop.name.charAt(0)}
+                        </div>
+                      )}
+                    </motion.div>
+
+                    {/* Name & Info */}
+                    <div className="max-w-2xl pt-2">
+                      <div className="flex flex-wrap items-center gap-3.5">
+                        <motion.h1
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5, delay: 0.35 }}
+                          className="font-cormorant text-4xl font-bold leading-none text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)] sm:text-5xl lg:text-6xl xl:text-7xl"
+                        >
+                          {shop.name}
+                        </motion.h1>
+                      </div>
+
+                      {/* Rating, Location, Member Since */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.4 }}
+                        className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-sm sm:text-base"
+                      >
+                        <span className="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 backdrop-blur-sm">
+                          <FaStar className="text-amber-400" />
+                          <span className="font-bold text-white">{shop.rating}</span>
+                          <span className="text-[#cfa89e]">({shop.reviews_count} reviews)</span>
+                        </span>
+                        {shop.city && (
+                          <span className="inline-flex items-center gap-2 text-[#f0d2ca]">
+                            <HiOutlineMapPin className="text-[#f0a89a]" />
+                            {shop.city}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-2 text-[#f0d2ca]">
+                          <FaRegCalendarAlt className="text-[0.7rem] text-[#f0a89a]" />
+                          Member since {formatMemberSince(shop.created_at)}
+                        </span>
+                      </motion.div>
+
+                      {/* Description */}
+                      <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.45 }}
+                        className="mt-4 max-w-xl text-base leading-8 text-[#e8c9c1] drop-shadow-[0_6px_20px_rgba(0,0,0,0.35)]"
+                      >
+                        {shop.description ?? "A premium flower shop with fresh arrangements, thoughtful wrapping, and delivery-ready bouquets crafted for every occasion."}
+                      </motion.p>
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-[#5d2d29] bg-[linear-gradient(180deg,rgba(23,8,10,0.96),rgba(15,5,7,0.98))] p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[#a9857d]">Rating</p>
-                    <p className="mt-3 text-3xl font-semibold text-white">{shop.rating}</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#5d2d29] bg-[linear-gradient(180deg,rgba(23,8,10,0.96),rgba(15,5,7,0.98))] p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[#a9857d]">Reviews</p>
-                    <p className="mt-3 text-3xl font-semibold text-white">{shop.reviews_count}</p>
-                  </div>
+
+                  {/* Share Button */}
+                  <motion.button
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.5 }}
+                    type="button"
+                    onClick={handleShare}
+                    className="group inline-flex items-center gap-2.5 rounded-full border border-[#4a2020]/50 bg-black/30 px-5 py-2.5 text-sm font-medium text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
+                  >
+                    <FaShareAlt className="text-xs transition-transform duration-300 group-hover:scale-110" />
+                    Share
+                  </motion.button>
                 </div>
-                <div className="mt-6 flex flex-wrap gap-3">
+
+                {/* Action Buttons */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                  className="flex flex-wrap gap-3"
+                >
                   <a
                     href={`tel:${shop.phone}`}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-[#b86760] bg-[linear-gradient(180deg,rgba(46,14,16,0.96),rgba(28,8,10,0.98))] px-5 text-sm font-semibold text-[#fff0ec] transition hover:-translate-y-0.5 hover:border-[#e0a298]"
+                    className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-[#be2338] via-[#cf2b44] to-[#dd3752] px-7 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(199,44,69,0.28)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_20px_40px_rgba(199,44,69,0.35)] active:scale-[0.98]"
                   >
-                    <HiOutlinePhone className="text-[#ffb7a8]" />
-                    Call shop
+                    <FaPhoneAlt className="text-xs" />
+                    Call Shop
                   </a>
-                  {mapUrl ? (
+                  {telegramUrl && (
                     <a
-                      href={`https://maps.google.com/?q=${encodeURIComponent(shop.address)}`}
+                      href={telegramUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-[#5d2d29] bg-[#100607] px-5 text-sm font-semibold text-[#f3d4cc] transition hover:-translate-y-0.5 hover:border-[#bd756c]"
+                      className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-6 text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
                     >
-                      <HiOutlineMapPin className="text-[#ffb7a8]" />
-                      Open directions
+                      <FaTelegramPlane />
+                      Message
                     </a>
-                  ) : null}
-                </div>
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <a
-                    href={`tel:${shop.phone}`}
-                    className="rounded-2xl border border-[#5d2d29] bg-[#100607] p-4 transition hover:-translate-y-0.5 hover:border-[#bd756c]"
-                  >
-                    <HiOutlinePhone className="text-2xl text-[#ffad9f]" />
-                    <p className="mt-3 text-sm text-[#a9857d]">Phone</p>
-                    <p className="font-semibold text-white">{formatUzbekPhone(shop.phone)}</p>
-                  </a>
-                  <div className="rounded-2xl border border-[#5d2d29] bg-[#100607] p-4">
-                    <HiOutlineClock className="text-2xl text-[#ffad9f]" />
-                    <p className="mt-3 text-sm text-[#a9857d]">Working hours</p>
-                    <p className="font-semibold text-white">{shop.working_hours ?? "Contact shop"}</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#5d2d29] bg-[#100607] p-4 sm:col-span-2">
-                    <HiOutlineMapPin className="text-2xl text-[#ffad9f]" />
-                    <p className="mt-3 text-sm text-[#a9857d]">Address</p>
-                    <p className="font-semibold text-white">{shop.address}</p>
-                  </div>
-                  <a
-                    href={`mailto:${shop.owner.email}`}
-                    className="rounded-2xl border border-[#5d2d29] bg-[#100607] p-4 transition hover:border-[#bd756c] sm:col-span-2"
-                  >
-                    <HiOutlineEnvelope className="text-2xl text-[#ffad9f]" />
-                    <p className="mt-3 text-sm text-[#a9857d]">Owner</p>
-                    <p className="font-semibold text-white">
-                      {shop.owner.full_name} · {shop.owner.email}
-                    </p>
-                  </a>
-                </div>
+                  )}
+                  {!telegramUrl && instagramUrl && (
+                    <a
+                      href={instagramUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-6 text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
+                    >
+                      <FaInstagram />
+                      Instagram
+                    </a>
+                  )}
+                </motion.div>
               </div>
+            </motion.div>
 
-              <div className="overflow-hidden rounded-[1.8rem] border border-[#61302d] bg-[#100607]">
-                {mapUrl ? (
-                  <>
-                    <div className="flex items-center justify-between border-b border-[#61302d] px-4 py-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#a9857d]">Visit the boutique</p>
-                        <p className="mt-1 text-lg font-semibold text-white">{shop.address}</p>
-                      </div>
-                      <span className="rounded-full bg-[#1a090c] px-3 py-1 text-xs uppercase tracking-[0.16em] text-[#f0c4ba]">
-                        Open map
-                      </span>
-                    </div>
-                    <iframe
-                      title={`${shop.name} location map`}
-                      src={mapUrl}
-                      className="h-[27rem] w-full border-0 grayscale-[0.2] sepia-[0.12]"
-                      loading="lazy"
-                    />
-                  </>
+            {/* ─── STATS ROW ───────────────────────────── */}
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+            >
+              <StatCard
+                icon={<FaShoppingBag className="text-white" />}
+                label="Total Bouquets"
+                value={String(bouquets.length)}
+                color="bg-gradient-to-br from-[#cb5c57] to-[#a3322e]"
+              />
+              <StatCard
+                icon={<FaCheckCircle className="text-white" />}
+                label="In Stock"
+                value={String(inStockCount)}
+                color="bg-gradient-to-br from-emerald-500 to-teal-600"
+              />
+              <StatCard
+                icon={<FaStar className="text-white" />}
+                label="Top Rated"
+                value={String(topRatedCount)}
+                color="bg-gradient-to-br from-amber-500 to-orange-600"
+              />
+              <StatCard
+                icon={<FaLeaf className="text-white" />}
+                label="New Arrivals"
+                value={String(newBouquetsCount)}
+                color="bg-gradient-to-br from-rose-500 to-pink-600"
+              />
+              <StatCard
+                icon={<FaAward className="text-white" />}
+                label="Avg Price"
+                value={averagePrice}
+                color="bg-gradient-to-br from-violet-500 to-purple-600"
+              />
+              <StatCard
+                icon={<FaTruck className="text-white" />}
+                label="Delivery"
+                value={shop.city ?? "Available"}
+                color="bg-gradient-to-br from-sky-500 to-blue-600"
+              />
+            </motion.div>
+
+            {/* ─── NAV + SORT ─────────────────────────── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between"
+            >
+              <NavPills
+                activeSection={activeSection}
+                scrollToSection={scrollToSection}
+                counts={{ bouquets: bouquets.length, reviews: shop.reviews_count }}
+              />
+
+              <div className="inline-flex items-center gap-3 rounded-[1.4rem] border border-[#4a2020]/40 bg-[#120608]/70 px-5 py-3 text-sm backdrop-blur-md">
+                <span className="text-[#a88680]">Sort:</span>
+                <span className="flex items-center gap-2 font-semibold text-[#f5d0a4]">
+                  Newest
+                  <FaChevronDown className="text-[0.55rem] text-[#a88680]" />
+                </span>
+              </div>
+            </motion.div>
+
+            {/* ─── MAIN GRID: Bouquets + Sidebar ────────── */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+              className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]"
+            >
+              {/* Bouquets Grid */}
+              <div id="bouquets" className="scroll-mt-28">
+                {shopBouquetsQuery.isLoading ? (
+                  <ShopDetailSkeleton />
+                ) : bouquets.length ? (
+                  <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid gap-5 md:grid-cols-2"
+                  >
+                    {bouquets.map((bouquet) => (
+                      <BouquetCard key={bouquet.id} bouquet={bouquet} />
+                    ))}
+                  </motion.div>
                 ) : (
-                  <div className="flex h-[27rem] flex-col items-center justify-center p-8 text-center">
-                    <HiOutlineMapPin className="text-5xl text-[#ffad9f]" />
-                    <p className="mt-4 font-cormorant text-4xl text-white">Location coming soon</p>
-                    <p className="mt-3 leading-7 text-[#caa9a1]">{shop.address}</p>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[#4a2020]/50 bg-[#120608]/60 p-16 text-center"
+                  >
+                    <FaShoppingBag className="text-5xl text-[#4a2020]/50 mb-4" />
+                    <p className="font-cormorant text-3xl text-white">No Bouquets Yet</p>
+                    <p className="mt-2 text-sm text-[#a88680]">This shop hasn't added any bouquets</p>
+                  </motion.div>
                 )}
               </div>
-            </div>
-          </div>
 
-          <section className="mt-10">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-[#b58e86]">Shop collection</p>
-                <h2 className="mt-2 font-cormorant text-5xl text-white">Bouquets by {shop.name}</h2>
-                <p className="mt-3 max-w-2xl text-[#caa9a1]">Curated arrangements with a stronger visual hierarchy, faster scanning, and a softer luxury feel for the customer.</p>
-              </div>
-              <p className="text-[#caa9a1]">{shopBouquets.data?.length ?? 0} bouquets available</p>
-            </div>
-
-            <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {(shopBouquets.data ?? []).map((bouquet) => (
-                <Link
-                  key={bouquet.id}
-                  to={`/bouquets/${bouquet.id}`}
-                  className="group overflow-hidden rounded-[1.8rem] border border-[#5d2d29] bg-[#140708] transition hover:-translate-y-1 hover:border-[#bd756c] hover:shadow-[0_22px_48px_rgba(0,0,0,0.28)]"
+              {/* ─── SIDEBAR ─────────────────────────────── */}
+              <aside className="space-y-5">
+                {/* About Shop */}
+                <motion.div
+                  id="about-shop"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5 }}
+                  className="scroll-mt-28 overflow-hidden rounded-[2rem] border border-[#4a2020]/40 bg-gradient-to-b from-[#1a0a0c] to-[#100608] shadow-lg"
                 >
-                  <div className="relative">
-                    <img
-                      src={bouquet.image}
-                      alt={bouquet.name}
-                      className="h-72 w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#140708] to-transparent" />
-                    <span className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/25 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white backdrop-blur">
-                      {bouquet.category?.name ?? "Bouquet"}
-                    </span>
-                  </div>
-                  <div className="p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <h3 className="font-cormorant text-3xl leading-none text-white">{bouquet.name}</h3>
-                      <span className="rounded-full bg-[#fff3e8] px-3 py-1 text-sm font-bold text-[#4f1513]">
-                        {formatPrice(bouquet.price)}
+                  <div className="p-6 sm:p-7">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57] to-[#a3322e]">
+                        <FaStore className="text-xs text-white" />
                       </span>
+                      <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">About</span>
                     </div>
-                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#caa9a1]">
-                      {bouquet.description ?? bouquet.compound ?? "Fresh flower arrangement"}
+                    <h2 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">{shop.name}</h2>
+                    <p className="mt-4 text-sm leading-7 text-[#dbb8b0]">
+                      {shop.description ?? "Fresh flowers, polished wrapping, and dependable service tailored for thoughtful gifting."}
                     </p>
+
+                    {/* Contact Info */}
+                    <div className="mt-6 space-y-3 border-t border-[#4a2020]/30 pt-5">
+                      {shop.phone && (
+                        <a href={`tel:${shop.phone}`} className="flex items-center gap-3 rounded-xl bg-[#120608] px-4 py-3 text-sm text-[#dbb8b0] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57]/20 to-[#a3322e]/20 text-[#cb5c57] group-hover:scale-110 transition-transform duration-200">
+                            <FaPhoneAlt className="text-[0.65rem]" />
+                          </span>
+                          <div>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">Phone</p>
+                            <p className="font-medium text-white">{formatUzbekPhone(shop.phone)}</p>
+                          </div>
+                        </a>
+                      )}
+                      {instagramUrl && (
+                        <a href={instagramUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl bg-[#120608] px-4 py-3 text-sm text-[#dbb8b0] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500/20 to-rose-500/20 text-pink-400 group-hover:scale-110 transition-transform duration-200">
+                            <FaInstagram className="text-[0.65rem]" />
+                          </span>
+                          <div>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">Instagram</p>
+                            <p className="font-medium text-white">{shop.instagram}</p>
+                          </div>
+                        </a>
+                      )}
+                      {telegramUrl && (
+                        <a href={telegramUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl bg-[#120608] px-4 py-3 text-sm text-[#dbb8b0] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500/20 to-blue-500/20 text-sky-400 group-hover:scale-110 transition-transform duration-200">
+                            <FaTelegramPlane className="text-[0.65rem]" />
+                          </span>
+                          <div>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">Telegram</p>
+                            <p className="font-medium text-white">{shop.telegram}</p>
+                          </div>
+                        </a>
+                      )}
+                      {shop.address && (
+                        <div className="flex items-start gap-3 rounded-xl bg-[#120608] px-4 py-3 text-sm text-[#dbb8b0]">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400">
+                            <FaMapMarkerAlt className="text-[0.65rem]" />
+                          </span>
+                          <div>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">Address</p>
+                            <p className="font-medium text-white">{shop.address}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Features */}
+                    <div className="mt-6 grid gap-3 border-t border-[#4a2020]/30 pt-5 sm:grid-cols-2">
+                      <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-4 transition-all duration-200 hover:border-emerald-500/20 hover:bg-[#120608]">
+                        <div className="flex items-center gap-2.5 text-emerald-400">
+                          <FaTruck className="text-sm" />
+                          <p className="text-sm font-semibold text-white">Same-day Delivery</p>
+                        </div>
+                        <p className="mt-2 text-xs text-[#a88680]">Order before 5 PM</p>
+                      </div>
+                      <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-4 transition-all duration-200 hover:border-amber-500/20 hover:bg-[#120608]">
+                        <div className="flex items-center gap-2.5 text-amber-400">
+                          <FaLeaf className="text-sm" />
+                          <p className="text-sm font-semibold text-white">Fresh Flowers</p>
+                        </div>
+                        <p className="mt-2 text-xs text-[#a88680]">Curated daily selection</p>
+                      </div>
+                    </div>
                   </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        </div>
-      </section>
+                </motion.div>
+
+                {/* Shop Information / Policies */}
+                <motion.div
+                  id="policies"
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="scroll-mt-28 overflow-hidden rounded-[2rem] border border-[#4a2020]/40 bg-gradient-to-b from-[#1a0a0c] to-[#100608] shadow-lg"
+                >
+                  <div className="p-6 sm:p-7">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
+                        <FaRegClock className="text-xs text-white" />
+                      </span>
+                      <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">Information</span>
+                    </div>
+                    <h3 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">Shop Details</h3>
+
+                    <div className="mt-6 space-y-4">
+                      {[
+                        { label: "Total Products", value: String(bouquets.length), color: "from-[#cb5c57] to-[#a3322e]" },
+                        { label: "Available Now", value: String(inStockCount), color: "from-emerald-500 to-teal-600" },
+                        { label: "Price Range", value: `${minPriceFormatted} — ${maxPriceFormatted}`, color: "from-violet-500 to-purple-600" },
+                        { label: "Average Price", value: averagePrice, color: "from-amber-500 to-orange-600" },
+                        { label: "Top Rated (4.5★)", value: String(topRatedCount), color: "from-rose-500 to-pink-600" },
+                        { label: "New This Week", value: String(newBouquetsCount), color: "from-sky-500 to-blue-600" },
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          className="flex items-center justify-between gap-3 rounded-xl bg-[#120608] px-4 py-3 transition-all duration-200 hover:bg-[#1a0a0c]"
+                        >
+                          <span className="text-sm text-[#dbb8b0]">{item.label}</span>
+                          <div className="flex items-center gap-2.5">
+                            <span className={`h-1.5 w-1.5 rounded-full bg-gradient-to-r ${item.color}`} />
+                            <span className="text-sm font-bold text-white">{item.value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {shop.working_hours && (
+                      <div className="mt-5 border-t border-[#4a2020]/30 pt-5">
+                        <div className="flex items-center gap-2.5 text-sm text-[#dbb8b0]">
+                          <HiOutlineClock className="text-[#f0a89a]" />
+                          <span className="font-semibold text-white">Working Hours:</span>
+                          <span>{shop.working_hours}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+
+                {/* Map */}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="overflow-hidden rounded-[2rem] border border-[#4a2020]/40 bg-[#100608] shadow-lg"
+                >
+                  {mapUrl ? (
+                    <>
+                      <div className="border-b border-[#4a2020]/30 px-6 py-4">
+                        <p className="text-[0.55rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">Location</p>
+                        <p className="mt-1.5 font-semibold text-white">{shop.address}</p>
+                      </div>
+                      <iframe
+                        title={`${shop.name} location`}
+                        src={mapUrl}
+                        className="h-[20rem] w-full border-0 sepia-[0.12] grayscale-[0.1]"
+                        loading="lazy"
+                      />
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center px-8 py-16 text-center">
+                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4a2020] to-[#2b1012]">
+                        <FaMapMarkerAlt className="text-2xl text-[#a88680]" />
+                      </div>
+                      <p className="font-cormorant text-2xl font-bold text-white">Location Coming Soon</p>
+                      <p className="mt-2 text-sm text-[#a88680]">This shop hasn't set their location yet</p>
+                    </div>
+                  )}
+                </motion.div>
+              </aside>
+            </motion.div>
+          </div>
+        </motion.section>
+      </div>
     </main>
   );
 }
