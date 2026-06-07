@@ -10,6 +10,7 @@ import Favorites from "./pages/catalog/Favorites";
 import BouquetReviews from "./pages/catalog/BouquetReviews";
 import Cart from "./pages/catalog/Cart";
 import DeliveryCheckout from "./pages/catalog/DeliveryCheckout";
+import Shops from "./pages/catalog/Shops";
 import ShopDetail from "./pages/catalog/ShopDetail";
 import Admin from "./pages/admin/Admin";
 import HelloAdmin from "./pages/admin/Helloadmin";
@@ -21,6 +22,7 @@ import Home from "./pages/home/Home";
 import Login from "./pages/login/Login";
 import Register from "./pages/login/Register";
 import OwnerDashboard from "./pages/owner/OwnerDashboard";
+import OwnerBouquetEditor from "./pages/owner/OwnerBouquetEditor";
 import OwnerLayout from "./pages/owner/OwnerLayout";
 import OwnerBouquets from "./pages/owner/OwnerBouquets";
 import OwnerOrders from "./pages/owner/OwnerOrders";
@@ -47,6 +49,7 @@ function App() {
           <Route path="/bouquets" element={<BouquetCatalog />} />
           <Route path="/bouquets/:bouquetId" element={<BouquetDetail />} />
           <Route path="/bouquets/:bouquetId/reviews" element={<BouquetReviews />} />
+          <Route path="/shops" element={<Shops />} />
           <Route path="/shops/:slug" element={<ShopDetail />} />
           <Route
             path="/cart"
@@ -88,6 +91,8 @@ function App() {
           <Route path="dashboard" element={<OwnerDashboard />} />
           <Route path="shop" element={<OwnerShop />} />
           <Route path="bouquets" element={<OwnerBouquets />} />
+          <Route path="bouquets/create" element={<OwnerBouquetEditor />} />
+          <Route path="bouquets/:bouquetId/edit" element={<OwnerBouquetEditor />} />
           <Route path="orders" element={<OwnerOrders />} />
           <Route path="reviews" element={<OwnerReviews />} />
           <Route path="*" element={<NotFound />} />

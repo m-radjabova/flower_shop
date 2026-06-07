@@ -37,7 +37,7 @@ function Footer() {
     {
       icon: HiOutlineMapPin,
       label: t("contact.visitStudio"),
-      value: "Tashkent, Uzbekistan",
+      value: t("contact.serviceArea"),
       href: "#",
     },
     {

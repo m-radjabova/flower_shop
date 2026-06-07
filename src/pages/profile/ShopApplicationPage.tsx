@@ -15,10 +15,20 @@ import {
 } from "react-icons/hi2";
 import useContextPro from "../../hooks/useContextPro";
 import { useCreateShopApplication, useMyLatestShopApplication, useUploadImage } from "../../hooks/useCatalog";
+import {
+  CITY_MAP_ZOOM,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  DETAIL_MAP_ZOOM,
+  getGeolocationErrorReason,
+  getCurrentUserCoordinates,
+  normalizeCoordinates,
+  reverseGeocode,
+  searchLocations,
+  type SearchLocationResult,
+} from "../../utils/location";
 import { getPrimaryRole } from "../../utils/roles";
 import { normalizeInstagramValue, normalizeTelegramValue } from "../../utils/social";
-
-const TASHKENT_COORDS: [number, number] = [41.3111, 69.2797];
 
 declare global {
   interface Window {
@@ -41,12 +51,7 @@ type LeafletMap = {
 type LeafletMarker = {
   addTo: (map: LeafletMap) => LeafletMarker;
   setLatLng: (latlng: [number, number]) => void;
-};
-
-type SearchLocationResult = {
-  display_name: string;
-  lat: string;
-  lon: string;
+  remove?: () => void;
 };
 
 type ShopApplicationFormValues = {
@@ -108,6 +113,7 @@ function ShopApplicationPage() {
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<LeafletMap | null>(null);
+  const leafletMarkerRef = useRef<LeafletMarker | null>(null);
   const [uploadingField, setUploadingField] = useState<"logo" | "banner" | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [isResolvingAddress, setIsResolvingAddress] = useState(false);
@@ -149,17 +155,28 @@ function ShopApplicationPage() {
   const isOwner = primaryRole === "owner";
   const canSubmitApplication = primaryRole === "customer";
 
+  const ensureLeafletMarker = useCallback((coords: [number, number]) => {
+    if (leafletMarkerRef.current || !leafletMapRef.current || !window.L) return;
+
+    leafletMarkerRef.current = window.L.marker(coords, {
+      icon: window.L.icon({
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      }),
+    }).addTo(leafletMapRef.current);
+  }, []);
+
   const applyLocationSelection = useCallback(async (nextLatitude: number, nextLongitude: number, fallbackAddress?: string) => {
-    const coords: [number, number] = [Number(nextLatitude.toFixed(6)), Number(nextLongitude.toFixed(6))];
+    const coords = normalizeCoordinates(nextLatitude, nextLongitude);
+    ensureLeafletMarker(coords);
     form.setValue("latitude", coords[0], { shouldDirty: true });
     form.setValue("longitude", coords[1], { shouldDirty: true });
     setIsResolvingAddress(true);
 
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords[0]}&lon=${coords[1]}`);
-      const data = (await res.json()) as { display_name?: string; address?: { city?: string; town?: string; village?: string } };
-      form.setValue("address", data.display_name || fallbackAddress || `${coords[0]}, ${coords[1]}`, { shouldDirty: true, shouldValidate: true });
-      const city = data.address?.city ?? data.address?.town ?? data.address?.village ?? "";
+      const data = await reverseGeocode(coords[0], coords[1]);
+      form.setValue("address", data.displayName || fallbackAddress || `${coords[0]}, ${coords[1]}`, { shouldDirty: true, shouldValidate: true });
+      const city = data.city;
       if (city) {
         form.setValue("city", city, { shouldDirty: true });
       }
@@ -169,7 +186,7 @@ function ShopApplicationPage() {
     } finally {
       setIsResolvingAddress(false);
     }
-  }, [form]);
+  }, [ensureLeafletMarker, form]);
 
   useEffect(() => {
     if (!mapOpen || !mapHostRef.current) return;
@@ -181,24 +198,25 @@ function ShopApplicationPage() {
       .then(() => {
         if (cancelled || !window.L || !mapHostRef.current) return;
 
-        const initial: [number, number] = [
-          latitude ?? TASHKENT_COORDS[0],
-          longitude ?? TASHKENT_COORDS[1],
-        ];
+        const hasSelectedCoordinates = latitude !== null && longitude !== null;
+        const initial: [number, number] = hasSelectedCoordinates
+          ? [latitude, longitude]
+          : DEFAULT_MAP_CENTER;
 
-        const map = window.L.map(mapHostRef.current).setView(initial, 13);
+        const map = window.L.map(mapHostRef.current).setView(initial, hasSelectedCoordinates ? CITY_MAP_ZOOM : DEFAULT_MAP_ZOOM);
         window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(map);
 
-        const marker = window.L.marker(initial, {
-          icon: window.L.icon({
-            iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-            shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-          }),
-        }).addTo(map);
-
         leafletMapRef.current = map;
+        leafletMarkerRef.current = hasSelectedCoordinates
+          ? window.L.marker(initial, {
+            icon: window.L.icon({
+              iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+              shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            }),
+          }).addTo(map)
+          : null;
 
         requestAnimationFrame(() => {
           map.invalidateSize({ pan: false, animate: false });
@@ -212,9 +230,18 @@ function ShopApplicationPage() {
         }
 
         map.on("click", async ({ latlng }) => {
-          const coords: [number, number] = [Number(latlng.lat.toFixed(6)), Number(latlng.lng.toFixed(6))];
-          marker.setLatLng(coords);
-          map.setView(coords, 15);
+          const coords = normalizeCoordinates(latlng.lat, latlng.lng);
+          if (!leafletMarkerRef.current && window.L) {
+            leafletMarkerRef.current = window.L.marker(coords, {
+              icon: window.L.icon({
+                iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+                shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+              }),
+            }).addTo(map);
+          } else {
+            leafletMarkerRef.current?.setLatLng(coords);
+          }
+          map.setView(coords, DETAIL_MAP_ZOOM);
           void applyLocationSelection(coords[0], coords[1]);
         });
       })
@@ -225,10 +252,30 @@ function ShopApplicationPage() {
     return () => {
       cancelled = true;
       resizeObserver?.disconnect();
+      leafletMarkerRef.current?.remove?.();
+      leafletMarkerRef.current = null;
       leafletMapRef.current?.remove();
       leafletMapRef.current = null;
     };
   }, [applyLocationSelection, latitude, longitude, mapOpen]);
+
+  useEffect(() => {
+    if (!mapOpen || latitude === null || longitude === null) return;
+
+    const coords: [number, number] = [latitude, longitude];
+    leafletMapRef.current?.setView(coords, DETAIL_MAP_ZOOM);
+    if (!leafletMarkerRef.current && leafletMapRef.current && window.L) {
+      leafletMarkerRef.current = window.L.marker(coords, {
+        icon: window.L.icon({
+          iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+          shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        }),
+      }).addTo(leafletMapRef.current);
+      return;
+    }
+
+    leafletMarkerRef.current?.setLatLng(coords);
+  }, [latitude, longitude, mapOpen]);
 
   const handleImageUpload = async (field: "logo" | "banner", event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -285,8 +332,7 @@ function ShopApplicationPage() {
 
     try {
       setIsSearchingLocation(true);
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(locationQuery.trim())}&limit=5`);
-      const data = (await res.json()) as SearchLocationResult[];
+      const data = await searchLocations(locationQuery.trim());
       setLocationResults(data);
       if (!data.length) {
         toast.error("Mos location topilmadi");
@@ -306,22 +352,22 @@ function ShopApplicationPage() {
 
     try {
       setIsLocatingUser(true);
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        });
-      });
-
-      const coords: [number, number] = [
-        Number(position.coords.latitude.toFixed(6)),
-        Number(position.coords.longitude.toFixed(6)),
-      ];
-      leafletMapRef.current?.setView(coords, 15);
+      const coords = await getCurrentUserCoordinates();
+      leafletMapRef.current?.setView(coords, DETAIL_MAP_ZOOM);
+      ensureLeafletMarker(coords);
+      leafletMarkerRef.current?.setLatLng(coords);
       await applyLocationSelection(coords[0], coords[1], "Current location");
-    } catch {
-      toast.error("Hozirgi joylashuvni olib bo'lmadi");
+    } catch (error) {
+      const reason = getGeolocationErrorReason(error);
+      if (reason === "permission_denied") {
+        toast.error("Joylashuv uchun ruxsat berilmagan");
+      } else if (reason === "timeout") {
+        toast.error("Joylashuvni aniqlash vaqti tugadi. Internet yoki GPS signalni tekshiring");
+      } else if (reason === "position_unavailable") {
+        toast.error("Joylashuv hozircha aniqlanmadi. GPS yoki tarmoq signalini tekshiring");
+      } else {
+        toast.error("Hozirgi joylashuvni olib bo'lmadi");
+      }
     } finally {
       setIsLocatingUser(false);
     }
@@ -440,7 +486,7 @@ function ShopApplicationPage() {
                 <input
                   {...form.register("shop_name", { required: true })}
                   className="h-12 w-full rounded-2xl border border-[#4a1d22] bg-[#180709] px-4 text-white outline-none"
-                  placeholder="Bloom House Tashkent"
+                  placeholder="Bloom House"
                 />
               </label>
               <label className="block">
@@ -464,7 +510,7 @@ function ShopApplicationPage() {
                 <input
                   {...form.register("city")}
                   className="h-12 w-full rounded-2xl border border-[#4a1d22] bg-[#180709] px-4 text-white outline-none"
-                  placeholder="Tashkent"
+                  placeholder="City"
                 />
               </label>
             </div>
@@ -669,7 +715,9 @@ function ShopApplicationPage() {
                     type="button"
                     onClick={() => {
                       const coords: [number, number] = [Number(result.lat), Number(result.lon)];
-                      leafletMapRef.current?.setView(coords, 15);
+                      leafletMapRef.current?.setView(coords, DETAIL_MAP_ZOOM);
+                      ensureLeafletMarker(coords);
+                      leafletMarkerRef.current?.setLatLng(coords);
                       void applyLocationSelection(coords[0], coords[1], result.display_name);
                       setLocationResults([]);
                       setLocationQuery(result.display_name);

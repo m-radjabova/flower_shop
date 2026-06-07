@@ -5,6 +5,8 @@ import { useAdminShops, useUpdateShop } from "../../../hooks/useCatalog";
 import AdminSearchPanel from "../components/AdminSearchPanel";
 import { useDebounce } from "../../../hooks/useDebounce";
 import bow from "../../../assets/bow.png";
+import ShopFeatureBadges from "../../../components/shops/ShopFeatureBadges";
+import ShopVerifiedBadge from "../../../components/shops/ShopVerifiedBadge";
 
 const statusTone: Record<"pending" | "active" | "blocked", string> = {
   pending: "border-[#7f5a3b] bg-[#2a160b] text-[#f2c98d]",
@@ -44,6 +46,32 @@ function AdminShops() {
       toast.success(`Shop status updated to ${status}`);
     } catch {
       toast.error("Shop statusni yangilab bo'lmadi");
+    } finally {
+      setSubmittingStatus((prev) => ({ ...prev, [shopId]: false }));
+    }
+  };
+
+  const handleVerificationChange = async (shopId: string, isVerified: boolean) => {
+    if (submittingStatus[shopId]) return;
+    try {
+      setSubmittingStatus((prev) => ({ ...prev, [shopId]: true }));
+      await updateShopMutation.mutateAsync({ shopId, payload: { is_verified: isVerified } });
+      toast.success(isVerified ? "Shop verified" : "Verification removed");
+    } catch {
+      toast.error("Verification yangilanmadi");
+    } finally {
+      setSubmittingStatus((prev) => ({ ...prev, [shopId]: false }));
+    }
+  };
+
+  const handlePremiumChange = async (shopId: string, isPremium: boolean) => {
+    if (submittingStatus[shopId]) return;
+    try {
+      setSubmittingStatus((prev) => ({ ...prev, [shopId]: true }));
+      await updateShopMutation.mutateAsync({ shopId, payload: { is_premium: isPremium } });
+      toast.success(isPremium ? "Premium enabled" : "Premium removed");
+    } catch {
+      toast.error("Premium holati yangilanmadi");
     } finally {
       setSubmittingStatus((prev) => ({ ...prev, [shopId]: false }));
     }
@@ -126,7 +154,11 @@ function AdminShops() {
                     <HiOutlineBuildingStorefront />
                   </div>
                   <div>
-                    <h2 className="font-cormorant text-3xl text-white">{shop.name}</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="font-cormorant text-3xl text-white">{shop.name}</h2>
+                      {shop.is_verified ? <ShopVerifiedBadge /> : null}
+                    </div>
+                    <ShopFeatureBadges shop={shop} className="mt-2" />
                     <p className="text-sm text-[#d8b1aa]">{shop.owner.full_name}</p>
                   </div>
                 </div>
@@ -185,6 +217,30 @@ function AdminShops() {
                     {submittingStatus[shop.id] ? "Saving..." : "Back to Pending"}
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => handleVerificationChange(shop.id, !shop.is_verified)}
+                  disabled={Boolean(submittingStatus[shop.id])}
+                  className={`inline-flex h-11 items-center justify-center rounded-full border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    shop.is_verified
+                      ? "border-[#3f6fb2] bg-[#10213b] text-[#c5ddff] hover:border-[#5f92dc]"
+                      : "border-[#3d4f73] bg-[#101722] text-[#d3e2ff] hover:border-[#5b79ac]"
+                  }`}
+                >
+                  {shop.is_verified ? "Remove Verify" : "Verify Shop"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePremiumChange(shop.id, !shop.is_premium)}
+                  disabled={Boolean(submittingStatus[shop.id])}
+                  className={`inline-flex h-11 items-center justify-center rounded-full border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    shop.is_premium
+                      ? "border-[#58bfe7] bg-[#0d2230] text-[#cdefff] hover:border-[#7fd9ff]"
+                      : "border-[#38556a] bg-[#0d161f] text-[#d2e6f5] hover:border-[#5b86a5]"
+                  }`}
+                >
+                  {shop.is_premium ? "Remove Premium" : "Make Premium"}
+                </button>
               </div>
             </article>
           ))}

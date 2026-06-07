@@ -33,22 +33,21 @@ function Hero() {
   // ── Falling petals ──
   useEffect(() => {
     const interval = setInterval(() => {
-      setPetals((prev) => [
-        ...prev,
-        {
+      setPetals((prev) => {
+        const nextPetal = {
           id: Date.now() + Math.random(),
           x: Math.random() * 100,
           delay: 0,
           icon: FLOWER_ICONS[Math.floor(Math.random() * FLOWER_ICONS.length)],
           size: 14 + Math.random() * 18,
-        },
-      ]);
-      if (petals.length > 10) {
-        setPetals((prev) => prev.slice(-10));
-      }
+        };
+
+        return [...prev, nextPetal].slice(-10);
+      });
     }, 1800);
+
     return () => clearInterval(interval);
-  }, [petals.length]);
+  }, []);
 
   // ── Container variants ──
   const containerVariants = {
@@ -82,8 +81,7 @@ function Hero() {
           backgroundSize: "80px 80px",
         }}
       />
-
-      {/* ── Hero decorations only ── */}
+{/* ── Hero decorations only ── */}
       <div className="pointer-events-none absolute inset-x-0 top-24 bottom-0 z-0 overflow-hidden sm:top-28 lg:top-32">
         {/* ── Floating particles ── */}
         {PARTICLES.map((p) => (
@@ -160,8 +158,7 @@ function Hero() {
         <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-16 w-[1px] bg-gradient-to-t from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:right-12" />
         <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-[1px] w-16 bg-gradient-to-l from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:right-12" />
       </div>
-
-      {/* ── Main content ── */}
+{/* ── Main content ── */}
       <motion.div
         style={{ y: textY, opacity }}
         className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 pb-16 pt-28 sm:px-6 sm:pt-32 lg:px-10 lg:pb-20 lg:pt-36"
@@ -224,8 +221,7 @@ function Hero() {
                 </linearGradient>
               </defs>
             </motion.svg>
-
-            <motion.h1
+<motion.h1
               className="font-great-vibes relative mt-5 text-[4.4rem] font-normal leading-[0.88] text-[#d8263f] drop-shadow-[0_16px_48px_rgba(0,0,0,0.5)] sm:text-[6.4rem] lg:text-[7.6rem]"
               whileHover={{ scale: 1.008 }}
               transition={{ type: "spring", stiffness: 200, damping: 15 }}
@@ -304,8 +300,7 @@ function Hero() {
               </defs>
             </motion.svg>
           </motion.div>
-
-          {/* ── CTA Buttons ── */}
+{/* ── CTA Buttons ── */}
           <motion.div
             variants={itemVariants}
             className="mt-12 flex flex-col justify-center gap-5 sm:flex-row"
@@ -349,7 +344,7 @@ function Hero() {
               whileTap={{ scale: 0.97 }}
             >
               <Link
-                to="/#bouquets"
+                to="/shops"
                 className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#dab56f]/30 bg-[#0c0304]/60 px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#ead6c7] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#efc77e]/60 hover:bg-[#270a0c]/70 hover:shadow-[0_18px_34px_rgba(217,181,111,0.12)] active:translate-y-0"
               >
                 <motion.span
@@ -376,7 +371,8 @@ function Hero() {
             </motion.div>
           </motion.div>
 
-          {/* ── Scroll indicator ── */}
+
+{/* ── Scroll indicator ── */}
           <motion.div
             variants={itemVariants}
             className="mt-16 flex flex-col items-center gap-2"

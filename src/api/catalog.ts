@@ -101,6 +101,11 @@ export async function getShop(slug: string) {
   return data;
 }
 
+export async function getShops() {
+  const { data } = await apiClient.get<Shop[]>("/shops");
+  return data;
+}
+
 export async function getAdminShops() {
   const { data } = await apiClient.get<Shop[]>("/shops", {
     params: { include_inactive: true },

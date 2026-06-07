@@ -24,6 +24,7 @@ interface PasswordFormState {
 
 interface SettingsTabProps {
   accountForm: UseFormReturn<AccountFormState>;
+  canManageAddresses?: boolean;
   onAccountSave: () => void;
   onManageAddresses: () => void;
   onPasswordSave: () => void;
@@ -34,6 +35,7 @@ interface SettingsTabProps {
 
 function SettingsTab({
   accountForm,
+  canManageAddresses = true,
   onAccountSave,
   onManageAddresses,
   onPasswordSave,
@@ -41,7 +43,7 @@ function SettingsTab({
   passwordForm,
   profileCompletion,
 }: SettingsTabProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(undefined, { keyPrefix: "profile" });
   const accountRegister = accountForm.register;
   const passwordRegister = passwordForm.register;
 
@@ -62,13 +64,15 @@ function SettingsTab({
               <p className="mt-1 text-2xl font-semibold text-white">{profileCompletion}%</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onManageAddresses}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2a0f12] px-5 font-semibold text-[#f3d6d0] transition hover:bg-[#381419]"
-          >
-            {t("manageAddresses")}
-          </button>
+          {canManageAddresses ? (
+            <button
+              type="button"
+              onClick={onManageAddresses}
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-[#2a0f12] px-5 font-semibold text-[#f3d6d0] transition hover:bg-[#381419]"
+            >
+              {t("manageAddresses")}
+            </button>
+          ) : null}
         </div>
       </div>
 

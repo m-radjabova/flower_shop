@@ -27,9 +27,17 @@ import {
   useSetPrimaryAddress,
   useUpdateAddress,
 } from "../../hooks/useCatalog";
+import { useMyImportantDates } from "../../hooks/useImportantDates";
 import type { Bouquet, OrderOut } from "../../types/catalog";
 import { formatPrice } from "../../utils/catalog";
 import { addToCart } from "../../utils/cart";
+import {
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  DETAIL_MAP_ZOOM,
+  normalizeCoordinates,
+  reverseGeocode,
+} from "../../utils/location";
 import { hasAnyRole } from "../../utils/roles";
 import {
   clearPreferredCheckoutAddress,
@@ -45,11 +53,10 @@ import {
 import AddressesTab from "./components/AddressesTab";
 import FavoritesTab from "./components/FavoritesTab";
 import OrdersTab from "./components/OrdersTab";
+import ImportantDatesPanel, { UpcomingImportantDatesCard } from "./components/ImportantDatesPanel";
 import { getOrderStatusMeta, getRepeatOrderAvailability, getTabs, type ProfileTab } from "./components/profileHelpers";
 import SettingsTab from "./components/SettingsTab";
 import { HiGift } from "react-icons/hi2";
-
-const TASHKENT_COORDS: [number, number] = [41.3111, 69.2797];
 
 declare global {
   interface Window {
@@ -72,6 +79,7 @@ type LeafletMap = {
 type LeafletMarker = {
   addTo: (map: LeafletMap) => LeafletMarker;
   setLatLng: (latlng: [number, number]) => void;
+  remove?: () => void;
 };
 
 type AccountFormValues = {
@@ -160,6 +168,7 @@ function buildRepeatBouquet(order: OrderOut, item: OrderOut["items"][number]): B
       telegram: null,
       rating: "0",
       reviews_count: 0,
+      is_verified: false,
       status: "active",
     },
     category: null,
@@ -175,19 +184,27 @@ function Profile() {
     dispatch,
     logout,
   } = useContextPro();
+  const isOwnerAccount = hasAnyRole(user, ["owner"]);
+  const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
+  const shouldLoadProfileDashboard = !isOwnerAccount && activeTab === "profile";
+  const shouldLoadOrders = !isOwnerAccount && (activeTab === "profile" || activeTab === "orders");
+  const shouldLoadAddresses = !isOwnerAccount && activeTab === "addresses";
+  const shouldLoadImportantDates = !isOwnerAccount && (activeTab === "profile" || activeTab === "settings");
+  const shouldLoadReviews = !isOwnerAccount && activeTab === "profile";
+  const shouldLoadReferral = !isOwnerAccount && activeTab === "profile";
+  const shouldLoadLatestShopApplication = !isOwnerAccount;
 
-  const ordersQuery = useMyOrders();
-  const addressesQuery = useMyAddresses();
-  const myReviewsQuery = useMyReviews();
-  const referralQuery = useMyReferralSummary();
+  const ordersQuery = useMyOrders({ enabled: shouldLoadOrders });
+  const addressesQuery = useMyAddresses({ enabled: shouldLoadAddresses });
+  const importantDatesQuery = useMyImportantDates({ enabled: shouldLoadImportantDates });
+  const myReviewsQuery = useMyReviews({ enabled: shouldLoadReviews });
+  const referralQuery = useMyReferralSummary({ enabled: shouldLoadReferral });
   const favoriteItems = useFavoriteItems();
   const createAddressMutation = useCreateAddress();
   const updateAddressMutation = useUpdateAddress();
   const deleteAddressMutation = useDeleteAddress();
   const setPrimaryAddressMutation = useSetPrimaryAddress();
   const recommendedQuery = useBouquets({ limit: 8 });
-
-  const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
   const [recommendedIndex, setRecommendedIndex] = useState(0);
   const [isAvatarSubmitting, setIsAvatarSubmitting] = useState(false);
   const [avatarStatus, setAvatarStatus] = useState<string>("");
@@ -232,14 +249,14 @@ function Profile() {
   });
   const addressLatitude = addressForm.watch("latitude");
   const addressLongitude = addressForm.watch("longitude");
-  const isOwnerAccount = hasAnyRole(user, ["owner"]);
   const visibleTabs = isOwnerAccount ? tabsMemo.filter((tab) => tab.key === "settings") : tabsMemo;
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data]);
   const addresses = useMemo(() => addressesQuery.data ?? [], [addressesQuery.data]);
+  const importantDates = useMemo(() => importantDatesQuery.data ?? [], [importantDatesQuery.data]);
   const myReviewsCount = myReviewsQuery.data?.length ?? 0;
   const referralSummary = referralQuery.data;
-  const latestShopApplicationQuery = useMyLatestShopApplication();
+  const latestShopApplicationQuery = useMyLatestShopApplication({ enabled: shouldLoadLatestShopApplication });
   const recommendedBouquets = recommendedQuery.data ?? [];
   const safeRecommendedIndex = recommendedBouquets.length
     ? recommendedIndex % recommendedBouquets.length
@@ -275,16 +292,16 @@ function Profile() {
   const referralRewardAmount = referralSummary?.reward_amount ?? "$10.00";
   const referralJourney = [
     {
-      title: "1. Share your link",
-      description: "Send your referral link or code to a friend.",
+      title: t("profile.referralStepShareTitle"),
+      description: t("profile.referralStepShareDesc"),
     },
     {
-      title: "2. Friend registers",
-      description: "The link opens the register page and auto-fills your code.",
+      title: t("profile.referralStepRegisterTitle"),
+      description: t("profile.referralStepRegisterDesc"),
     },
     {
-      title: "3. First order = reward",
-      description: "When your friend places the first order, both bonuses are credited.",
+      title: t("profile.referralStepRewardTitle"),
+      description: t("profile.referralStepRewardDesc"),
     },
   ];
 
@@ -360,7 +377,7 @@ function Profile() {
     setAvatarError("");
 
     if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-      const message = t("avatarTypeError");
+      const message = t("profile.avatarTypeError");
       setAvatarError(message);
       toast.error(message);
       resetAvatarSelection();
@@ -368,7 +385,7 @@ function Profile() {
     }
 
     if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      const message = t("avatarSizeError");
+      const message = t("profile.avatarSizeError");
       setAvatarError(message);
       toast.error(message);
       resetAvatarSelection();
@@ -376,22 +393,22 @@ function Profile() {
     }
 
     setSelectedAvatarFile(file);
-    setAvatarStatus(t("avatarReady"));
+    setAvatarStatus(t("profile.avatarReady"));
   };
 
   const handleAvatarUpload = async () => {
     if (!selectedAvatarFile) return;
 
     setIsAvatarSubmitting(true);
-    setAvatarStatus(t("avatarUploading"));
+    setAvatarStatus(t("profile.avatarUploading"));
     try {
       const updatedUser = await uploadMyAvatar(selectedAvatarFile);
       dispatch({ type: "SET_USER", payload: updatedUser });
       resetAvatarSelection();
-      setAvatarStatus(t("avatarUploaded"));
-      toast.success(t("avatarUploaded"));
+      setAvatarStatus(t("profile.avatarUploaded"));
+      toast.success(t("profile.avatarUploaded"));
     } catch (error) {
-      const message = getErrorMessage(error, t("avatarUploadError"));
+      const message = getErrorMessage(error, t("profile.avatarUploadError"));
       setAvatarStatus("");
       setAvatarError(message);
       toast.error(message);
@@ -403,14 +420,14 @@ function Profile() {
   const handleAvatarDelete = async () => {
     setAvatarError("");
     setIsAvatarSubmitting(true);
-    setAvatarStatus(t("avatarDeleting"));
+    setAvatarStatus(t("profile.avatarDeleting"));
     try {
       const updatedUser = await deleteMyAvatar();
       dispatch({ type: "SET_USER", payload: updatedUser });
-      setAvatarStatus(t("avatarDeleted"));
-      toast.success(t("avatarDeleted"));
+      setAvatarStatus(t("profile.avatarDeleted"));
+      toast.success(t("profile.avatarDeleted"));
     } catch (error) {
-      const message = getErrorMessage(error, t("avatarDeleteError"));
+      const message = getErrorMessage(error, t("profile.avatarDeleteError"));
       setAvatarStatus("");
       setAvatarError(message);
       toast.error(message);
@@ -421,44 +438,44 @@ function Profile() {
 
   const handleInviteFriends = async () => {
     if (!referralLink) {
-      toast.info(t("referralNotReady"));
+      toast.info(t("profile.referralNotReady"));
       return;
     }
 
     try {
       if (navigator.share) {
         await navigator.share({
-          title: t("referralTitle"),
-          text: t("referralShareText"),
+          title: t("profile.referralTitle"),
+          text: t("profile.referralShareText"),
           url: referralLink,
         });
         return;
       }
 
       await navigator.clipboard.writeText(referralLink);
-      toast.success(t("referralLinkCopied"));
+      toast.success(t("profile.referralLinkCopied"));
     } catch {
-      toast.error(t("referralLinkError"));
+      toast.error(t("profile.referralLinkError"));
     }
   };
 
   const handleCopyReferralCode = async () => {
     if (!referralSummary?.referral_code) {
-      toast.info(t("referralNotReady"));
+      toast.info(t("profile.referralNotReady"));
       return;
     }
 
     try {
       await navigator.clipboard.writeText(referralSummary.referral_code);
-      toast.success(t("referralCodeCopied"));
+      toast.success(t("profile.referralCodeCopied"));
     } catch {
-      toast.error(t("referralCodeError"));
+      toast.error(t("profile.referralCodeError"));
     }
   };
 
   const handleAccountSave = accountForm.handleSubmit(async (values) => {
     if (!values.full_name.trim() || !values.email.trim()) {
-      toast.error(t("profileRequired"));
+      toast.error(t("profile.profileRequired"));
       return;
     }
 
@@ -469,25 +486,25 @@ function Profile() {
         phone: values.phone.trim() || null,
       });
       dispatch({ type: "SET_USER", payload: updatedUser });
-      toast.success(t("profileSaved"));
+      toast.success(t("profile.profileSaved"));
     } catch (error) {
-      toast.error(getErrorMessage(error, t("profileSaveError")));
+      toast.error(getErrorMessage(error, t("profile.profileSaveError")));
     }
   });
 
   const handlePasswordSave = passwordForm.handleSubmit(async (values) => {
     if (!values.current_password || !values.new_password || !values.confirm_password) {
-      toast.error(t("passwordFieldsRequired"));
+      toast.error(t("profile.passwordFieldsRequired"));
       return;
     }
 
     if (values.new_password.length < 6) {
-      toast.error(t("newPasswordPlaceholder"));
+      toast.error(t("profile.newPasswordPlaceholder"));
       return;
     }
 
     if (values.new_password !== values.confirm_password) {
-      toast.error(t("passwordMismatch"));
+      toast.error(t("profile.passwordMismatch"));
       return;
     }
 
@@ -501,9 +518,9 @@ function Profile() {
         new_password: "",
         confirm_password: "",
       });
-      toast.success(t("passwordUpdated"));
+      toast.success(t("profile.passwordUpdated"));
     } catch (error) {
-      toast.error(getErrorMessage(error, t("passwordUpdateError")));
+      toast.error(getErrorMessage(error, t("profile.passwordUpdateError")));
     }
   });
 
@@ -511,23 +528,23 @@ function Profile() {
     const repeatAvailability = getRepeatOrderAvailability(order.created_at);
 
     if (!repeatAvailability.canRepeat) {
-      toast.info(t("repeatOrderExpired"));
+      toast.info(t("profile.repeatOrderExpired"));
       return;
     }
 
     const firstItem = order.items[0];
 
     if (!firstItem) {
-      toast.info(t("repeatOrderEmpty"));
+      toast.info(t("profile.repeatOrderEmpty"));
       return;
     }
 
     addToCart(buildRepeatBouquet(order, firstItem), firstItem.quantity);
     if (order.items.length > 1) {
-      toast.success(t("repeatOrderMultiple", { name: firstItem.bouquet_name }));
+      toast.success(t("profile.repeatOrderMultiple", { name: firstItem.bouquet_name }));
       return;
     }
-    toast.success(t("repeatOrderAdded", { name: firstItem.bouquet_name }));
+    toast.success(t("profile.repeatOrderAdded", { name: firstItem.bouquet_name }));
   };
 
   const resetAddressForm = () => {
@@ -537,7 +554,7 @@ function Profile() {
 
   const handleAddressSubmit = addressForm.handleSubmit(async (values) => {
     if (!values.title.trim() || !values.address_line.trim()) {
-      toast.error(t("addressFieldsRequired"));
+      toast.error(t("profile.addressFieldsRequired"));
       return;
     }
     try {
@@ -553,7 +570,7 @@ function Profile() {
             longitude: values.longitude ?? undefined,
           },
         });
-        toast.success(t("addressUpdated"));
+        toast.success(t("profile.addressUpdated"));
       } else {
         await createAddressMutation.mutateAsync({
           title: values.title.trim(),
@@ -564,11 +581,11 @@ function Profile() {
           longitude: values.longitude ?? undefined,
           is_primary: addresses.length === 0,
         });
-        toast.success(t("addressAdded"));
+        toast.success(t("profile.addressAdded"));
       }
       resetAddressForm();
     } catch (error) {
-      toast.error((error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? t("addressSaveError"));
+      toast.error((error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? t("profile.addressSaveError"));
     }
   });
 
@@ -597,21 +614,23 @@ function Profile() {
         await injectLeafletAssets();
         if (cancelled || !window.L || !mapHostRef.current) return;
 
-        const initial: [number, number] = [
-          addressLatitude ?? TASHKENT_COORDS[0],
-          addressLongitude ?? TASHKENT_COORDS[1],
-        ];
-        const map = window.L.map(mapHostRef.current).setView(initial, 12);
+        const hasSelectedCoordinates = addressLatitude !== null && addressLongitude !== null;
+        const initial: [number, number] = hasSelectedCoordinates
+          ? [addressLatitude, addressLongitude]
+          : DEFAULT_MAP_CENTER;
+        const map = window.L.map(mapHostRef.current).setView(initial, hasSelectedCoordinates ? 12 : DEFAULT_MAP_ZOOM);
         window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(map);
 
-        const marker = window.L.marker(initial, {
-          icon: window.L.icon({
-            iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-            shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-          }),
-        }).addTo(map);
+        let marker = hasSelectedCoordinates
+          ? window.L.marker(initial, {
+            icon: window.L.icon({
+              iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+              shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            }),
+          }).addTo(map)
+          : null;
 
         leafletMapRef.current = map;
 
@@ -635,18 +654,27 @@ function Profile() {
         }
 
         map.on("click", async ({ latlng }) => {
-          const coords: [number, number] = [latlng.lat, latlng.lng];
-          marker.setLatLng(coords);
+          const coords = normalizeCoordinates(latlng.lat, latlng.lng);
+          if (!marker && window.L) {
+            marker = window.L.marker(coords, {
+              icon: window.L.icon({
+                iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+                shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+              }),
+            }).addTo(map);
+          } else {
+            marker?.setLatLng(coords);
+          }
+          map.setView(coords, DETAIL_MAP_ZOOM);
           addressForm.setValue("latitude", coords[0]);
           addressForm.setValue("longitude", coords[1]);
           setIsResolvingAddress(true);
           try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`);
-            const data = (await res.json()) as { display_name?: string; address?: { city?: string; town?: string; village?: string } };
-            if (data.display_name) {
-              addressForm.setValue("address_line", data.display_name);
-              if (data.address?.city ?? data.address?.town ?? data.address?.village) {
-                addressForm.setValue("city", data.address?.city ?? data.address?.town ?? data.address?.village ?? "");
+            const data = await reverseGeocode(coords[0], coords[1]);
+            if (data.displayName) {
+              addressForm.setValue("address_line", data.displayName);
+              if (data.city) {
+                addressForm.setValue("city", data.city);
               }
             }
           } finally {
@@ -654,7 +682,7 @@ function Profile() {
           }
         });
       } catch {
-      toast.error(t("mapLoadError"));
+      toast.error(t("profile.mapLoadError"));
     }
   };
 
@@ -671,19 +699,47 @@ function Profile() {
   const renderCenterContent = () => {
     if (isOwnerAccount) {
       return (
-        <SettingsTab
-          accountForm={accountForm}
-          onAccountSave={handleAccountSave}
-          onManageAddresses={() => setActiveTab("addresses")}
-          onPasswordSave={handlePasswordSave}
-          onResetAccountForm={() => accountForm.reset({
-            full_name: user?.full_name ?? "",
-            email: user?.email ?? "",
-            phone: user?.phone ?? "",
-          })}
-          passwordForm={passwordForm}
-          profileCompletion={profileCompletion}
-        />
+        <div className="space-y-5">
+          <SettingsTab
+            accountForm={accountForm}
+            canManageAddresses={!isOwnerAccount}
+            onAccountSave={handleAccountSave}
+            onManageAddresses={() => setActiveTab("addresses")}
+            onPasswordSave={handlePasswordSave}
+            onResetAccountForm={() => accountForm.reset({
+              full_name: user?.full_name ?? "",
+              email: user?.email ?? "",
+              phone: user?.phone ?? "",
+            })}
+            passwordForm={passwordForm}
+            profileCompletion={profileCompletion}
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === "settings") {
+      return (
+        <div className="space-y-5">
+          <SettingsTab
+            accountForm={accountForm}
+            canManageAddresses
+            onAccountSave={handleAccountSave}
+            onManageAddresses={() => setActiveTab("addresses")}
+            onPasswordSave={handlePasswordSave}
+            onResetAccountForm={() => accountForm.reset({
+              full_name: user?.full_name ?? "",
+              email: user?.email ?? "",
+              phone: user?.phone ?? "",
+            })}
+            passwordForm={passwordForm}
+            profileCompletion={profileCompletion}
+          />
+          <ImportantDatesPanel
+            dates={importantDates}
+            isLoading={importantDatesQuery.isLoading}
+          />
+        </div>
       );
     }
 
@@ -722,7 +778,7 @@ function Profile() {
               clearPreferredCheckoutAddress();
               setPreferredCheckoutAddressState(null);
             }
-            toast.success("Address o'chirildi");
+            toast.success(t("profile.addressDeleted"));
             if (editingAddressId === address.id) resetAddressForm();
           }}
           onEditAddress={(address) => {
@@ -740,11 +796,11 @@ function Profile() {
           onSetCheckoutAddress={(address) => {
             setPreferredCheckoutAddress(address);
             setPreferredCheckoutAddressState(getPreferredCheckoutAddress());
-            toast.success("Checkout uchun address tanlandi");
+            toast.success(t("profile.selectedForCheckout"));
           }}
           onSetPrimaryAddress={async (addressId) => {
             await setPrimaryAddressMutation.mutateAsync(addressId);
-            toast.success("Primary address o'rnatildi");
+            toast.success(t("profile.primaryLabel"));
           }}
           preferredCheckoutAddress={preferredCheckoutAddress}
           updatePending={updateAddressMutation.isPending}
@@ -752,7 +808,7 @@ function Profile() {
       );
     }
 
-    if (isOrdersLoading || isReviewsLoading) {
+    if (shouldLoadProfileDashboard && (isOrdersLoading || isReviewsLoading)) {
       return <ProfileDashboardSkeleton />;
     }
 
@@ -827,6 +883,11 @@ function Profile() {
             </div>
           </div>
         </div>
+
+        <UpcomingImportantDatesCard
+          dates={importantDates}
+          onManageClick={() => setActiveTab("settings")}
+        />
 
         {/* Recent Orders */}
         <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-6">
@@ -904,9 +965,9 @@ function Profile() {
                   <HiGift />
                 </span>
                 <div>
-                  <h2 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">Give $10, Get $10</h2>
+                  <h2 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">{t("profile.referralTitle")}</h2>
                   <p className="mt-1 max-w-md text-sm text-white/80 sm:text-base">
-                    Invite your friends and both get a bonus after their first order.
+                    {t("profile.referralDesc")}
                   </p>
                 </div>
               </div>
@@ -919,7 +980,7 @@ function Profile() {
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
-                Share Invite Link
+                {t("profile.shareInviteLink")}
               </button>
             </div>
           </div>
@@ -939,7 +1000,7 @@ function Profile() {
                     <p className="text-2xl font-bold text-white">
                       {referralSummary ? formatPrice(referralSummary.bonus_balance) : "$0.00"}
                     </p>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">Balance</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">{t("profile.bonusBalance")}</p>
                   </div>
                 </div>
               </div>
@@ -953,7 +1014,7 @@ function Profile() {
                   </span>
                   <div>
                     <p className="text-2xl font-bold text-white">{referralSummary?.successful_referrals ?? 0}</p>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">Successful</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">{t("profile.successful")}</p>
                   </div>
                 </div>
               </div>
@@ -967,7 +1028,7 @@ function Profile() {
                   </span>
                   <div>
                     <p className="text-2xl font-bold text-white">{referralSummary?.pending_referrals ?? 0}</p>
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">Pending</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#8f6d68]">{t("profile.pending")}</p>
                   </div>
                 </div>
               </div>
@@ -977,7 +1038,7 @@ function Profile() {
             <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a08782]">Your referral code</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a08782]">{t("profile.yourReferralCode")}</p>
                   <div className="mt-3 flex items-center gap-3">
                     <span className="rounded-xl bg-gradient-to-r from-[#2a1018] to-[#1e0c12] px-5 py-2.5 font-mono text-xl font-bold tracking-[0.15em] text-[#ffe0dd] ring-1 ring-white/10">
                       {referralSummary?.referral_code ?? "········"}
@@ -990,11 +1051,11 @@ function Profile() {
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                       </svg>
-                      Copy
+                      {t("profile.copyCode")}
                     </button>
                   </div>
                   <p className="mt-3 break-all text-xs text-[#6b5050]">
-                    {referralLink || "Preparing link..."}
+                    {referralLink || t("profile.preparingLink")}
                   </p>
                 </div>
               </div>
@@ -1003,9 +1064,9 @@ function Profile() {
             {/* How it works */}
             <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-white">How it works</p>
+                <p className="text-sm font-semibold text-white">{t("profile.howItWorks")}</p>
                 <span className="rounded-full bg-gradient-to-r from-[#c7233f]/20 to-[#ff4d6d]/10 px-3 py-1 text-xs font-semibold text-[#ff8fa3] ring-1 ring-[#ff4d6d]/20">
-                  {referralRewardAmount} each
+                  {t("profile.rewardAmountEach", { amount: referralRewardAmount })}
                 </span>
               </div>
 
@@ -1034,17 +1095,17 @@ function Profile() {
               <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-white">Invited Friends</p>
+                    <p className="text-sm font-semibold text-white">{t("profile.invitedFriends")}</p>
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-white">
                       {referralSummary.referred_friends.length}
                     </span>
                   </div>
                   <div className="flex gap-2 text-[10px] font-semibold uppercase tracking-[0.15em]">
                     <span className="flex items-center gap-1.5 rounded-full bg-[#2a160b] px-2.5 py-1 text-[#ffd59a]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#ffd59a]" /> Pending
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#ffd59a]" /> {t("profile.pendingLabel")}
                     </span>
                     <span className="flex items-center gap-1.5 rounded-full bg-[#10231a] px-2.5 py-1 text-[#9ef0c2]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#9ef0c2]" /> Rewarded
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#9ef0c2]" /> {t("profile.rewarded")}
                     </span>
                   </div>
                 </div>
@@ -1064,7 +1125,7 @@ function Profile() {
                           ? "bg-[#143424] text-[#9ef0c2] ring-1 ring-[#2f6a4f]/30"
                           : "bg-[#3a2610] text-[#ffd59a] ring-1 ring-[#7f5a41]/20"
                       }`}>
-                        {friend.reward_granted ? "✓ Rewarded" : "Pending"}
+                        {friend.reward_granted ? `✓ ${t("profile.rewarded")}` : t("profile.pendingLabel")}
                       </span>
                     </div>
                   ))}
@@ -1177,16 +1238,16 @@ function Profile() {
                   {selectedAvatarFile ? (
                     <div className="mt-3 flex gap-2">
                       <button type="button" onClick={handleAvatarUpload} disabled={isAvatarSubmitting} className="rounded-lg bg-[#c7233f] px-4 py-1.5 text-xs font-medium text-white transition hover:brightness-110 disabled:opacity-60">
-                        {t("saveAvatar")}
+                        {t("profile.saveAvatar")}
                       </button>
                       <button type="button" onClick={resetAvatarSelection} disabled={isAvatarSubmitting} className="rounded-lg border border-white/10 px-4 py-1.5 text-xs font-medium text-[#c4a39b] transition hover:bg-white/5 disabled:opacity-60">
-                        {t("cancel")}
+                        {t("profile.cancel")}
                       </button>
                     </div>
                   ) : user?.avatar_url ? (
                     <div className="mt-3 flex gap-2">
                       <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={isAvatarSubmitting} className="rounded-lg bg-white/5 px-4 py-1.5 text-xs font-medium text-[#c4a39b] transition hover:bg-white/10 disabled:opacity-60">
-                        {t("changeAvatar")}
+                        {t("profile.changeAvatar")}
                       </button>
                       <button type="button" onClick={handleAvatarDelete} disabled={isAvatarSubmitting} className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-[#8f6d68] transition hover:text-[#ff9eae] disabled:opacity-60">
                         <HiTrash className="text-sm" />
@@ -1194,11 +1255,11 @@ function Profile() {
                     </div>
                   ) : (
                     <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={isAvatarSubmitting} className="mt-3 rounded-lg bg-white/5 px-4 py-1.5 text-xs font-medium text-[#c4a39b] transition hover:bg-white/10 disabled:opacity-60">
-                      {t("uploadAvatar")}
+                      {t("profile.uploadAvatar")}
                     </button>
                   )}
 
-                  <p className="mt-3 text-[0.65rem] uppercase tracking-[0.2em] text-[#6b5050]">{t("avatarInfo")}</p>
+                  <p className="mt-3 text-[0.65rem] uppercase tracking-[0.2em] text-[#6b5050]">{t("profile.avatarInfo")}</p>
                 </div>
               </div>
 
@@ -1236,29 +1297,29 @@ function Profile() {
               className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/5 bg-white/[0.03] py-3 text-sm font-medium text-[#ff8fa3] transition-all duration-200 hover:border-[#ff8fa3]/20 hover:bg-[#ff8fa3]/5"
               >
                 <HiArrowLeftOnRectangle />
-                {t("logOut")}
+                {t("profile.logOut")}
               </button>
 
               {/* Help Card */}
               <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-5">
-                <h3 className="font-cormorant text-2xl text-white">{t("needHelp")}</h3>
+                <h3 className="font-cormorant text-2xl text-white">{t("profile.needHelp")}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[#8f6d68]">
                   {canOpenOwnerDashboard
-                    ? t("ownerDashboardHelp")
+                    ? t("profile.ownerDashboardHelp")
                     : latestShopApplication?.status === "pending"
-                      ? t("sellerPending")
-                      : t("sellerDefault")}
+                      ? t("profile.sellerPending")
+                      : t("profile.sellerDefault")}
                 </p>
                 {latestShopApplication?.admin_comment ? (
                   <div className="mt-3 rounded-xl border border-[#ff8fa3]/10 bg-[#ff8fa3]/5 px-3 py-2">
-                    <p className="text-xs text-[#ff8fa3]">{t("adminComment")} {latestShopApplication.admin_comment}</p>
+                    <p className="text-xs text-[#ff8fa3]">{t("profile.adminComment")} {latestShopApplication.admin_comment}</p>
                   </div>
                 ) : null}
                 <Link
                   to={canOpenOwnerDashboard ? "/owner/dashboard" : "/shop-application"}
                   className="mt-4 flex items-center justify-center rounded-xl bg-white/5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
                 >
-                  {canOpenOwnerDashboard ? t("openOwnerDashboard") : t("contactSupport")}
+                  {canOpenOwnerDashboard ? t("profile.openOwnerDashboard") : t("profile.contactSupport")}
                 </Link>
               </div>
             </div>
@@ -1277,7 +1338,7 @@ function Profile() {
               {/* Profile Completion */}
               <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-5">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-cormorant text-2xl text-white">{t("profileCompletion")}</h3>
+                  <h3 className="font-cormorant text-2xl text-white">{t("profile.profileCompletion")}</h3>
                   <span className={`text-sm font-semibold ${profileCompletion === 100 ? "text-[#6beba3]" : "text-[#ffc56b]"}`}>
                     {profileCompletion}%
                   </span>
@@ -1290,8 +1351,8 @@ function Profile() {
                 </div>
                 <p className="mt-3 text-sm text-[#8f6d68]">
                   {profileCompletion === 100
-                    ? t("profileComplete")
-                    : t("profileIncomplete")}
+                    ? t("profile.profileComplete")
+                    : t("profile.profileIncomplete")}
                 </p>
                 {profileCompletion < 100 && (
                   <button
@@ -1299,7 +1360,7 @@ function Profile() {
                     onClick={() => setActiveTab("settings")}
                     className="mt-4 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#c7233f]/20 transition-all hover:shadow-xl hover:shadow-[#c7233f]/30"
                   >
-                    {t("completeProfile")}
+                    {t("profile.completeProfile")}
                   </button>
                 )}
               </div>
@@ -1308,7 +1369,7 @@ function Profile() {
               <div className="overflow-hidden rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609]">
                 <div className="p-5 pb-0">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-cormorant text-2xl text-white">{t("forYou")}</h3>
+                    <h3 className="font-cormorant text-2xl text-white">{t("profile.forYou")}</h3>
                     <div className="flex gap-1.5">
                       {recommendedBouquets.slice(0, 5).map((bouquet, index) => (
                         <button
@@ -1318,7 +1379,7 @@ function Profile() {
                           className={`h-1.5 rounded-full transition-all duration-300 ${
                             index === safeRecommendedIndex ? "w-5 bg-[#ff6d84]" : "w-1.5 bg-white/15"
                           }`}
-                          aria-label={t("showBouquet", { name: bouquet.name })}
+                          aria-label={t("profile.showBouquet", { name: bouquet.name })}
                         />
                       ))}
                     </div>

@@ -27,6 +27,7 @@ import {
   HiOutlineGiftTop,
 } from "react-icons/hi2";
 import { OrdersListSkeleton, OwnerOrdersSkeleton } from "../../components/PageSkeletons";
+import GiftMessageCard from "../../components/orders/GiftMessageCard";
 import OrderProgress from "../../components/orders/OrderProgress";
 import { useMyShops, useShopOrders, useUpdateOrderStatus } from "../../hooks/useCatalog";
 import { useOrderRealtime } from "../../hooks/useOrderRealtime";
@@ -1093,6 +1094,7 @@ function OwnerOrders() {
                                       </p>
                                     </div>
                                   </div>
+                                  {order.gift_message?.trim() ? <GiftMessageCard message={order.gift_message} className="mt-3" compact /> : null}
                                   {(addonsSummary.length > 0 || totalQty > 0) && (
                                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                                       {addonsSummary.length > 0 && (

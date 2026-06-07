@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import {
+  HiChevronDown,
+  HiChevronUp,
   HiOutlineArrowTrendingUp,
   HiOutlineArrowUpTray,
   HiOutlineBuildingStorefront,
@@ -14,13 +16,24 @@ import {
   HiOutlineXMark,
 } from "react-icons/hi2";
 import { useMyLatestShopApplication, useMyShops, useUpdateShop, useUploadImage } from "../../hooks/useCatalog";
+import ShopFeatureBadges from "../../components/shops/ShopFeatureBadges";
 import type { Shop } from "../../types/catalog";
 import { isRecentAdminNote } from "../../utils/adminNote";
+import {
+  CITY_MAP_ZOOM,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  DETAIL_MAP_ZOOM,
+  getGeolocationErrorReason,
+  getCurrentUserCoordinates,
+  normalizeCoordinates,
+  reverseGeocode,
+  searchLocations,
+  type SearchLocationResult,
+} from "../../utils/location";
 import { normalizeInstagramValue, normalizeTelegramValue } from "../../utils/social";
 import bow from "../../assets/bow.png";
 import { useTranslation } from "react-i18next";
-
-const TASHKENT_COORDS: [number, number] = [41.3111, 69.2797];
 
 declare global {
   interface Window {
@@ -43,12 +56,7 @@ type LeafletMap = {
 type LeafletMarker = {
   addTo: (map: LeafletMap) => LeafletMarker;
   setLatLng: (latlng: [number, number]) => void;
-};
-
-type SearchLocationResult = {
-  display_name: string;
-  lat: string;
-  lon: string;
+  remove?: () => void;
 };
 
 type ShopFormValues = {
@@ -115,6 +123,7 @@ function OwnerShop() {
   const [locationResults, setLocationResults] = useState<SearchLocationResult[]>([]);
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<LeafletMap | null>(null);
+  const leafletMarkerRef = useRef<LeafletMarker | null>(null);
   const selectedShop = useMemo<Shop | undefined>(
     () => shops.find((shop) => shop.id === (selectedShopId || shops[0]?.id)),
     [selectedShopId, shops],
@@ -171,17 +180,28 @@ function OwnerShop() {
   const changedFieldsCount = Object.keys(dirtyFields).length;
   const isRecentNote = isRecentAdminNote(latestApplication?.updated_at);
 
+  const ensureLeafletMarker = useCallback((coords: [number, number]) => {
+    if (leafletMarkerRef.current || !leafletMapRef.current || !window.L) return;
+
+    leafletMarkerRef.current = window.L.marker(coords, {
+      icon: window.L.icon({
+        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      }),
+    }).addTo(leafletMapRef.current);
+  }, []);
+
   const applyLocationSelection = useCallback(async (nextLatitude: number, nextLongitude: number, fallbackAddress?: string) => {
-    const coords: [number, number] = [Number(nextLatitude.toFixed(6)), Number(nextLongitude.toFixed(6))];
+    const coords = normalizeCoordinates(nextLatitude, nextLongitude);
+    ensureLeafletMarker(coords);
     form.setValue("latitude", coords[0], { shouldDirty: true });
     form.setValue("longitude", coords[1], { shouldDirty: true });
     setIsResolvingAddress(true);
 
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords[0]}&lon=${coords[1]}`);
-      const data = (await res.json()) as { display_name?: string; address?: { city?: string; town?: string; village?: string } };
-      form.setValue("address", data.display_name || fallbackAddress || `${coords[0]}, ${coords[1]}`, { shouldDirty: true, shouldValidate: true });
-      const city = data.address?.city ?? data.address?.town ?? data.address?.village ?? "";
+      const data = await reverseGeocode(coords[0], coords[1]);
+      form.setValue("address", data.displayName || fallbackAddress || `${coords[0]}, ${coords[1]}`, { shouldDirty: true, shouldValidate: true });
+      const city = data.city;
       if (city) {
         form.setValue("city", city, { shouldDirty: true });
       }
@@ -191,7 +211,7 @@ function OwnerShop() {
     } finally {
       setIsResolvingAddress(false);
     }
-  }, [form, t]);
+  }, [ensureLeafletMarker, form, t]);
 
   useEffect(() => {
     if (!selectedShop) return;
@@ -235,24 +255,25 @@ function OwnerShop() {
       .then(() => {
         if (cancelled || !window.L || !mapHostRef.current) return;
 
-        const initial: [number, number] = [
-          latitude ?? TASHKENT_COORDS[0],
-          longitude ?? TASHKENT_COORDS[1],
-        ];
+        const hasSelectedCoordinates = latitude !== null && longitude !== null;
+        const initial: [number, number] = hasSelectedCoordinates
+          ? [latitude, longitude]
+          : DEFAULT_MAP_CENTER;
 
-        const map = window.L.map(mapHostRef.current).setView(initial, 13);
+        const map = window.L.map(mapHostRef.current).setView(initial, hasSelectedCoordinates ? CITY_MAP_ZOOM : DEFAULT_MAP_ZOOM);
         window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(map);
 
-        const marker = window.L.marker(initial, {
-          icon: window.L.icon({
-            iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-            shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-          }),
-        }).addTo(map);
-
         leafletMapRef.current = map;
+        leafletMarkerRef.current = hasSelectedCoordinates
+          ? window.L.marker(initial, {
+            icon: window.L.icon({
+              iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+              shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            }),
+          }).addTo(map)
+          : null;
 
         requestAnimationFrame(() => {
           map.invalidateSize({ pan: false, animate: false });
@@ -266,9 +287,18 @@ function OwnerShop() {
         }
 
         map.on("click", async ({ latlng }) => {
-          const coords: [number, number] = [Number(latlng.lat.toFixed(6)), Number(latlng.lng.toFixed(6))];
-          marker.setLatLng(coords);
-          map.setView(coords, 15);
+          const coords = normalizeCoordinates(latlng.lat, latlng.lng);
+          if (!leafletMarkerRef.current && window.L) {
+            leafletMarkerRef.current = window.L.marker(coords, {
+              icon: window.L.icon({
+                iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+                shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+              }),
+            }).addTo(map);
+          } else {
+            leafletMarkerRef.current?.setLatLng(coords);
+          }
+          map.setView(coords, DETAIL_MAP_ZOOM);
           void applyLocationSelection(coords[0], coords[1]);
         });
       })
@@ -279,10 +309,30 @@ function OwnerShop() {
     return () => {
       cancelled = true;
       resizeObserver?.disconnect();
+      leafletMarkerRef.current?.remove?.();
+      leafletMarkerRef.current = null;
       leafletMapRef.current?.remove();
       leafletMapRef.current = null;
     };
   }, [applyLocationSelection, latitude, longitude, mapOpen, t]);
+
+  useEffect(() => {
+    if (!mapOpen || latitude === null || longitude === null) return;
+
+    const coords: [number, number] = [latitude, longitude];
+    leafletMapRef.current?.setView(coords, DETAIL_MAP_ZOOM);
+    if (!leafletMarkerRef.current && leafletMapRef.current && window.L) {
+      leafletMarkerRef.current = window.L.marker(coords, {
+        icon: window.L.icon({
+          iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+          shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        }),
+      }).addTo(leafletMapRef.current);
+      return;
+    }
+
+    leafletMarkerRef.current?.setLatLng(coords);
+  }, [latitude, longitude, mapOpen]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!selectedShop || updateShopMutation.isPending) return;
@@ -322,8 +372,7 @@ function OwnerShop() {
 
     try {
       setIsSearchingLocation(true);
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(locationQuery.trim())}&limit=5`);
-      const data = (await res.json()) as SearchLocationResult[];
+      const data = await searchLocations(locationQuery.trim());
       setLocationResults(data);
       if (!data.length) {
         toast.error(t("owner.noLocationResults"));
@@ -343,22 +392,22 @@ function OwnerShop() {
 
     try {
       setIsLocatingUser(true);
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        });
-      });
-
-      const coords: [number, number] = [
-        Number(position.coords.latitude.toFixed(6)),
-        Number(position.coords.longitude.toFixed(6)),
-      ];
-      leafletMapRef.current?.setView(coords, 15);
+      const coords = await getCurrentUserCoordinates();
+      leafletMapRef.current?.setView(coords, DETAIL_MAP_ZOOM);
+      ensureLeafletMarker(coords);
+      leafletMarkerRef.current?.setLatLng(coords);
       await applyLocationSelection(coords[0], coords[1], t("owner.myLocation"));
-    } catch {
-      toast.error(t("owner.currentLocationError"));
+    } catch (error) {
+      const reason = getGeolocationErrorReason(error);
+      const messageKey =
+        reason === "permission_denied"
+          ? "owner.currentLocationPermissionDenied"
+          : reason === "timeout"
+            ? "owner.currentLocationTimeout"
+            : reason === "position_unavailable"
+              ? "owner.currentLocationUnavailable"
+              : "owner.currentLocationError";
+      toast.error(t(messageKey));
     } finally {
       setIsLocatingUser(false);
     }
@@ -391,6 +440,70 @@ function OwnerShop() {
       </div>
     );
   }
+
+  const adminNoteCard = latestApplication?.admin_comment ? (
+    <section className={`rounded-[1.5rem] border p-4 sm:p-5 ${adminNoteTone}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/95 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+              <HiOutlineChatBubbleLeftRight className="text-xl" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-current/70">{t("owner.adminNote")}</p>
+              <h2 className="mt-1 truncate font-cormorant text-2xl leading-none text-white">
+                {latestApplication.status === "approved" ? t("owner.approvalMessage") : t("owner.applicationFeedback")}
+              </h2>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-current/70">
+              {isRecentNote ? t("owner.freshNote") : t("owner.archivedNote")}
+            </span>
+            <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-current/70">
+              {formatApplicationStatus(latestApplication.status)}
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAdminNote((current) => !current)}
+          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
+        >
+          <HiOutlineEye />
+          {showAdminNote ? t("owner.hideNote") : t("owner.open")}
+          {showAdminNote ? <HiChevronUp className="text-base" /> : <HiChevronDown className="text-base" />}
+        </button>
+      </div>
+
+      {showAdminNote ? (
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[1.2rem] border border-white/10 bg-black/10 p-3">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-current/70">{t("owner.application")}</p>
+              <p className="mt-1 truncate text-sm font-semibold text-white">{latestApplication.shop_name}</p>
+            </div>
+            <div className="rounded-[1.2rem] border border-white/10 bg-black/10 p-3">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-current/70">{t("owner.decision")}</p>
+              <p className="mt-1 text-sm font-semibold text-white capitalize">{formatApplicationStatus(latestApplication.status)}</p>
+            </div>
+          </div>
+
+          <div className="rounded-[1.2rem] border border-white/10 bg-black/10 p-4">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-current/60">{t("owner.privateMessage")}</p>
+            <p className="mt-2 text-sm leading-6 text-current">{latestApplication.admin_comment}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-black/10 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-current/60">{t("owner.privateMessage")}</p>
+          <p className="mt-1 truncate text-sm text-current/85">{latestApplication.admin_comment}</p>
+        </div>
+      )}
+    </section>
+  ) : null;
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -439,67 +552,6 @@ function OwnerShop() {
         ) : null}
       </section>
 
-      {latestApplication?.admin_comment ? (
-        <section className={`rounded-[1.8rem] border p-5 sm:p-6 ${adminNoteTone}`}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/95 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
-                  <HiOutlineChatBubbleLeftRight className="text-2xl" />
-                </span>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-current/70">{t("owner.adminNote")}</p>
-                  <h2 className="mt-1 font-cormorant text-4xl text-white">
-                    {latestApplication.status === "approved" ? t("owner.approvalMessage") : t("owner.applicationFeedback")}
-                  </h2>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-current/70">
-                  {isRecentNote ? t("owner.freshNote") : t("owner.archivedNote")}
-                </span>
-                <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-current/70">
-                  {t("owner.privateMessage")}
-                </span>
-              </div>
-
-              {showAdminNote ? (
-                <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-black/10 p-4">
-                  <p className="text-sm uppercase tracking-[0.2em] text-current/60">{t("owner.adminNote")}</p>
-                  <p className="mt-3 text-base leading-7 text-current">{latestApplication.admin_comment}</p>
-                </div>
-              ) : (
-                <div className="mt-4 flex items-center justify-between gap-3 rounded-[1.4rem] border border-white/10 bg-black/10 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm uppercase tracking-[0.2em] text-current/60">{t("owner.adminNote")}</p>
-                    <p className="truncate text-sm text-current/85">{latestApplication.admin_comment}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminNote(true)}
-                    className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
-                  >
-                    <HiOutlineEye />
-                    {t("owner.open")}
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:w-[320px]">
-              <div className="rounded-[1.4rem] border border-white/10 bg-black/10 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-current/70">{t("owner.application")}</p>
-                <p className="mt-2 text-lg font-semibold text-white">{latestApplication.shop_name}</p>
-              </div>
-              <div className="rounded-[1.4rem] border border-white/10 bg-black/10 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-current/70">{t("owner.decision")}</p>
-                <p className="mt-2 text-lg font-semibold text-white capitalize">{formatApplicationStatus(latestApplication.status)}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">
           <article className="overflow-hidden rounded-[1.8rem] border border-[#3d171c] bg-[linear-gradient(180deg,rgba(27,8,10,0.97),rgba(14,4,6,0.98))] shadow-[0_26px_60px_rgba(0,0,0,0.24)]">
@@ -517,6 +569,7 @@ function OwnerShop() {
               </div>
                 <div>
                   <p className="font-cormorant text-4xl text-white sm:text-5xl">{selectedShop.name}</p>
+                  <ShopFeatureBadges shop={selectedShop} className="mt-3" />
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="inline-flex rounded-full border border-[#2f6d55] bg-[#0f241c] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#91e2b9]">
                       {formatShopStatus(selectedShop.status)}
@@ -568,6 +621,9 @@ function OwnerShop() {
             </p>
           </article>
         </div>
+
+        <div className="space-y-6">
+          {adminNoteCard}
 
         <form onSubmit={onSubmit} className="rounded-[1.8rem] border border-[#3d171c] bg-[linear-gradient(180deg,rgba(27,8,10,0.97),rgba(14,4,6,0.98))] p-6 shadow-[0_26px_60px_rgba(0,0,0,0.22)] space-y-4">
           <div className="mb-2">
@@ -678,6 +734,7 @@ function OwnerShop() {
             {updateShopMutation.isPending ? t("owner.saving") : t("owner.saveChanges")}
           </button>
         </form>
+        </div>
       </section>
 
       <div className={`sticky bottom-5 z-20 transition-all duration-300 ${isDirty ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-8 opacity-0"}`}>
@@ -779,7 +836,9 @@ function OwnerShop() {
                     type="button"
                     onClick={() => {
                       const coords: [number, number] = [Number(result.lat), Number(result.lon)];
-                      leafletMapRef.current?.setView(coords, 15);
+                      leafletMapRef.current?.setView(coords, DETAIL_MAP_ZOOM);
+                      ensureLeafletMarker(coords);
+                      leafletMarkerRef.current?.setLatLng(coords);
                       void applyLocationSelection(coords[0], coords[1], result.display_name);
                       setLocationResults([]);
                       setLocationQuery(result.display_name);

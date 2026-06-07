@@ -1,5 +1,14 @@
 import apiClient from "../apiClient/apiClient";
-import type { LoginPayload, LoginResponse, RegisterPayload, User, UserRole } from "../types/types";
+import type {
+  ImportantDate,
+  ImportantDateCreatePayload,
+  ImportantDateUpdatePayload,
+  LoginPayload,
+  LoginResponse,
+  RegisterPayload,
+  User,
+  UserRole,
+} from "../types/types";
 
 export {
   clearStoredAuth,
@@ -80,6 +89,25 @@ export async function updateMe(payload: UpdateMePayload) {
 export async function changeMyPassword(payload: ChangePasswordPayload) {
   const { data } = await apiClient.patch<User>("/users/me/password", payload);
   return data;
+}
+
+export async function getMyImportantDates() {
+  const { data } = await apiClient.get<ImportantDate[]>("/important-dates/me");
+  return data;
+}
+
+export async function createMyImportantDate(payload: ImportantDateCreatePayload) {
+  const { data } = await apiClient.post<ImportantDate>("/important-dates/me", payload);
+  return data;
+}
+
+export async function updateMyImportantDate(importantDateId: string, payload: ImportantDateUpdatePayload) {
+  const { data } = await apiClient.patch<ImportantDate>(`/important-dates/me/${importantDateId}`, payload);
+  return data;
+}
+
+export async function deleteMyImportantDate(importantDateId: string) {
+  await apiClient.delete(`/important-dates/me/${importantDateId}`);
 }
 
 export async function getUsers(params: GetUsersParams = {}) {

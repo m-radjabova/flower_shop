@@ -27,9 +27,11 @@ import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import NotFound from "../../components/NotFound";
+import BouquetAvailabilityBadge from "../../components/catalog/BouquetAvailabilityBadge";
+import ShopVerifiedBadge from "../../components/shops/ShopVerifiedBadge";
 import { ShopDetailSkeleton } from "../../components/PageSkeletons";
 import { useBouquets, useShop } from "../../hooks/useCatalog";
-import { formatPrice } from "../../utils/catalog";
+import { formatPrice, isBouquetAvailable } from "../../utils/catalog";
 import { addToCart } from "../../utils/cart";
 import { formatUzbekPhone } from "../../utils/phone";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
@@ -41,15 +43,6 @@ function buildMapUrl(latitude: string, longitude: string) {
   const lon = Number(longitude);
   const box = [lon - 0.018, lat - 0.012, lon + 0.018, lat + 0.012].join(",");
   return `https://www.openstreetmap.org/export/embed.html?bbox=${box}&layer=mapnik&marker=${lat},${lon}`;
-}
-
-function formatMemberSince(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Recently joined";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    year: "numeric",
-  }).format(date);
 }
 
 function isNew(createdAt: string) {
@@ -77,6 +70,7 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
   const isNewBouquet = isNew(bouquet.created_at);
   const hasDiscount = Boolean(bouquet.old_price);
   const isPopular = Number(bouquet.rating) >= 4.5 && bouquet.reviews_count >= 10;
+  const canAddToCart = isBouquetAvailable(bouquet);
 
   return (
     <motion.article
@@ -115,6 +109,7 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
                 {t("shopDetail.sale")}
               </span>
             )}
+            <BouquetAvailabilityBadge bouquet={bouquet} compact />
           </div>
 
           {/* Quick add button on hover */}
@@ -123,10 +118,19 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
               onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              if (!canAddToCart) {
+                toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`);
+                return;
+              }
               addToCart(bouquet);
               toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`);
             }}
-            className="absolute right-4 bottom-4 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#cb5c57] to-[#a3322e] text-white shadow-xl shadow-[#cb5c57]/20"
+            disabled={!canAddToCart}
+            className={`absolute right-4 bottom-4 z-10 flex h-12 w-12 items-center justify-center rounded-full shadow-xl ${
+              canAddToCart
+                ? "bg-gradient-to-br from-[#cb5c57] to-[#a3322e] text-white shadow-[#cb5c57]/20"
+                : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94]"
+            }`}
             initial={{ opacity: 0, scale: 0.5, y: 10 }}
             animate={{ opacity: isHovered ? 1 : 0, scale: isHovered ? 1 : 0.5, y: isHovered ? 0 : 10 }}
             transition={{ duration: 0.25 }}
@@ -173,10 +177,7 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
               </span>
             )}
           </div>
-          <span className={`flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] ${bouquet.stock > 0 ? "text-emerald-400" : "text-rose-400"}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${bouquet.stock > 0 ? "bg-emerald-400" : "bg-rose-400"}`} />
-            {bouquet.stock > 0 ? t("shopDetail.inStock") : t("shopDetail.soldOut")}
-          </span>
+          <BouquetAvailabilityBadge bouquet={bouquet} compact />
         </div>
       </div>
     </motion.article>
@@ -252,7 +253,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
 
 // ─── Main Component ───────────────────────────────────────
 function ShopDetail() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeSection, setActiveSection] = useState("bouquets");
   const { slug } = useParams();
   const { data: shop, isLoading, isError } = useShop(slug);
@@ -312,6 +313,19 @@ function ShopDetail() {
   const maxPrice = bouquets.length ? Math.max(...bouquets.map((b) => Number(b.price))) : 0;
   const minPriceFormatted = formatPrice(String(minPrice));
   const maxPriceFormatted = formatPrice(String(maxPrice));
+  const formatMemberSince = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return t("shopDetail.recentlyJoined");
+    const localeMap: Record<string, string> = {
+      uz: "uz-UZ",
+      ru: "ru-RU",
+      en: "en-US",
+    };
+    return new Intl.DateTimeFormat(localeMap[i18n.language] ?? "en-US", {
+      month: "long",
+      year: "numeric",
+    }).format(date);
+  };
   const handleShare = async () => {
     const shareUrl = window.location.href;
     try {
@@ -423,6 +437,18 @@ function ShopDetail() {
                         >
                           {shop.name}
                         </motion.h1>
+                        {shop.is_verified ? (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.35, delay: 0.42 }}
+                          >
+                            <ShopVerifiedBadge
+                              className="h-7 w-7 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
+                              iconClassName="h-7 w-7 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
+                            />
+                          </motion.div>
+                        ) : null}
                       </div>
 
                       {/* Rating, Location, Member Since */}
@@ -435,7 +461,7 @@ function ShopDetail() {
                         <span className="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 backdrop-blur-sm">
                           <FaStar className="text-amber-400" />
                           <span className="font-bold text-white">{shop.rating}</span>
-                          <span className="text-[#cfa89e]">({shop.reviews_count} reviews)</span>
+                          <span className="text-[#cfa89e]">({shop.reviews_count} {t("shopDetail.reviews")})</span>
                         </span>
                         {shop.city && (
                           <span className="inline-flex items-center gap-2 text-[#f0d2ca]">
@@ -445,7 +471,7 @@ function ShopDetail() {
                         )}
                         <span className="inline-flex items-center gap-2 text-[#f0d2ca]">
                           <FaRegCalendarAlt className="text-[0.7rem] text-[#f0a89a]" />
-                          Member since {formatMemberSince(shop.created_at)}
+                          {t("shopDetail.memberSince")} {formatMemberSince(shop.created_at)}
                         </span>
                       </motion.div>
 
@@ -456,7 +482,7 @@ function ShopDetail() {
                         transition={{ duration: 0.5, delay: 0.45 }}
                         className="mt-4 max-w-xl text-base leading-8 text-[#e8c9c1] drop-shadow-[0_6px_20px_rgba(0,0,0,0.35)]"
                       >
-                        {shop.description ?? "A premium flower shop with fresh arrangements, thoughtful wrapping, and delivery-ready bouquets crafted for every occasion."}
+                        {shop.description ?? t("shopDetail.noDescription")}
                       </motion.p>
                     </div>
                   </div>
@@ -471,7 +497,7 @@ function ShopDetail() {
                     className="group inline-flex items-center gap-2.5 rounded-full border border-[#4a2020]/50 bg-black/30 px-5 py-2.5 text-sm font-medium text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
                   >
                     <FaShareAlt className="text-xs transition-transform duration-300 group-hover:scale-110" />
-                    Share
+                    {t("shopDetail.share")}
                   </motion.button>
                 </div>
 
@@ -487,7 +513,7 @@ function ShopDetail() {
                     className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-[#be2338] via-[#cf2b44] to-[#dd3752] px-7 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(199,44,69,0.28)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_20px_40px_rgba(199,44,69,0.35)] active:scale-[0.98]"
                   >
                     <FaPhoneAlt className="text-xs" />
-                    Call Shop
+                    {t("shopDetail.callShop")}
                   </a>
                   {telegramUrl && (
                     <a
@@ -497,7 +523,7 @@ function ShopDetail() {
                       className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-6 text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
                     >
                       <FaTelegramPlane />
-                      Message
+                      {t("shopDetail.message")}
                     </a>
                   )}
                   {!telegramUrl && instagramUrl && (
@@ -508,7 +534,7 @@ function ShopDetail() {
                       className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-6 text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
                     >
                       <FaInstagram />
-                      Instagram
+                      {t("shopDetail.instagram")}
                     </a>
                   )}
                 </motion.div>
@@ -524,38 +550,38 @@ function ShopDetail() {
             >
               <StatCard
                 icon={<FaShoppingBag className="text-white" />}
-                label="Total Bouquets"
+                label={t("shopDetail.totalBouquets")}
                 value={String(bouquets.length)}
                 color="bg-gradient-to-br from-[#cb5c57] to-[#a3322e]"
               />
               <StatCard
                 icon={<FaCheckCircle className="text-white" />}
-                label="In Stock"
+                label={t("shopDetail.inStock")}
                 value={String(inStockCount)}
                 color="bg-gradient-to-br from-emerald-500 to-teal-600"
               />
               <StatCard
                 icon={<FaStar className="text-white" />}
-                label="Top Rated"
+                label={t("shopDetail.topRated")}
                 value={String(topRatedCount)}
                 color="bg-gradient-to-br from-amber-500 to-orange-600"
               />
               <StatCard
                 icon={<FaLeaf className="text-white" />}
-                label="New Arrivals"
+                label={t("shopDetail.newArrivals")}
                 value={String(newBouquetsCount)}
                 color="bg-gradient-to-br from-rose-500 to-pink-600"
               />
               <StatCard
                 icon={<FaAward className="text-white" />}
-                label="Avg Price"
+                label={t("shopDetail.avgPrice")}
                 value={averagePrice}
                 color="bg-gradient-to-br from-violet-500 to-purple-600"
               />
               <StatCard
                 icon={<FaTruck className="text-white" />}
-                label="Delivery"
-                value={shop.city ?? "Available"}
+                label={t("shopDetail.delivery")}
+                value={shop.city ?? t("shopDetail.availableNow")}
                 color="bg-gradient-to-br from-sky-500 to-blue-600"
               />
             </motion.div>
@@ -574,9 +600,9 @@ function ShopDetail() {
               />
 
               <div className="inline-flex items-center gap-3 rounded-[1.4rem] border border-[#4a2020]/40 bg-[#120608]/70 px-5 py-3 text-sm backdrop-blur-md">
-                <span className="text-[#a88680]">Sort:</span>
+                <span className="text-[#a88680]">{t("shopDetail.sortBy")}</span>
                 <span className="flex items-center gap-2 font-semibold text-[#f5d0a4]">
-                  Newest
+                  {t("shopDetail.sortNewest")}
                   <FaChevronDown className="text-[0.55rem] text-[#a88680]" />
                 </span>
               </div>
@@ -611,8 +637,8 @@ function ShopDetail() {
                     className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[#4a2020]/50 bg-[#120608]/60 p-16 text-center"
                   >
                     <FaShoppingBag className="text-5xl text-[#4a2020]/50 mb-4" />
-                    <p className="font-cormorant text-3xl text-white">No Bouquets Yet</p>
-                    <p className="mt-2 text-sm text-[#a88680]">This shop hasn't added any bouquets</p>
+                    <p className="font-cormorant text-3xl text-white">{t("shopDetail.noBouquetsYet")}</p>
+                    <p className="mt-2 text-sm text-[#a88680]">{t("shopDetail.noBouquetsDesc")}</p>
                   </motion.div>
                 )}
               </div>
@@ -633,11 +659,14 @@ function ShopDetail() {
                       <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57] to-[#a3322e]">
                         <FaStore className="text-xs text-white" />
                       </span>
-                      <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">About</span>
+                      <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.about")}</span>
                     </div>
-                    <h2 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">{shop.name}</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">{shop.name}</h2>
+                      {shop.is_verified ? <ShopVerifiedBadge className="h-6 w-6" iconClassName="h-6 w-6" /> : null}
+                    </div>
                     <p className="mt-4 text-sm leading-7 text-[#dbb8b0]">
-                      {shop.description ?? "Fresh flowers, polished wrapping, and dependable service tailored for thoughtful gifting."}
+                      {shop.description ?? t("shopDetail.aboutShopFallback")}
                     </p>
 
                     {/* Contact Info */}
@@ -648,7 +677,7 @@ function ShopDetail() {
                             <FaPhoneAlt className="text-[0.65rem]" />
                           </span>
                           <div>
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">Phone</p>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.phone")}</p>
                             <p className="font-medium text-white">{formatUzbekPhone(shop.phone)}</p>
                           </div>
                         </a>
@@ -659,7 +688,7 @@ function ShopDetail() {
                             <FaInstagram className="text-[0.65rem]" />
                           </span>
                           <div>
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">Instagram</p>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.instagram")}</p>
                             <p className="font-medium text-white">{shop.instagram}</p>
                           </div>
                         </a>
@@ -670,7 +699,7 @@ function ShopDetail() {
                             <FaTelegramPlane className="text-[0.65rem]" />
                           </span>
                           <div>
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">Telegram</p>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.telegram")}</p>
                             <p className="font-medium text-white">{shop.telegram}</p>
                           </div>
                         </a>
@@ -681,7 +710,7 @@ function ShopDetail() {
                             <FaMapMarkerAlt className="text-[0.65rem]" />
                           </span>
                           <div>
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">Address</p>
+                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.address")}</p>
                             <p className="font-medium text-white">{shop.address}</p>
                           </div>
                         </div>
@@ -693,16 +722,16 @@ function ShopDetail() {
                       <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-4 transition-all duration-200 hover:border-emerald-500/20 hover:bg-[#120608]">
                         <div className="flex items-center gap-2.5 text-emerald-400">
                           <FaTruck className="text-sm" />
-                          <p className="text-sm font-semibold text-white">Same-day Delivery</p>
+                          <p className="text-sm font-semibold text-white">{t("shopDetail.sameDayDelivery")}</p>
                         </div>
-                        <p className="mt-2 text-xs text-[#a88680]">Order before 5 PM</p>
+                        <p className="mt-2 text-xs text-[#a88680]">{t("shopDetail.sameDayDeliveryDesc")}</p>
                       </div>
                       <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-4 transition-all duration-200 hover:border-amber-500/20 hover:bg-[#120608]">
                         <div className="flex items-center gap-2.5 text-amber-400">
                           <FaLeaf className="text-sm" />
-                          <p className="text-sm font-semibold text-white">Fresh Flowers</p>
+                          <p className="text-sm font-semibold text-white">{t("shopDetail.freshFlowers")}</p>
                         </div>
-                        <p className="mt-2 text-xs text-[#a88680]">Curated daily selection</p>
+                        <p className="mt-2 text-xs text-[#a88680]">{t("shopDetail.freshFlowersDesc")}</p>
                       </div>
                     </div>
                   </div>
@@ -722,18 +751,18 @@ function ShopDetail() {
                       <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
                         <FaRegClock className="text-xs text-white" />
                       </span>
-                      <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">Information</span>
+                      <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.info")}</span>
                     </div>
-                    <h3 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">Shop Details</h3>
+                    <h3 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">{t("shopDetail.shopDetails")}</h3>
 
                     <div className="mt-6 space-y-4">
                       {[
-                        { label: "Total Products", value: String(bouquets.length), color: "from-[#cb5c57] to-[#a3322e]" },
-                        { label: "Available Now", value: String(inStockCount), color: "from-emerald-500 to-teal-600" },
-                        { label: "Price Range", value: `${minPriceFormatted} — ${maxPriceFormatted}`, color: "from-violet-500 to-purple-600" },
-                        { label: "Average Price", value: averagePrice, color: "from-amber-500 to-orange-600" },
-                        { label: "Top Rated (4.5★)", value: String(topRatedCount), color: "from-rose-500 to-pink-600" },
-                        { label: "New This Week", value: String(newBouquetsCount), color: "from-sky-500 to-blue-600" },
+                        { label: t("shopDetail.totalProducts"), value: String(bouquets.length), color: "from-[#cb5c57] to-[#a3322e]" },
+                        { label: t("shopDetail.availableNow"), value: String(inStockCount), color: "from-emerald-500 to-teal-600" },
+                        { label: t("shopDetail.priceRange"), value: `${minPriceFormatted} — ${maxPriceFormatted}`, color: "from-violet-500 to-purple-600" },
+                        { label: t("shopDetail.averagePrice"), value: averagePrice, color: "from-amber-500 to-orange-600" },
+                        { label: t("shopDetail.topRatedLabel"), value: String(topRatedCount), color: "from-rose-500 to-pink-600" },
+                        { label: t("shopDetail.newThisWeek"), value: String(newBouquetsCount), color: "from-sky-500 to-blue-600" },
                       ].map((item) => (
                         <div
                           key={item.label}
@@ -752,7 +781,7 @@ function ShopDetail() {
                       <div className="mt-5 border-t border-[#4a2020]/30 pt-5">
                         <div className="flex items-center gap-2.5 text-sm text-[#dbb8b0]">
                           <HiOutlineClock className="text-[#f0a89a]" />
-                          <span className="font-semibold text-white">Working Hours:</span>
+                          <span className="font-semibold text-white">{t("shopDetail.workingHours")}</span>
                           <span>{shop.working_hours}</span>
                         </div>
                       </div>
@@ -771,7 +800,7 @@ function ShopDetail() {
                   {mapUrl ? (
                     <>
                       <div className="border-b border-[#4a2020]/30 px-6 py-4">
-                        <p className="text-[0.55rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">Location</p>
+                        <p className="text-[0.55rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.location")}</p>
                         <p className="mt-1.5 font-semibold text-white">{shop.address}</p>
                       </div>
                       <iframe
@@ -786,8 +815,8 @@ function ShopDetail() {
                       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4a2020] to-[#2b1012]">
                         <FaMapMarkerAlt className="text-2xl text-[#a88680]" />
                       </div>
-                      <p className="font-cormorant text-2xl font-bold text-white">Location Coming Soon</p>
-                      <p className="mt-2 text-sm text-[#a88680]">This shop hasn't set their location yet</p>
+                      <p className="font-cormorant text-2xl font-bold text-white">{t("shopDetail.locationComingSoon")}</p>
+                      <p className="mt-2 text-sm text-[#a88680]">{t("shopDetail.locationComingSoonDesc")}</p>
                     </div>
                   )}
                 </motion.div>

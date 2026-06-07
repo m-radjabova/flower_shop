@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Drawer, IconButton, Tooltip } from "@mui/material";
 import {
@@ -48,11 +48,14 @@ function SidebarContent({
     }
   };
 
+
+  const navigate = useNavigate();
+
   return (
     <div className="flex h-full flex-col bg-[linear-gradient(180deg,#140507_0%,#1b070b_42%,#0d0305_100%)] p-3 text-[#fff6f4]">
       <div className={`mb-6 flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
         {!collapsed ? (
-          <div className="min-w-0 pr-3">
+          <div className="min-w-0 pr-3" onClick={() => navigate("/")} style={{ cursor: "pointer" }}>
             <p className="truncate text-[11px] uppercase tracking-[0.32em] text-[#b69088]">{t("owner.brandName")}</p>
             <h2 className="mt-2 font-cormorant text-[2rem] leading-none text-white">{t("owner.ownerPanel")}</h2>
             <p className="mt-1 text-xs text-[#bfa39d]">{user?.full_name}</p>

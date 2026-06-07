@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FaInstagram, FaTelegramPlane, FaCheckCircle, FaTag, FaFilter } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -27,14 +27,13 @@ import {
 import { useCategories, useInfiniteBouquets } from "../../hooks/useCatalog";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useFavoriteIds } from "../../hooks/useFavorites";
-import { formatPrice, getBouquetImages, isNewBouquet } from "../../utils/catalog";
+import BouquetAvailabilityBadge from "../../components/catalog/BouquetAvailabilityBadge";
+import { formatPrice, getBouquetImages, isBouquetAvailable, isNewBouquet } from "../../utils/catalog";
 import { toggleFavoriteBouquet } from "../../utils/favorites";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 import { BouquetGridSkeleton } from "../../components/PageSkeletons";
 
-// ──────────────────── Shared sub-components ────────────────────
 
-/** 5-star rating display with animated fill */
 const RatingStars = ({ rating }: { rating: number | string }) => {
   const numericRating = Number(rating) || 0;
 
@@ -92,11 +91,31 @@ const BouquetTags = ({ tags }: { tags?: string[] }) => {
 
 // ──────────────────── Main component ────────────────────
 
+const OCCASION_SEARCH_TERMS = {
+  birthday: "birthday",
+  anniversary: "anniversary",
+  wedding: "wedding",
+  newBaby: "new baby",
+  getWell: "get well",
+  romantic: "romantic",
+} as const;
+
+type OccasionKey = keyof typeof OCCASION_SEARCH_TERMS;
+
+function isOccasionKey(value: string | null): value is OccasionKey {
+  return value !== null && value in OCCASION_SEARCH_TERMS;
+}
+
 function BouquetCatalog() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchFromParams = searchParams.get("search") ?? "";
+  const occasionFromParams = searchParams.get("occasion");
+  const activeOccasion = isOccasionKey(occasionFromParams) ? occasionFromParams : null;
+  const activeOccasionSearch = activeOccasion ? OCCASION_SEARCH_TERMS[activeOccasion] : "";
   const { register, watch, setValue } = useForm<{ search: string }>({
-    defaultValues: { search: "" },
+    defaultValues: { search: searchFromParams },
   });
   const search = watch("search");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -123,6 +142,43 @@ function BouquetCatalog() {
     (category) => category.id === selectedCategoryId,
   );
   const hasActiveFilters = Boolean(selectedCategoryId || debouncedSearch);
+  const activeOccasionTitle = activeOccasion ? t(`occasionSection.items.${activeOccasion}.title`) : "";
+  const activeOccasionDescription = activeOccasion ? t(`occasionSection.items.${activeOccasion}.description`) : "";
+  const shouldShowSearchChip = Boolean(
+    debouncedSearch && (!activeOccasion || debouncedSearch.toLowerCase() !== activeOccasionSearch.toLowerCase()),
+  );
+
+  useEffect(() => {
+    if (search !== searchFromParams) {
+      setValue("search", searchFromParams);
+    }
+  }, [search, searchFromParams, setValue]);
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    let shouldUpdate = false;
+
+    if (debouncedSearch) {
+      if (next.get("search") !== debouncedSearch) {
+        next.set("search", debouncedSearch);
+        shouldUpdate = true;
+      }
+    } else if (next.has("search")) {
+      next.delete("search");
+      shouldUpdate = true;
+    }
+
+    if (!debouncedSearch || (activeOccasion && debouncedSearch.toLowerCase() !== activeOccasionSearch.toLowerCase())) {
+      if (next.has("occasion")) {
+        next.delete("occasion");
+        shouldUpdate = true;
+      }
+    }
+
+    if (shouldUpdate) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [activeOccasion, activeOccasionSearch, debouncedSearch, searchParams, setSearchParams]);
 
   // Sticky filter shadow on scroll
   useEffect(() => {
@@ -206,6 +262,7 @@ function BouquetCatalog() {
           onClick={() => {
             setValue("search", "");
             setSelectedCategoryId(null);
+            setSearchParams({});
           }}
           className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-[#5f2825] text-xs font-bold uppercase tracking-wider text-[#f1d0c8] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
         >
@@ -229,6 +286,7 @@ function BouquetCatalog() {
     const shopInstagramUrl = bouquet.shop.instagram ? normalizeInstagramLink(bouquet.shop.instagram) : "";
     const shopTelegramUrl = bouquet.shop.telegram ? normalizeTelegramLink(bouquet.shop.telegram) : "";
     const isHovered = hoveredCard === bouquet.id;
+    const canAddToCart = isBouquetAvailable(bouquet);
 
     return (
       <article
@@ -255,8 +313,8 @@ function BouquetCatalog() {
           <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#0f0606] via-transparent to-transparent opacity-60" />
 
           {/* Badges */}
-          <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
-            <div className="flex gap-1.5">
+            <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
+              <div className="flex gap-1.5">
               {isNew && (
                 <span className="inline-flex animate-pulse items-center gap-1 rounded-full bg-gradient-to-r from-[#dd3045] to-[#ff5b72] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-[#ff5b72]/30">
                   <HiOutlineSparkles size={10} />
@@ -268,9 +326,10 @@ function BouquetCatalog() {
                   <HiFire size={10} />
                   {t("catalog.popular")}
                 </span>
-              )}
+                )}
+              </div>
+              <BouquetAvailabilityBadge bouquet={bouquet} compact />
             </div>
-          </div>
 
           {/* Discount badge */}
           <DiscountBadge oldPrice={bouquet.old_price} price={bouquet.price} />
@@ -449,6 +508,14 @@ function BouquetCatalog() {
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                if (!canAddToCart) {
+                  toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`, {
+                    position: "bottom-right",
+                    autoClose: 1800,
+                    hideProgressBar: true,
+                  });
+                  return;
+                }
                 addToCart(bouquet);
                 toast.success(`${bouquet.name} added to cart`, {
                   position: "bottom-right",
@@ -456,11 +523,16 @@ function BouquetCatalog() {
                   hideProgressBar: true,
                 });
               }}
-              className="group/btn relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] px-4 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:shadow-[#aa1828]/40 active:scale-95"
+              disabled={!canAddToCart}
+              className={`group/btn relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-xl px-4 text-xs font-bold uppercase tracking-wider shadow-lg transition-all duration-300 ${
+                canAddToCart
+                  ? "bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-white hover:shadow-xl hover:shadow-[#aa1828]/40 active:scale-95"
+                  : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94] opacity-80"
+              }`}
             >
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-500 group-hover/btn:translate-x-full" />
               <HiOutlineShoppingBag size={14} className="relative z-10" />
-              <span className="relative z-10">{t("catalog.add")}</span>
+              <span className="relative z-10">{canAddToCart ? t("catalog.add") : t("availability.outOfStock")}</span>
             </button>
           </div>
         </div>
@@ -487,6 +559,7 @@ function BouquetCatalog() {
           onClick={() => {
             setValue("search", "");
             setSelectedCategoryId(null);
+            setSearchParams({});
           }}
           className="group inline-flex items-center gap-2 rounded-full border border-[#cb5c57] bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#cb5c57]/20 transition-all duration-300 hover:shadow-xl active:scale-[0.97]"
         >
@@ -543,13 +616,27 @@ function BouquetCatalog() {
           {/* ── Hero / Header ── */}
           <div className="mb-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div >
+              {activeOccasion ? (
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#cb5c57]/30 bg-[#19080a]/70 px-4 py-2 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f3c9bf] shadow-[0_12px_32px_rgba(90,18,25,0.18)] backdrop-blur-md">
+                  <HiOutlineSparkles className="text-[#ff9b88]" />
+                  {t("catalog.curatedForMoment")}
+                </div>
+              ) : null}
              
               <h1 className="mt-5 font-great-vibes text-[clamp(3.2rem,7vw,6.4rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]">
-                Find Your
+                {activeOccasion ? activeOccasionTitle : t("catalog.findYour")}
                 <span className="block bg-gradient-to-r from-[#ff9b88] via-[#dd5c5c] to-[#cb5c57] bg-clip-text text-transparent">
-                  Perfect Bouquet
+                  {activeOccasion ? t("catalog.bouquetsCollection") : t("catalog.perfectBouquet")}
                 </span>
               </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#cba8a1] sm:text-base">
+                {activeOccasion
+                  ? t("catalog.occasionHeroDescription", {
+                    occasion: activeOccasionTitle,
+                    description: activeOccasionDescription,
+                  })
+                  : t("catalog.defaultHeroDescription")}
+              </p>
             </div>
 
             {/* Stats cards */}
@@ -614,13 +701,21 @@ function BouquetCatalog() {
                     <HiOutlineMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[#c88f88] transition-colors group-focus-within:text-[#ff9b88]" />
                     <input
                       {...register("search")}
-                      placeholder="Search by bouquet name or occasion..."
+                      placeholder={t("catalog.searchPlaceholder")}
                       className="h-12 w-full rounded-xl border border-[#5f2825] bg-[#090304]/80 pl-11 pr-10 text-sm text-[#fff3ee] outline-none transition-all duration-300 placeholder:text-[#8b6b64] focus:border-[#cb5c57] focus:shadow-[0_0_0_3px_rgba(203,92,87,0.15)]"
                     />
                     {search && (
                       <button
                         type="button"
-                        onClick={() => setValue("search", "")}
+                        onClick={() => {
+                          setValue("search", "");
+                          setSearchParams((current) => {
+                            const next = new URLSearchParams(current);
+                            next.delete("search");
+                            next.delete("occasion");
+                            return next;
+                          });
+                        }}
                         className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[#c9aaa2] transition-all duration-200 hover:bg-[#2b1012] hover:text-white"
                       >
                         <HiXMark className="text-sm" />
@@ -685,12 +780,45 @@ function BouquetCatalog() {
                   </button>
                 </span>
               )}
-              {debouncedSearch && (
+              {activeOccasion && (
+                <span className="inline-flex animate-fade-in-up items-center gap-1.5 rounded-full border border-[#5f2825] bg-[#1a0c0c]/80 px-3 py-1 text-xs shadow-sm backdrop-blur-sm">
+                  <HiOutlineSparkles size={10} className="text-[#ff9b88]" />
+                  {t("occasionSection.filteredBy", {
+                    occasion: t(`occasionSection.items.${activeOccasion}.title`),
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchParams((current) => {
+                        const next = new URLSearchParams(current);
+                        next.delete("occasion");
+                        next.delete("search");
+                        return next;
+                      });
+                      setValue("search", "");
+                    }}
+                    className="ml-0.5 rounded-full p-0.5 text-[#cb5c57] transition hover:bg-[#cb5c57]/20 hover:text-white"
+                    aria-label={t("occasionSection.clear")}
+                  >
+                    <HiXMark size={12} />
+                  </button>
+                </span>
+              )}
+              {shouldShowSearchChip && (
                 <span className="inline-flex animate-fade-in-up items-center gap-1.5 rounded-full border border-[#5f2825] bg-[#1a0c0c]/80 px-3 py-1 text-xs shadow-sm backdrop-blur-sm">
                   <HiOutlineMagnifyingGlass size={10} className="text-[#ff9b88]" />
                   "{debouncedSearch}"
                   <button
-                    onClick={() => setValue("search", "")}
+                    type="button"
+                    onClick={() => {
+                      setValue("search", "");
+                      setSearchParams((current) => {
+                        const next = new URLSearchParams(current);
+                        next.delete("search");
+                        next.delete("occasion");
+                        return next;
+                      });
+                    }}
                     className="ml-0.5 rounded-full p-0.5 text-[#cb5c57] transition hover:bg-[#cb5c57]/20 hover:text-white"
                   >
                     <HiXMark size={12} />

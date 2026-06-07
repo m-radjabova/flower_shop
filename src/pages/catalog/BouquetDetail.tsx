@@ -14,10 +14,12 @@ import {
   HiStar,
 } from "react-icons/hi2";
 import NotFound from "../../components/NotFound";
+import BouquetAvailabilityBadge from "../../components/catalog/BouquetAvailabilityBadge";
 import { DetailPageSkeleton } from "../../components/PageSkeletons";
 import ReviewSection from "../../components/catalog/ReviewSection";
+import ShopVerifiedBadge from "../../components/shops/ShopVerifiedBadge";
 import { useBouquet } from "../../hooks/useCatalog";
-import { formatPrice, getBouquetImages } from "../../utils/catalog";
+import { formatPrice, getBouquetAvailability, getBouquetImages, isBouquetAvailable } from "../../utils/catalog";
 import { getBouquetAddonOptions, getBouquetImageForSize, getBouquetSizeOptions } from "../../utils/bouquetOptions";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 
@@ -51,6 +53,8 @@ function BouquetDetail() {
   const shopInstagramUrl = bouquet.shop.instagram ? normalizeInstagramLink(bouquet.shop.instagram) : "";
   const shopTelegramUrl = bouquet.shop.telegram ? normalizeTelegramLink(bouquet.shop.telegram) : "";
   const isPopular = Number(bouquet.rating) >= 4.5 && bouquet.reviews_count >= 20;
+  const availability = getBouquetAvailability(bouquet);
+  const canAddToCart = isBouquetAvailable(bouquet);
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#070102] text-[#fff6f4]">
@@ -97,6 +101,7 @@ function BouquetDetail() {
                          {t("bouquetDetail.popular")}
                       </span>
                     )}
+                    <BouquetAvailabilityBadge bouquet={bouquet} />
                   </div>
 
                   {/* Rating badge */}
@@ -169,7 +174,9 @@ function BouquetDetail() {
                    </div>
                    <div className="rounded-xl border border-[#3a1a1a] bg-[#120708] p-3.5">
                      <p className="text-[0.65rem] uppercase tracking-[0.18em] text-[#8a6a63]">{t("bouquetDetail.stock")}</p>
-                     <p className="mt-1.5 text-sm font-semibold text-white">{bouquet.stock} {t("bouquetDetail.available")}</p>
+                     <p className="mt-1.5 text-sm font-semibold text-white">
+                       {availability.count ?? bouquet.stock} {availability.count ? t("availability.leftShort") : t("bouquetDetail.available")}
+                     </p>
                    </div>
                    <div className="rounded-xl border border-[#3a1a1a] bg-[#120708] p-3.5">
                      <p className="text-[0.65rem] uppercase tracking-[0.18em] text-[#8a6a63]">{t("bouquetDetail.status")}</p>
@@ -244,13 +251,22 @@ function BouquetDetail() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (!canAddToCart) {
+                      toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`);
+                      return;
+                    }
                     addToCart(bouquet);
                     toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`);
                   }}
-                  className="group/btn mt-7 inline-flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-base font-bold uppercase tracking-[0.1em] text-white shadow-lg transition-all duration-300 hover:from-[#aa1828] hover:via-[#bb2435] hover:to-[#dd3045] hover:shadow-xl active:scale-[0.98]"
+                  disabled={!canAddToCart}
+                  className={`group/btn mt-7 inline-flex h-14 w-full items-center justify-center gap-3 rounded-xl text-base font-bold uppercase tracking-[0.1em] shadow-lg transition-all duration-300 ${
+                    canAddToCart
+                      ? "bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-white hover:from-[#aa1828] hover:via-[#bb2435] hover:to-[#dd3045] hover:shadow-xl active:scale-[0.98]"
+                      : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94] opacity-80"
+                  }`}
                 >
                   <HiOutlineShoppingBag className="text-lg transition-transform duration-300 group-hover/btn:-translate-x-1" />
-                   {t("bouquetDetail.addToCart")}
+                   {canAddToCart ? t("bouquetDetail.addToCart") : t("availability.outOfStock")}
                 </button>
               </div>
 
@@ -273,9 +289,12 @@ function BouquetDetail() {
                   )}
                   <div className="min-w-0 flex-1">
                      <p className="text-[0.65rem] uppercase tracking-[0.18em] text-[#8a6a63]">{t("bouquetDetail.soldBy")}</p>
-                    <h2 className="mt-0.5 font-cormorant text-2xl text-white transition-colors duration-300 group-hover:text-[#cb5c57]">
-                      {bouquet.shop.name}
-                    </h2>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <h2 className="font-cormorant text-2xl text-white transition-colors duration-300 group-hover:text-[#cb5c57]">
+                        {bouquet.shop.name}
+                      </h2>
+                      {bouquet.shop.is_verified ? <ShopVerifiedBadge /> : null}
+                    </div>
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#cfa89e]">
                       {bouquet.shop.city ? (
                         <span className="inline-flex items-center gap-1">

@@ -17,11 +17,11 @@ export type ProfileTab = "profile" | "orders" | "favorites" | "addresses" | "set
 
 export function getTabs(t: (key: string) => string) {
   return [
-    { key: "profile", label: t("myProfile"), icon: <HiOutlineUser /> },
-    { key: "orders", label: t("myOrders"), icon: <HiOutlineShoppingBag /> },
-    { key: "favorites", label: t("myFavorites"), icon: <HiOutlineHeart /> },
-    { key: "addresses", label: t("myAddresses"), icon: <HiOutlineMapPin /> },
-    { key: "settings", label: t("settings"), icon: <HiOutlineCog6Tooth /> },
+    { key: "profile", label: t("profile.myProfile"), icon: <HiOutlineUser /> },
+    { key: "orders", label: t("profile.myOrders"), icon: <HiOutlineShoppingBag /> },
+    { key: "favorites", label: t("profile.myFavorites"), icon: <HiOutlineHeart /> },
+    { key: "addresses", label: t("profile.myAddresses"), icon: <HiOutlineMapPin /> },
+    { key: "settings", label: t("profile.settings"), icon: <HiOutlineCog6Tooth /> },
   ] as Array<{ key: ProfileTab; label: string; icon: React.ReactNode }>;
 }
 
@@ -39,17 +39,17 @@ function translateMethodValue(value: string) {
 export function getOrderStatusMeta(status: OrderOut["status"]) {
   switch (status) {
     case "new":
-      return { label: i18next.t("new"), className: "border-[#6b4f2f] bg-[#2a1b0e] text-[#f7cf9d]" };
+      return { label: i18next.t("profile.new"), className: "border-[#6b4f2f] bg-[#2a1b0e] text-[#f7cf9d]" };
     case "accepted":
-      return { label: i18next.t("accepted"), className: "border-[#4b5a73] bg-[#121c2d] text-[#a8c8ff]" };
+      return { label: i18next.t("profile.accepted"), className: "border-[#4b5a73] bg-[#121c2d] text-[#a8c8ff]" };
     case "preparing":
-      return { label: i18next.t("preparing"), className: "border-[#7b5832] bg-[#2d1a0f] text-[#ffcf8c]" };
+      return { label: i18next.t("profile.preparing"), className: "border-[#7b5832] bg-[#2d1a0f] text-[#ffcf8c]" };
     case "delivering":
-      return { label: i18next.t("delivering"), className: "border-[#35626b] bg-[#10252a] text-[#8fe7ff]" };
+      return { label: i18next.t("profile.delivering"), className: "border-[#35626b] bg-[#10252a] text-[#8fe7ff]" };
     case "delivered":
-      return { label: i18next.t("deliveredDone"), className: "border-[#2f6a4f] bg-[#10231a] text-[#9ef0c2]" };
+      return { label: i18next.t("profile.deliveredDone"), className: "border-[#2f6a4f] bg-[#10231a] text-[#9ef0c2]" };
     case "cancelled":
-      return { label: i18next.t("cancelled"), className: "border-[#7a3542] bg-[#2a0f14] text-[#ff9eae]" };
+      return { label: i18next.t("profile.cancelled"), className: "border-[#7a3542] bg-[#2a0f14] text-[#ff9eae]" };
     default:
       return { label: status, className: "border-[#704447] bg-[#2a1014] text-[#f4d8d2]" };
   }
@@ -58,11 +58,11 @@ export function getOrderStatusMeta(status: OrderOut["status"]) {
 export function getPaymentStatusMeta(status: OrderOut["payment_status"]) {
   switch (status) {
     case "paid":
-      return { label: i18next.t("paid"), className: "text-[#9ef0c2]" };
+      return { label: i18next.t("profile.paid"), className: "text-[#9ef0c2]" };
     case "pending":
-      return { label: i18next.t("pending"), className: "text-[#ffd39a]" };
+      return { label: i18next.t("profile.pending"), className: "text-[#ffd39a]" };
     case "failed":
-      return { label: i18next.t("failed"), className: "text-[#ff9eae]" };
+      return { label: i18next.t("profile.failed"), className: "text-[#ff9eae]" };
     default:
       return { label: status, className: "text-[#f4d8d2]" };
   }
@@ -77,38 +77,38 @@ export function getOrderEtaMeta(status: OrderOut["status"], createdAt: string) {
   switch (status) {
     case "new":
       return {
-        label: i18next.t("queued"),
-        hint: elapsedMinutes !== null ? `${elapsedMinutes} ${i18next.t("minutesAgoSuffix")}` : i18next.t("justReceived"),
+        label: i18next.t("profile.queued"),
+        hint: elapsedMinutes !== null ? `${elapsedMinutes} ${i18next.t("profile.minutesAgoSuffix")}` : i18next.t("profile.justReceived"),
         className: "border-[#7b5832] bg-[#2d1a0f] text-[#ffcf8c]",
       };
     case "accepted":
       return {
-        label: i18next.t("accepted"),
-        hint: i18next.t("eta15to25"),
+        label: i18next.t("profile.accepted"),
+        hint: i18next.t("profile.eta15to25"),
         className: "border-[#4b5a73] bg-[#121c2d] text-[#a8c8ff]",
       };
     case "preparing":
       return {
-        label: i18next.t("preparing"),
-        hint: i18next.t("eta10to20"),
+        label: i18next.t("profile.preparing"),
+        hint: i18next.t("profile.eta10to20"),
         className: "border-[#7b5832] bg-[#2d1a0f] text-[#ffcf8c]",
       };
     case "delivering":
       return {
-        label: i18next.t("delivering"),
-        hint: i18next.t("eta5to15"),
+        label: i18next.t("profile.delivering"),
+        hint: i18next.t("profile.eta5to15"),
         className: "border-[#35626b] bg-[#10252a] text-[#8fe7ff]",
       };
     case "delivered":
       return {
-        label: i18next.t("deliveredDone"),
-        hint: i18next.t("completed"),
+        label: i18next.t("profile.deliveredDone"),
+        hint: i18next.t("profile.completed"),
         className: "border-[#2f6a4f] bg-[#10231a] text-[#9ef0c2]",
       };
     case "cancelled":
       return {
-        label: i18next.t("cancelled"),
-        hint: i18next.t("noEta"),
+        label: i18next.t("profile.cancelled"),
+        hint: i18next.t("profile.noEta"),
         className: "border-[#7a3542] bg-[#2a0f14] text-[#ff9eae]",
       };
     default:

@@ -110,7 +110,6 @@ function OrderProgress({ status, steps, compact = false, className }: OrderProgr
             {steps.map((step, index) => {
               const isDone = index < currentIndex;
               const isCurrent = index === currentIndex;
-              const isFuture = index > currentIndex;
               const icon = stepIcons[step.key] ?? <span className="text-xs font-bold">{index + 1}</span>;
 
               return (
@@ -166,7 +165,6 @@ function OrderProgress({ status, steps, compact = false, className }: OrderProgr
           {steps.map((step, index) => {
             const isDone = index < currentIndex;
             const isCurrent = index === currentIndex;
-            const isFuture = index > currentIndex;
             const isLast = index === steps.length - 1;
 
             return (

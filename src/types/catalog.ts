@@ -18,6 +18,11 @@ export interface ShopSummary {
   telegram: string | null;
   rating: string;
   reviews_count: number;
+  completed_orders_count?: number;
+  is_verified: boolean;
+  is_premium?: boolean;
+  premium_until?: string | null;
+  popularity_badge?: "best_seller" | "most_popular" | null;
   status: "pending" | "active" | "blocked";
 }
 
@@ -136,6 +141,11 @@ export interface Shop {
   working_hours: string | null;
   rating: string;
   reviews_count: number;
+  completed_orders_count?: number;
+  is_verified: boolean;
+  is_premium?: boolean;
+  premium_until?: string | null;
+  popularity_badge?: "best_seller" | "most_popular" | null;
   status: "pending" | "active" | "blocked";
   created_at: string;
   updated_at: string;
@@ -156,6 +166,9 @@ export interface ShopUpdatePayload {
   instagram?: string | null;
   telegram?: string | null;
   working_hours?: string | null;
+  is_verified?: boolean;
+  is_premium?: boolean;
+  premium_until?: string | null;
   status?: "pending" | "active" | "blocked";
 }
 
@@ -270,6 +283,7 @@ export interface OrderCreatePayload {
   address?: string;
   payment_method: string;
   note?: string;
+  gift_message?: string;
   items: OrderItemCreatePayload[];
 }
 
@@ -300,6 +314,7 @@ export interface OrderOut {
   status: "new" | "accepted" | "preparing" | "delivering" | "delivered" | "cancelled";
   total_price: string;
   note: string | null;
+  gift_message: string | null;
   created_at: string;
   updated_at: string;
   items: OrderItemOut[];

@@ -33,3 +33,30 @@ export interface User {
   created_at: string;
   updated_at: string;
 }
+
+export type ImportantDateEventType = "birthday" | "anniversary" | "custom";
+
+export interface ImportantDate {
+  id: string;
+  user_id: string;
+  title: string;
+  event_type: ImportantDateEventType;
+  event_date: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ImportantDateCreatePayload {
+  title: string;
+  event_type: ImportantDateEventType;
+  event_date: string;
+  note?: string | null;
+}
+
+export interface ImportantDateUpdatePayload {
+  title?: string;
+  event_type?: ImportantDateEventType;
+  event_date?: string;
+  note?: string | null;
+}

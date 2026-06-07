@@ -17,10 +17,12 @@ import { LuCakeSlice, LuFlower2 } from "react-icons/lu";
 import { TbRings } from "react-icons/tb";
 import type { Bouquet, Category } from "../../types/catalog";
 import { useFavoriteIds } from "../../hooks/useFavorites";
-import { formatPrice, getBouquetImages, isNewBouquet } from "../../utils/catalog";
+import BouquetAvailabilityBadge from "../catalog/BouquetAvailabilityBadge";
+import { formatPrice, getBouquetImages, isBouquetAvailable, isNewBouquet } from "../../utils/catalog";
 import { toggleFavoriteBouquet } from "../../utils/favorites";
 import { HomeCategoriesSkeleton } from "../PageSkeletons";
 import { useEffect, useRef, useState } from "react";
+import ShopVerifiedBadge from "../shops/ShopVerifiedBadge";
 
 const categoryIcons = {
   roses: LuFlower2,
@@ -80,6 +82,8 @@ interface BouquetSectionProps {
   isLoading: boolean;
   selectedCategoryId: string | null;
   onSelectCategory: (categoryId: string | null) => void;
+  selectedOccasion?: "birthday" | "anniversary" | "wedding" | "newBaby" | "getWell" | "romantic" | null;
+  onClearOccasion?: () => void;
 }
 
 function BouquetSection({
@@ -88,6 +92,8 @@ function BouquetSection({
   isLoading,
   selectedCategoryId,
   onSelectCategory,
+  selectedOccasion = null,
+  onClearOccasion,
 }: BouquetSectionProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -133,6 +139,10 @@ function BouquetSection({
 
   const handleAddToCart = (event: React.MouseEvent, bouquet: Bouquet) => {
     event.stopPropagation();
+    if (!isBouquetAvailable(bouquet)) {
+      toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`);
+      return;
+    }
     addToCart(bouquet);
     toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`, { position: "bottom-right", autoClose: 2000, theme: "colored" });
   };
@@ -200,6 +210,24 @@ function BouquetSection({
           <>
             {/* ─── Categories Section ─── */}
             <div className="relative mt-8">
+              {selectedOccasion ? (
+                <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#c75b66]/35 bg-[#1b0b0d]/90 px-4 py-2 text-sm font-semibold text-[#ffe5de]">
+                    <HiOutlineSparkles className="text-[#ff9b88]" />
+                    {t("occasionSection.filteredBy", {
+                      occasion: t(`occasionSection.items.${selectedOccasion}.title`),
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onClearOccasion}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#6c3034] bg-[#17090b] px-4 py-2 text-sm font-semibold text-[#f1d5cb] transition hover:border-[#cb5c57] hover:text-white"
+                  >
+                    {t("occasionSection.clear")}
+                  </button>
+                </div>
+              ) : null}
+
               {/* Categories scroll hint */}
               <div className="flex overflow-x-auto pb-4 scrollbar-none md:pb-0">
                 <div className="flex gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 min-w-max md:min-w-full mx-auto">
@@ -295,6 +323,7 @@ function BouquetSection({
                   const isVisible = visibleCards.has(`bouquet-${bouquet.id}`);
                   const isHovered = hoveredCardId === bouquet.id;
                   const imageReady = imageLoaded[`bouquet-${bouquet.id}`] !== false;
+                  const canAddToCart = isBouquetAvailable(bouquet);
 
                   return (
                     <article
@@ -343,6 +372,7 @@ function BouquetSection({
                                {t("bouquetSection.popular")}
                             </span>
                           )}
+                          <BouquetAvailabilityBadge bouquet={bouquet} />
                         </div>
 
                         {/* Favorite Button */}
@@ -412,7 +442,10 @@ function BouquetSection({
                           onClick={(event) => event.stopPropagation()}
                           className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#cb5c57] transition-all duration-300 hover:text-[#ff9b88]"
                         >
-                          {bouquet.shop.name}
+                          <span>{bouquet.shop.name}</span>
+                          {bouquet.shop.is_verified ? (
+                            <ShopVerifiedBadge className="h-3.5 w-3.5" iconClassName="h-3.5 w-3.5" />
+                          ) : null}
                           <HiChevronRight className="opacity-0 -translate-x-2 transition-all duration-300 group-hover/name:opacity-100 group-hover/name:translate-x-0" size={12} />
                         </Link>
 
@@ -476,10 +509,15 @@ function BouquetSection({
                         <button
                           type="button"
                           onClick={(e) => handleAddToCart(e, bouquet)}
-                          className="group/btn mt-5 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-[#8f1220]/20 transition-all duration-300 hover:from-[#aa1828] hover:via-[#bb2435] hover:to-[#dd3045] hover:shadow-xl hover:shadow-[#bb2435]/30 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb5c57] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0c0c]"
+                          disabled={!canAddToCart}
+                          className={`group/btn mt-5 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-bold uppercase tracking-wider shadow-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb5c57] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0c0c] ${
+                            canAddToCart
+                              ? "bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-white shadow-[#8f1220]/20 hover:from-[#aa1828] hover:via-[#bb2435] hover:to-[#dd3045] hover:shadow-xl hover:shadow-[#bb2435]/30 active:scale-[0.97]"
+                              : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94] opacity-80"
+                          }`}
                         >
                           <HiOutlineShoppingBag className="text-base transition-all duration-300 group-hover/btn:-translate-x-1 group-hover/btn:scale-110" />
-                           <span>{t("bouquetSection.addToCart")}</span>
+                           <span>{canAddToCart ? t("bouquetSection.addToCart") : t("availability.outOfStock")}</span>
                         </button>
                       </div>
                     </article>

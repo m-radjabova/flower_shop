@@ -9,6 +9,7 @@ import {
   HiOutlineShoppingBag,
 } from "react-icons/hi2";
 import { useTranslation } from "react-i18next";
+import GiftMessageCard from "../../../components/orders/GiftMessageCard";
 import { OrdersListSkeleton } from "../../../components/PageSkeletons";
 import OrderProgress from "../../../components/orders/OrderProgress";
 import type { OrderOut } from "../../../types/catalog";
@@ -292,6 +293,7 @@ function OrdersTab({ expandedOrderId, highlightedOrderId, isLoading, onRepeatOrd
                             <p className="text-sm text-[#caa39d]">Customer note</p>
                             <p>{order.note?.trim() || "Izoh qoldirilmagan"}</p>
                           </div>
+                          {order.gift_message?.trim() ? <GiftMessageCard message={order.gift_message} compact /> : null}
                         </div>
                       </div>
                     </div>

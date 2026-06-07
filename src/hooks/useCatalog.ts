@@ -15,6 +15,7 @@ import {
   getManagedBouquets,
   getManagedReviews,
   getShopApplications,
+  getShops,
   getMyLatestShopApplication,
   getMyShops,
   getMyReferralSummary,
@@ -49,6 +50,9 @@ import type {
 } from "../types/catalog";
 
 export const categoryQueryKey = ["categories"];
+type QueryToggleOptions = {
+  enabled?: boolean;
+};
 
 export function useCategories() {
   return useQuery({
@@ -103,6 +107,15 @@ export function useShop(slug: string | undefined) {
   });
 }
 
+export function useShops() {
+  return useQuery({
+    queryKey: ["shops", "public"],
+    queryFn: getShops,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 45,
+  });
+}
+
 export function useMyShops() {
   return useQuery({
     queryKey: ["shops", "me"],
@@ -133,10 +146,11 @@ export function useShopApplications() {
   });
 }
 
-export function useMyLatestShopApplication() {
+export function useMyLatestShopApplication(options?: QueryToggleOptions) {
   return useQuery({
     queryKey: ["shop-applications", "me", "latest"],
     queryFn: getMyLatestShopApplication,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -163,18 +177,20 @@ export function useUpdateOrderStatus() {
   });
 }
 
-export function useMyOrders() {
+export function useMyOrders(options?: QueryToggleOptions) {
   return useQuery({
     queryKey: ["orders", "me"],
     queryFn: getMyOrders,
+    enabled: options?.enabled ?? true,
     refetchInterval: 1000 * 20,
   });
 }
 
-export function useMyAddresses() {
+export function useMyAddresses(options?: QueryToggleOptions) {
   return useQuery({
     queryKey: ["addresses", "me"],
     queryFn: getMyAddresses,
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -195,18 +211,20 @@ export function useManagedReviews(shopId: string | undefined) {
   });
 }
 
-export function useMyReviews() {
+export function useMyReviews(options?: QueryToggleOptions) {
   return useQuery({
     queryKey: ["reviews", "me"],
     queryFn: getMyReviews,
+    enabled: options?.enabled ?? true,
     refetchInterval: 1000 * 20,
   });
 }
 
-export function useMyReferralSummary() {
+export function useMyReferralSummary(options?: QueryToggleOptions) {
   return useQuery({
     queryKey: ["referrals", "me"],
     queryFn: getMyReferralSummary,
+    enabled: options?.enabled ?? true,
     refetchInterval: 1000 * 30,
   });
 }
@@ -301,6 +319,7 @@ export function useUpdateShop() {
       updateShop(shopId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["shops", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["shops", "public"] });
       queryClient.invalidateQueries({ queryKey: ["shops", "me"] });
       queryClient.invalidateQueries({ queryKey: ["shop"] });
     },

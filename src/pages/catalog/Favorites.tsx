@@ -13,7 +13,7 @@ import {
 } from "react-icons/hi2";
 import { useFavoriteItems } from "../../hooks/useFavorites";
 import { formatPrice } from "../../utils/catalog";
-import { removeFavoriteBouquet } from "../../utils/favorites";
+import { removeFavoriteBouquet, type FavoriteBouquetItem } from "../../utils/favorites";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 
 type SortValue = "recent" | "priceAsc" | "priceDesc" | "ratingDesc";
@@ -58,7 +58,7 @@ const HeartPulse = ({ count }: { count: number }) => (
     className="inline-flex items-center gap-2"
   >
     <FaHeart className="text-[#ff6077] drop-shadow-[0_0_8px_rgba(255,96,119,0.5)]" />
-    <span className="text-lg font-bold tracking-wide">{count} items</span>
+    <span className="text-lg font-bold tracking-wide">{count}</span>
   </motion.div>
 );
 
@@ -159,9 +159,9 @@ function Favorites() {
     toast.info(`${name} ${t("bouquetSection.removedFromFavorites")}`);
   };
 
-  const handleAddToCart = (bouquet: any) => {
+  const handleAddToCart = (bouquet: FavoriteBouquetItem["bouquet"]) => {
     addToCart(bouquet);
-    toast.success(`${bouquet.name} added to cart`);
+    toast.success(`${bouquet.name} ${t("favorites.addedToCart")}`);
   };
 
   const containerClass =
@@ -191,7 +191,7 @@ function Favorites() {
               >
                 <span className="inline-flex items-center gap-2 rounded-full border border-[#ff6077]/30 bg-[#ff6077]/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-[#ff9b88]">
                   <HiOutlineSparkles size={14} />
-                  Your Collection
+                  {t("favorites.yourCollection")}
                 </span>
               </motion.div>
 
@@ -201,9 +201,9 @@ function Favorites() {
                 transition={{ duration: 0.6, delay: 0.1 }}
                 className="mt-5 font-great-vibes text-[clamp(3.2rem,7vw,6.4rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]"
               >
-                My{" "}
+                {t("favorites.my")}{" "}
                 <span className="bg-gradient-to-r from-[#ff6077] to-[#ff9b88] bg-clip-text text-transparent">
-                  Favorites
+                  {t("favorites.favorites")}
                 </span>
               </motion.h1>
             </div>
@@ -220,6 +220,7 @@ function Favorites() {
               {/* Items count */}
               <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825]/60 bg-[#2b1012]/40 px-5 py-2.5 text-[#f8d9d2]">
                 <HeartPulse count={favoriteItems.length} />
+                <span className="text-lg font-bold tracking-wide">{t("favorites.items")}</span>
               </div>
 
               <div className="flex items-center gap-3">
@@ -371,7 +372,7 @@ function Favorites() {
                               type="button"
                               onClick={() => handleAddToCart(bouquet)}
                               className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#c03b47]/50 bg-gradient-to-br from-[#8f1220]/90 to-[#bb2435]/90 text-white shadow-lg shadow-[#c03b47]/20 transition-all duration-300 hover:shadow-[0_0_25px_rgba(192,59,71,0.4)] active:scale-95"
-                              title="Add to cart"
+                              title={t("favorites.addToCart")}
                             >
                               <FaShoppingBag size={14} />
                             </button>
@@ -379,7 +380,7 @@ function Favorites() {
                               type="button"
                               onClick={() => handleRemove(item.id, bouquet.name)}
                               className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#5f2825]/60 text-[#f8d9d2] transition-all duration-300 hover:border-[#ff6077]/50 hover:bg-[#ff6077]/10 hover:text-[#ff6077] active:scale-95"
-                              title="Remove from favorites"
+                              title={t("favorites.removeFromFavorites")}
                             >
                               <FaTrashAlt size={13} />
                             </button>
@@ -419,7 +420,7 @@ function Favorites() {
                             animate={{ opacity: 1, scale: 1 }}
                             onClick={() => handleRemove(item.id, bouquet.name)}
                             className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[#ff6077]/30 bg-[#1c0a0b]/80 text-[#ff6077] backdrop-blur-sm transition-all duration-300 hover:bg-[#ff6077]/20 hover:border-[#ff6077]/60"
-                            title="Remove"
+                            title={t("favorites.remove")}
                           >
                             <FaTrashAlt size={13} />
                           </motion.button>
@@ -490,7 +491,7 @@ function Favorites() {
                               whileTap={{ scale: 0.92 }}
                               onClick={() => handleAddToCart(bouquet)}
                               className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#c03b47]/50 bg-gradient-to-br from-[#8f1220]/90 to-[#bb2435]/90 text-white shadow-lg shadow-[#c03b47]/20 transition-all duration-300 hover:shadow-[0_0_25px_rgba(192,59,71,0.4)]"
-                              title="Add to cart"
+                              title={t("favorites.addToCart")}
                             >
                               <FaShoppingBag size={14} />
                             </motion.button>
@@ -551,11 +552,10 @@ function Favorites() {
                   </motion.div>
 
                   <h2 className="mt-6 font-cormorant text-4xl font-bold text-[#fff3ed] sm:text-5xl">
-                    No favorites yet
+                    {t("favorites.noFavorites")}
                   </h2>
                   <p className="mt-3 text-base leading-relaxed text-[#c9aba4]">
-                    Start exploring our beautiful collection and save the bouquets that steal your heart.
-                    They'll all appear right here.
+                    {t("favorites.noFavoritesDesc")}
                   </p>
 
                   <Link
@@ -564,7 +564,7 @@ function Favorites() {
                   >
                     <span className="relative z-10 flex items-center gap-2">
                       <HiOutlineSparkles size={16} />
-                      Explore Bouquets
+                      {t("favorites.exploreBouquets")}
                     </span>
                     <div className="absolute inset-0 -translate-x-full skew-x-12 bg-gradient-to-r from-white/0 via-white/15 to-white/0 transition-transform duration-700 group-hover:translate-x-full" />
                   </Link>
