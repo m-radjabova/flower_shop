@@ -13,6 +13,7 @@ import DeliveryCheckout from "./pages/catalog/DeliveryCheckout";
 import Shops from "./pages/catalog/Shops";
 import ShopDetail from "./pages/catalog/ShopDetail";
 import Admin from "./pages/admin/Admin";
+import AdminChats from "./pages/admin/chats/AdminChats";
 import HelloAdmin from "./pages/admin/Helloadmin";
 import AdminApplications from "./pages/admin/applications/AdminApplications";
 import AdminCategories from "./pages/admin/categories/AdminCategories";
@@ -28,6 +29,7 @@ import OwnerBouquets from "./pages/owner/OwnerBouquets";
 import OwnerOrders from "./pages/owner/OwnerOrders";
 import OwnerReviews from "./pages/owner/OwnerReviews";
 import OwnerShop from "./pages/owner/OwnerShop";
+import OwnerSupport from "./pages/owner/OwnerSupport";
 import Profile from "./pages/profile/Profile";
 import ShopApplicationPage from "./pages/profile/ShopApplicationPage";
 
@@ -95,6 +97,7 @@ function App() {
           <Route path="bouquets/:bouquetId/edit" element={<OwnerBouquetEditor />} />
           <Route path="orders" element={<OwnerOrders />} />
           <Route path="reviews" element={<OwnerReviews />} />
+          <Route path="support" element={<OwnerSupport />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 
@@ -111,6 +114,7 @@ function App() {
           <Route path="shops" element={<AdminShops />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="applications" element={<AdminApplications />} />
+          <Route path="chats" element={<AdminChats />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 

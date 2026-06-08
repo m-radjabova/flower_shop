@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { FaInstagram, FaTelegramPlane, FaCheckCircle, FaTag, FaFilter } from "react-icons/fa";
+import { FaInstagram, FaTelegramPlane, FaCheckCircle, FaTag, FaFilter, FaLeaf } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { addToCart } from "../../utils/cart";
 import {
@@ -23,6 +23,7 @@ import {
   HiOutlineCheckBadge,
   HiOutlineArrowPath,
   HiMiniGift,
+  HiOutlineEye,
 } from "react-icons/hi2";
 import { useCategories, useInfiniteBouquets } from "../../hooks/useCatalog";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -32,11 +33,12 @@ import { formatPrice, getBouquetImages, isBouquetAvailable, isNewBouquet } from 
 import { toggleFavoriteBouquet } from "../../utils/favorites";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 import { BouquetGridSkeleton } from "../../components/PageSkeletons";
+import type { Bouquet } from "../../types/catalog";
 
+// ────────────────── Sub‑components ──────────────────
 
 const RatingStars = ({ rating }: { rating: number | string }) => {
   const numericRating = Number(rating) || 0;
-
   return (
     <div className="flex items-center gap-0.5">
       {[...Array(5)].map((_, i) => (
@@ -44,7 +46,7 @@ const RatingStars = ({ rating }: { rating: number | string }) => {
           key={i}
           className={`text-xs transition-all duration-300 ${
             i < Math.floor(numericRating)
-              ? "text-amber-400 drop-shadow-glow scale-110"
+              ? "text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] scale-110"
               : "text-gray-600"
           }`}
         />
@@ -53,38 +55,39 @@ const RatingStars = ({ rating }: { rating: number | string }) => {
   );
 };
 
-/** Discount badge component */
 const DiscountBadge = ({ oldPrice, price }: { oldPrice?: string | null; price: string }) => {
   if (!oldPrice) return null;
   const discountPercent = Math.round((1 - Number(price) / Number(oldPrice)) * 100);
   if (discountPercent <= 0) return null;
-
   return (
-    <span className="absolute -left-1.5 top-4 z-10 inline-flex items-center gap-1 rounded-r-full bg-gradient-to-r from-emerald-500 to-emerald-400 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-500/30">
+    <span className="absolute -left-1.5 top-4 z-10 inline-flex items-center gap-1.5 rounded-r-full bg-gradient-to-r from-emerald-500 to-emerald-400 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-500/40">
       <HiOutlineArrowPath size={10} className="animate-spin-slow" />
       -{discountPercent}%
     </span>
   );
 };
 
-/** Tag list on the card (bouquet tags) */
-const BouquetTags = ({ tags }: { tags?: string[] }) => {
-  if (!tags || tags.length === 0) return null;
-  const displayed = tags.slice(0, 3);
+const FloatingPetals = () => {
   return (
-    <div className="flex flex-wrap gap-1.5 mt-2">
-      {displayed.map((tag) => (
-        <span
-          key={tag}
-          className="inline-flex items-center gap-1 rounded-md border border-[#3d1c1b] bg-[#1c0a0b] px-2 py-0.5 text-[9px] font-medium uppercase tracking-widest text-[#c99b92]"
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      {[...Array(12)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute animate-float-petal"
+          style={{
+            left: `${5 + (i * 8.3) % 95}%`,
+            top: `${-15 + (i * 6) % 25}%`,
+            animationDelay: `${i * 1.8}s`,
+            animationDuration: `${14 + (i % 5) * 4}s`,
+            fontSize: `${0.6 + (i % 4) * 0.35}rem`,
+            transform: `rotate(${i * 37}deg)`,
+            opacity: 0.15 + (i % 3) * 0.12,
+            color: i % 2 === 0 ? "#cb5c57" : "#ff9b88",
+          }}
         >
-          <FaTag size={6} />
-          {tag}
-        </span>
+          <FaLeaf />
+        </div>
       ))}
-      {tags.length > 3 && (
-        <span className="text-[9px] text-[#8b6b64]">+{tags.length - 3}</span>
-      )}
     </div>
   );
 };
@@ -106,6 +109,20 @@ function isOccasionKey(value: string | null): value is OccasionKey {
   return value !== null && value in OCCASION_SEARCH_TERMS;
 }
 
+const CATEGORY_TRANSLATION_KEYS: Record<string, OccasionKey | "roses"> = {
+  anniversary: "anniversary",
+  birthday: "birthday",
+  wedding: "wedding",
+  "new-baby": "newBaby",
+  "new baby": "newBaby",
+  newborn: "newBaby",
+  "get-well": "getWell",
+  "get-well-soon": "getWell",
+  "get well": "getWell",
+  romantic: "romantic",
+  roses: "roses",
+};
+
 function BouquetCatalog() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -114,8 +131,14 @@ function BouquetCatalog() {
   const occasionFromParams = searchParams.get("occasion");
   const activeOccasion = isOccasionKey(occasionFromParams) ? occasionFromParams : null;
   const activeOccasionSearch = activeOccasion ? OCCASION_SEARCH_TERMS[activeOccasion] : "";
+  const activeOccasionTitle = activeOccasion ? t(`occasionSection.items.${activeOccasion}.title`) : "";
+  const activeOccasionDescription = activeOccasion ? t(`occasionSection.items.${activeOccasion}.description`) : "";
+  const displaySearchFromParams =
+    activeOccasion && searchFromParams.trim().toLowerCase() === activeOccasionSearch.toLowerCase()
+      ? activeOccasionTitle
+      : searchFromParams;
   const { register, watch, setValue } = useForm<{ search: string }>({
-    defaultValues: { search: searchFromParams },
+    defaultValues: { search: displaySearchFromParams },
   });
   const search = watch("search");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -126,10 +149,17 @@ function BouquetCatalog() {
 
   const debouncedSearch = useDebounce(search.trim(), 450);
   const favoriteIds = useFavoriteIds();
+  const searchMatchesActiveOccasion = Boolean(
+    activeOccasion &&
+      [activeOccasionSearch, activeOccasionTitle]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase() === search.trim().toLowerCase()),
+  );
+  const effectiveSearch = searchMatchesActiveOccasion ? activeOccasionSearch : debouncedSearch;
   const categoriesQuery = useCategories();
   const bouquetsQuery = useInfiniteBouquets({
     categoryId: selectedCategoryId ?? undefined,
-    search: debouncedSearch || undefined,
+    search: effectiveSearch || undefined,
     limit: 9,
   });
 
@@ -141,57 +171,62 @@ function BouquetCatalog() {
   const selectedCategory = categoriesQuery.data?.find(
     (category) => category.id === selectedCategoryId,
   );
-  const hasActiveFilters = Boolean(selectedCategoryId || debouncedSearch);
-  const activeOccasionTitle = activeOccasion ? t(`occasionSection.items.${activeOccasion}.title`) : "";
-  const activeOccasionDescription = activeOccasion ? t(`occasionSection.items.${activeOccasion}.description`) : "";
+  const hasActiveFilters = Boolean(selectedCategoryId || effectiveSearch);
   const shouldShowSearchChip = Boolean(
-    debouncedSearch && (!activeOccasion || debouncedSearch.toLowerCase() !== activeOccasionSearch.toLowerCase()),
+    effectiveSearch && (!activeOccasion || effectiveSearch.toLowerCase() !== activeOccasionSearch.toLowerCase()),
   );
+  const getLocalizedCategoryName = (category?: { name?: string | null; slug?: string | null }) => {
+    if (!category) return "";
+    const candidates = [category.slug, category.name]
+      .filter(Boolean)
+      .map((value) => String(value).trim().toLowerCase());
+    for (const candidate of candidates) {
+      const key = CATEGORY_TRANSLATION_KEYS[candidate];
+      if (!key) continue;
+      if (key === "roses") return t("catalog.categoryLabels.roses");
+      return t(`occasionSection.items.${key}.title`);
+    }
+    return category.name ?? "";
+  };
 
   useEffect(() => {
-    if (search !== searchFromParams) {
-      setValue("search", searchFromParams);
+    if (search !== displaySearchFromParams) {
+      setValue("search", displaySearchFromParams);
     }
-  }, [search, searchFromParams, setValue]);
+  }, [displaySearchFromParams, search, setValue]);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     let shouldUpdate = false;
-
-    if (debouncedSearch) {
-      if (next.get("search") !== debouncedSearch) {
-        next.set("search", debouncedSearch);
+    if (effectiveSearch) {
+      if (next.get("search") !== effectiveSearch) {
+        next.set("search", effectiveSearch);
         shouldUpdate = true;
       }
     } else if (next.has("search")) {
       next.delete("search");
       shouldUpdate = true;
     }
-
-    if (!debouncedSearch || (activeOccasion && debouncedSearch.toLowerCase() !== activeOccasionSearch.toLowerCase())) {
+    if (!effectiveSearch || (activeOccasion && !searchMatchesActiveOccasion)) {
       if (next.has("occasion")) {
         next.delete("occasion");
         shouldUpdate = true;
       }
     }
-
     if (shouldUpdate) {
       setSearchParams(next, { replace: true });
     }
-  }, [activeOccasion, activeOccasionSearch, debouncedSearch, searchParams, setSearchParams]);
+  }, [activeOccasion, effectiveSearch, searchMatchesActiveOccasion, searchParams, setSearchParams]);
 
-  // Sticky filter shadow on scroll
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 120);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Infinite scroll observer
   useEffect(() => {
     const node = loadMoreRef.current;
     if (!node) return;
-
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && bouquetsQuery.hasNextPage && !bouquetsQuery.isFetchingNextPage) {
@@ -200,7 +235,6 @@ function BouquetCatalog() {
       },
       { rootMargin: "420px" },
     );
-
     observer.observe(node);
     return () => observer.disconnect();
   }, [bouquetsQuery]);
@@ -208,18 +242,18 @@ function BouquetCatalog() {
   // ─── render helpers ──────────────────────────────────
 
   const renderCategoryChips = () => (
-    <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
       <button
         type="button"
         onClick={() => setSelectedCategoryId(null)}
         className={`group relative shrink-0 rounded-full border px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
           selectedCategoryId === null
-            ? "border-[#cb5c57] bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg shadow-[#cb5c57]/30"
-            : "border-[#5f2825] bg-[#100506]/60 text-[#dfc0b8] hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
+            ? "border-transparent bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg shadow-[#cb5c57]/40"
+            : "border-[#5f2825]/60 bg-[#100506]/50 text-[#dfc0b8] hover:border-[#cb5c57]/60 hover:bg-[#cb5c57]/8 hover:text-white"
         }`}
       >
         <span className="relative z-10 flex items-center gap-1.5">
-          <HiOutlineSparkles size={14} />
+          <HiOutlineSparkles size={14} className={selectedCategoryId === null ? "animate-pulse" : ""} />
           {t("catalog.allBouquets")}
         </span>
       </button>
@@ -230,13 +264,13 @@ function BouquetCatalog() {
           onClick={() => setSelectedCategoryId(category.id)}
           className={`group relative shrink-0 rounded-full border px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
             selectedCategoryId === category.id
-              ? "border-[#cb5c57] bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg shadow-[#cb5c57]/30"
-              : "border-[#5f2825] bg-[#100506]/60 text-[#dfc0b8] hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
+              ? "border-transparent bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg shadow-[#cb5c57]/40"
+              : "border-[#5f2825]/60 bg-[#100506]/50 text-[#dfc0b8] hover:border-[#cb5c57]/60 hover:bg-[#cb5c57]/8 hover:text-white"
           }`}
         >
           <span className="relative z-10 flex items-center gap-1.5">
             <HiMiniGift size={14} />
-            {category.name}
+            {getLocalizedCategoryName(category)}
           </span>
         </button>
       ))}
@@ -244,7 +278,7 @@ function BouquetCatalog() {
   );
 
   const renderResultCard = () => (
-    <div className="rounded-xl border border-[#5f2825] bg-[#090304]/60 p-4 lg:w-60">
+    <div className="rounded-xl border border-[#5f2825]/40 bg-[#090304]/50 p-4 backdrop-blur-sm lg:min-w-[220px]">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs text-[#b88d84]">
           <FaCheckCircle size={12} className="text-emerald-400" />
@@ -256,29 +290,16 @@ function BouquetCatalog() {
           <span>{total}</span>
         </span>
       </div>
-      {hasActiveFilters ? (
-        <button
-          type="button"
-          onClick={() => {
-            setValue("search", "");
-            setSelectedCategoryId(null);
-            setSearchParams({});
-          }}
-          className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-[#5f2825] text-xs font-bold uppercase tracking-wider text-[#f1d0c8] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
-        >
-          <HiXMark size={14} />
-          {t("catalog.clearFilters")}
-        </button>
-      ) : (
-        <div className="mt-3 flex h-9 items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#3d1c1b] text-[10px] font-bold uppercase tracking-wider text-[#6b4b43]">
+      {!hasActiveFilters ? (
+        <div className="mt-3 flex h-9 items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#3d1c1b]/50 text-[10px] font-bold uppercase tracking-wider text-[#6b4b43]">
           <FaFilter size={10} />
           {t("catalog.noActiveFilters")}
         </div>
-      )}
+      ) : null}
     </div>
   );
 
-  const renderBouquetCard = (bouquet: any, idx: number) => {
+  const renderBouquetCard = (bouquet: Bouquet, idx: number) => {
     const previewImages = getBouquetImages(bouquet).slice(1, 3);
     const isFavorite = favoriteIds.has(bouquet.id);
     const isNew = isNewBouquet(bouquet.created_at);
@@ -302,36 +323,36 @@ function BouquetCatalog() {
         }}
         role="button"
         tabIndex={0}
-        className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-[#5f2825]/40 bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-[#cb5c57]/60 hover:shadow-2xl hover:shadow-[#cb5c57]/10 ${
+        className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-[#5f2825]/30 bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-[#cb5c57]/50 hover:shadow-2xl hover:shadow-[#cb5c57]/15 ${
           view === "list" ? "lg:grid lg:grid-cols-[340px_1fr]" : ""
         } animate-fade-in-up`}
         style={{ animationDelay: `${idx * 60}ms` }}
       >
         {/* ── Image Section ── */}
         <div className={`relative overflow-hidden ${view === "list" ? "lg:h-full" : ""}`}>
-          {/* Image shimmer overlay */}
-          <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#0f0606] via-transparent to-transparent opacity-60" />
+          {/* Gradient overlays */}
+          <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#0f0606] via-transparent to-transparent opacity-70" />
+          <div className="absolute inset-0 z-[1] bg-gradient-to-b from-[#0f0606]/30 via-transparent to-transparent opacity-50" />
 
           {/* Badges */}
-            <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
-              <div className="flex gap-1.5">
+          <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
+            <div className="flex gap-1.5">
               {isNew && (
-                <span className="inline-flex animate-pulse items-center gap-1 rounded-full bg-gradient-to-r from-[#dd3045] to-[#ff5b72] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-[#ff5b72]/30">
+                <span className="inline-flex animate-pulse items-center gap-1 rounded-full bg-gradient-to-r from-[#dd3045] to-[#ff5b72] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-[#ff5b72]/40">
                   <HiOutlineSparkles size={10} />
                   {t("catalog.new")}
                 </span>
               )}
               {isPopular && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-500/30">
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-500/40">
                   <HiFire size={10} />
                   {t("catalog.popular")}
                 </span>
-                )}
-              </div>
-              <BouquetAvailabilityBadge bouquet={bouquet} compact />
+              )}
             </div>
+            <BouquetAvailabilityBadge bouquet={bouquet} compact />
+          </div>
 
-          {/* Discount badge */}
           <DiscountBadge oldPrice={bouquet.old_price} price={bouquet.price} />
 
           {/* Favorite button */}
@@ -342,12 +363,12 @@ function BouquetCatalog() {
               const added = toggleFavoriteBouquet(bouquet);
               toast.success(
                 added
-                  ? `${bouquet.name} added to favorites`
-                  : `${bouquet.name} removed from favorites`,
+                  ? `${bouquet.name} ${t("catalog.addedToFavorites")}`
+                  : `${bouquet.name} ${t("catalog.removedFromFavorites")}`,
                 { position: "bottom-right", autoClose: 1800, hideProgressBar: true }
               );
             }}
-            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-[#8c6158] bg-[#19090a]/70 text-[#f6dacf] shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff5b72] hover:bg-[#ff5b72]/20 hover:shadow-[#ff5b72]/30"
+            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-[#8c6158]/50 bg-[#19090a]/60 text-[#f6dacf] shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff5b72] hover:bg-[#ff5b72]/20 hover:shadow-[#ff5b72]/30"
             aria-label={isFavorite ? t("catalog.removeFromFavorites") : t("catalog.addToFavorites")}
           >
             {isFavorite ? (
@@ -363,19 +384,19 @@ function BouquetCatalog() {
               src={bouquet.image}
               alt={bouquet.name}
               loading="lazy"
-              className={`h-[280px] w-full object-cover transition-all duration-700 ease-out group-hover:scale-110 ${
-                view === "list" ? "lg:h-full lg:min-h-[340px]" : ""
+              className={`h-[300px] w-full object-cover transition-all duration-700 ease-out group-hover:scale-110 ${
+                view === "list" ? "lg:h-full lg:min-h-[360px]" : ""
               }`}
             />
           </div>
 
-          {/* Small preview images */}
+          {/* Preview images */}
           {previewImages.length > 0 && view === "grid" && (
             <div className="absolute bottom-3 left-3 z-10 flex gap-1.5">
               {previewImages.map((image: string, index: number) => (
                 <div
                   key={image}
-                  className="overflow-hidden rounded-lg border-2 border-white/20 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff9b88]"
+                  className="overflow-hidden rounded-lg border-2 border-white/10 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff9b88]/80"
                 >
                   <img
                     src={image}
@@ -389,8 +410,8 @@ function BouquetCatalog() {
 
           {/* Hover overlay – Quick View */}
           <div
-            className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[#0f0606]/90 via-[#0f0606]/50 to-transparent p-4 pt-12 transition-all duration-500 ${
-              isHovered ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+            className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[#0f0606]/95 via-[#0f0606]/60 to-transparent p-4 pt-16 transition-all duration-500 ${
+              isHovered ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
             }`}
           >
             <button
@@ -398,9 +419,9 @@ function BouquetCatalog() {
                 e.stopPropagation();
                 navigate(`/bouquets/${bouquet.id}`);
               }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#cb5c57] to-[#dd3045] py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-[#cb5c57]/30 transition-all duration-300 hover:shadow-xl active:scale-[0.97]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#cb5c57] to-[#dd3045] py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-[#cb5c57]/30 transition-all duration-300 hover:shadow-xl active:scale-[0.97]"
             >
-              <HiOutlineRocketLaunch size={14} />
+              <HiOutlineEye size={14} />
               {t("catalog.quickView")}
             </button>
           </div>
@@ -408,13 +429,12 @@ function BouquetCatalog() {
 
         {/* ── Content Section ── */}
         <div className="flex flex-col p-5">
-          <div className="flex-1 space-y-2">
-            {/* Category + Rating row */}
+          <div className="flex-1 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               {bouquet.category && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-[#5f2825] bg-[#210b0d] px-2.5 py-0.5 text-[10px] font-semibold text-[#f1c5ba]">
+                <span className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/50 bg-[#210b0d] px-2.5 py-0.5 text-[10px] font-semibold text-[#f1c5ba]">
                   <FaTag size={8} />
-                  {bouquet.category.name}
+                  {getLocalizedCategoryName(bouquet.category)}
                 </span>
               )}
               <div className="flex items-center gap-1.5">
@@ -424,7 +444,6 @@ function BouquetCatalog() {
               </div>
             </div>
 
-            {/* Name */}
             <Link
               to={`/bouquets/${bouquet.id}`}
               onClick={(e) => e.stopPropagation()}
@@ -433,7 +452,6 @@ function BouquetCatalog() {
               {bouquet.name}
             </Link>
 
-            {/* Shop name */}
             <Link
               to={`/shops/${bouquet.shop.slug}`}
               onClick={(e) => e.stopPropagation()}
@@ -443,10 +461,6 @@ function BouquetCatalog() {
               {bouquet.shop.name}
             </Link>
 
-            {/* Tags */}
-            <BouquetTags tags={bouquet.tags} />
-
-            {/* Social links */}
             {(shopInstagramUrl || shopTelegramUrl) && (
               <div className="flex gap-2 pt-0.5">
                 {shopInstagramUrl && (
@@ -455,7 +469,7 @@ function BouquetCatalog() {
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#5f2825] bg-[#120607] px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-[#efc2b8] transition hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
+                    className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/50 bg-[#120607] px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-[#efc2b8] transition hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
                   >
                     <FaInstagram size={10} />
                     IG
@@ -467,7 +481,7 @@ function BouquetCatalog() {
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#5f2825] bg-[#120607] px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-[#efc2b8] transition hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
+                    className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/50 bg-[#120607] px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-[#efc2b8] transition hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
                   >
                     <FaTelegramPlane size={10} />
                     TG
@@ -476,7 +490,6 @@ function BouquetCatalog() {
               </div>
             )}
 
-            {/* List view description */}
             {view === "list" && bouquet.description && (
               <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[#d4b8b0]">
                 {bouquet.description}
@@ -485,7 +498,7 @@ function BouquetCatalog() {
           </div>
 
           {/* Price + Add to cart */}
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#5f2825]/30 pt-4">
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#5f2825]/20 pt-4">
             <div className="flex flex-col">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.15)]">
@@ -517,7 +530,7 @@ function BouquetCatalog() {
                   return;
                 }
                 addToCart(bouquet);
-                toast.success(`${bouquet.name} added to cart`, {
+                toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`, {
                   position: "bottom-right",
                   autoClose: 1800,
                   hideProgressBar: true,
@@ -527,7 +540,7 @@ function BouquetCatalog() {
               className={`group/btn relative flex h-10 items-center justify-center gap-2 overflow-hidden rounded-xl px-4 text-xs font-bold uppercase tracking-wider shadow-lg transition-all duration-300 ${
                 canAddToCart
                   ? "bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-white hover:shadow-xl hover:shadow-[#aa1828]/40 active:scale-95"
-                  : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94] opacity-80"
+                  : "cursor-not-allowed border border-[#5b2b31]/50 bg-[#1a0b0d] text-[#c39b94] opacity-80"
               }`}
             >
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-500 group-hover/btn:translate-x-full" />
@@ -541,11 +554,10 @@ function BouquetCatalog() {
   };
 
   const renderEmptyState = () => (
-    <div className="mt-12 overflow-hidden rounded-2xl border border-dashed border-[#5f2825] bg-gradient-to-br from-[#130708] to-[#0a0405] px-6 py-16 text-center">
-      {/* Animated icons */}
-      <div className="relative mx-auto mb-8 flex h-24 w-24 items-center justify-center">
-        <div className="absolute inset-0 animate-ping rounded-full bg-[#cb5c57]/20" />
-        <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#1a0c0c] to-[#2b1012] shadow-inner shadow-[#cb5c57]/20">
+    <div className="mt-12 overflow-hidden rounded-2xl border border-dashed border-[#5f2825]/40 bg-gradient-to-br from-[#130708] to-[#0a0405] px-6 py-20 text-center">
+      <div className="relative mx-auto mb-8 flex h-28 w-28 items-center justify-center">
+        <div className="absolute inset-0 animate-ping rounded-full bg-[#cb5c57]/15" />
+        <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#1a0c0c] to-[#2b1012] shadow-inner shadow-[#cb5c57]/20">
           <HiOutlineMagnifyingGlass className="text-4xl text-[#cb5c57]" />
         </div>
       </div>
@@ -569,7 +581,7 @@ function BouquetCatalog() {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="inline-flex items-center gap-2 rounded-full border border-[#5f2825] bg-[#1b0b0c] px-6 py-2.5 text-sm font-semibold text-[#f5ddd6] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
+          className="inline-flex items-center gap-2 rounded-full border border-[#5f2825]/50 bg-[#1b0b0c] px-6 py-2.5 text-sm font-semibold text-[#f5ddd6] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
         >
           <HiOutlineAdjustmentsHorizontal size={16} />
           {t("catalog.adjustFilters")}
@@ -580,12 +592,12 @@ function BouquetCatalog() {
 
   const renderLoadingMore = () => (
     <div className="mt-6 flex justify-center">
-      <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825] bg-[#120607]/90 px-6 py-3 shadow-lg backdrop-blur-sm">
+      <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825]/40 bg-[#120607]/80 px-6 py-3 shadow-lg backdrop-blur-md">
         <div className="flex items-center gap-2">
           <div className="flex gap-1">
-            <span className="h-2 w-2 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:0ms]" />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:150ms]" />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:300ms]" />
+            <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:0ms]" />
+            <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:150ms]" />
+            <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:300ms]" />
           </div>
           <span className="text-sm font-semibold text-[#f1d0c8]">{t("catalog.loadingMore")}</span>
         </div>
@@ -594,8 +606,8 @@ function BouquetCatalog() {
   );
 
   const renderEndOfResults = () => (
-    <div className="mt-8 flex justify-center">
-      <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825] bg-[#120607]/60 px-6 py-3 shadow-inner shadow-[#cb5c57]/5">
+    <div className="mt-10 flex justify-center">
+      <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825]/30 bg-[#120607]/50 px-6 py-3 shadow-inner shadow-[#cb5c57]/5 backdrop-blur-sm">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#cb5c57]/20 to-[#ff9b88]/10">
           <HiMiniGift size={14} className="text-[#ff9b88]" />
         </div>
@@ -611,30 +623,37 @@ function BouquetCatalog() {
 
   return (
     <main className="relative min-h-screen overflow-hidden text-[#fff6f4]">
-      <section className="relative px-4 pb-28 pt-24 sm:px-6 lg:px-10">
+      <FloatingPetals />
+      <section className="relative z-10 px-4 pb-28 pt-24 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-7xl">
           {/* ── Hero / Header ── */}
           <div className="mb-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div >
+            <div className="relative">
+              {/* Decorative gradient orb */}
+              <div className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full bg-[#cb5c57]/10 blur-[100px]" />
+              
               {activeOccasion ? (
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#cb5c57]/30 bg-[#19080a]/70 px-4 py-2 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f3c9bf] shadow-[0_12px_32px_rgba(90,18,25,0.18)] backdrop-blur-md">
+                <div className="relative inline-flex items-center gap-2 rounded-full border border-[#cb5c57]/30 bg-[#19080a]/70 px-4 py-2 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f3c9bf] shadow-[0_12px_32px_rgba(90,18,25,0.18)] backdrop-blur-md">
                   <HiOutlineSparkles className="text-[#ff9b88]" />
                   {t("catalog.curatedForMoment")}
                 </div>
               ) : null}
-             
-              <h1 className="mt-5 font-great-vibes text-[clamp(3.2rem,7vw,6.4rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]">
-                {activeOccasion ? activeOccasionTitle : t("catalog.findYour")}
-                <span className="block bg-gradient-to-r from-[#ff9b88] via-[#dd5c5c] to-[#cb5c57] bg-clip-text text-transparent">
-                  {activeOccasion ? t("catalog.bouquetsCollection") : t("catalog.perfectBouquet")}
-                </span>
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#cba8a1] sm:text-base">
+
+              <div className="relative">
+                <h1 className="mt-5 font-great-vibes text-[clamp(3.2rem,7vw,6.4rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]">
+                  {activeOccasion ? activeOccasionTitle : t("catalog.findYour")}
+                  <span className="block bg-gradient-to-r from-[#ff9b88] via-[#dd5c5c] to-[#cb5c57] bg-clip-text text-transparent">
+                    {activeOccasion ? t("catalog.bouquetsCollection") : t("catalog.perfectBouquet")}
+                  </span>
+                </h1>
+              </div>
+
+              <p className="relative mt-4 max-w-2xl text-sm leading-7 text-[#cba8a1] sm:text-base">
                 {activeOccasion
                   ? t("catalog.occasionHeroDescription", {
-                    occasion: activeOccasionTitle,
-                    description: activeOccasionDescription,
-                  })
+                      occasion: activeOccasionTitle,
+                      description: activeOccasionDescription,
+                    })
                   : t("catalog.defaultHeroDescription")}
               </p>
             </div>
@@ -655,7 +674,7 @@ function BouquetCatalog() {
                   gradient: "from-emerald-500/20 to-emerald-400/10",
                 },
                 {
-                  label: selectedCategory?.name ?? t("catalog.allCategories"),
+                  label: selectedCategory ? getLocalizedCategoryName(selectedCategory) : t("catalog.allCategories"),
                   value: selectedCategory?.name ? t("catalog.active") : t("bouquetSection.all"),
                   icon: FaFilter,
                   gradient: "from-amber-500/20 to-amber-400/10",
@@ -666,10 +685,9 @@ function BouquetCatalog() {
                 return (
                   <div
                     key={idx}
-                    className="group relative overflow-hidden rounded-2xl border border-[#5f2825]/40 bg-gradient-to-br from-[#1a0c0c]/80 to-[#0f0606]/80 p-4 backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57]/50 hover:shadow-xl"
+                    className="group relative overflow-hidden rounded-2xl border border-[#5f2825]/30 bg-gradient-to-br from-[#1a0c0c]/70 to-[#0f0606]/70 p-4 backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57]/40 hover:shadow-xl hover:shadow-[#cb5c57]/5"
                   >
-                    {/* Background icon */}
-                    <div className="absolute -right-3 -top-3 text-3xl opacity-[0.08] transition-all duration-500 group-hover:scale-125 group-hover:opacity-[0.15]">
+                    <div className="absolute -right-3 -top-3 text-3xl opacity-[0.06] transition-all duration-500 group-hover:scale-125 group-hover:opacity-[0.12]">
                       <Icon />
                     </div>
                     <p className="relative z-10 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#b88d84]">
@@ -688,21 +706,19 @@ function BouquetCatalog() {
 
           {/* ── Sticky Filters Bar ── */}
           <div
-            className={`sticky top-16 z-20 rounded-2xl border border-[#5f2825]/50 bg-gradient-to-br from-[#100506]/95 to-[#0a0405]/95 p-4 shadow-2xl backdrop-blur-xl transition-shadow duration-300 ${
+            className={`sticky top-16 z-20 rounded-2xl border border-[#5f2825]/40 bg-gradient-to-br from-[#100506]/90 to-[#0a0405]/90 p-4 shadow-2xl backdrop-blur-xl transition-shadow duration-300 ${
               scrolled ? "shadow-[#cb5c57]/10" : ""
             }`}
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-              {/* Search + Controls */}
-              <div className="flex-1 space-y-3">
-                <div className="flex gap-3">
+            <div className="space-y-3">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
                   {/* Search input */}
                   <div className="group relative flex-1">
                     <HiOutlineMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[#c88f88] transition-colors group-focus-within:text-[#ff9b88]" />
                     <input
                       {...register("search")}
                       placeholder={t("catalog.searchPlaceholder")}
-                      className="h-12 w-full rounded-xl border border-[#5f2825] bg-[#090304]/80 pl-11 pr-10 text-sm text-[#fff3ee] outline-none transition-all duration-300 placeholder:text-[#8b6b64] focus:border-[#cb5c57] focus:shadow-[0_0_0_3px_rgba(203,92,87,0.15)]"
+                      className="h-12 w-full rounded-xl border border-[#5f2825]/50 bg-[#090304]/60 pl-11 pr-10 text-sm text-[#fff3ee] outline-none transition-all duration-300 placeholder:text-[#8b6b64] focus:border-[#cb5c57] focus:shadow-[0_0_0_3px_rgba(203,92,87,0.15)] focus:bg-[#090304]/80"
                     />
                     {search && (
                       <button
@@ -724,7 +740,7 @@ function BouquetCatalog() {
                   </div>
 
                   {/* View toggle */}
-                  <div className="inline-flex rounded-xl border border-[#5f2825] bg-[#090304]/80 p-1">
+                  <div className="inline-flex rounded-xl border border-[#5f2825]/50 bg-[#090304]/60 p-1">
                     <button
                       type="button"
                       onClick={() => setView("grid")}
@@ -733,7 +749,8 @@ function BouquetCatalog() {
                           ? "bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg"
                           : "text-[#ad8d85] hover:bg-[#2b1012] hover:text-white"
                       }`}
-                      title="Grid view"
+                      title={t("catalog.gridView")}
+                      aria-label={t("catalog.gridView")}
                     >
                       <HiOutlineSquares2X2 size={18} />
                     </button>
@@ -745,19 +762,19 @@ function BouquetCatalog() {
                           ? "bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg"
                           : "text-[#ad8d85] hover:bg-[#2b1012] hover:text-white"
                       }`}
-                      title="List view"
+                      title={t("catalog.listView")}
+                      aria-label={t("catalog.listView")}
                     >
                       <HiOutlineBars3BottomLeft size={18} />
                     </button>
                   </div>
+
+                  {/* Result card */}
+                  {renderResultCard()}
                 </div>
 
                 {/* Category chips */}
                 {renderCategoryChips()}
-              </div>
-
-              {/* Result card */}
-              {renderResultCard()}
             </div>
           </div>
 
@@ -766,12 +783,26 @@ function BouquetCatalog() {
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-[#c9aaa2]">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[#b88d84]">
                 <FaFilter size={10} />
-                Active filters:
+                {t("catalog.activeFilters")}
               </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setValue("search", "");
+                  setSelectedCategoryId(null);
+                  setSearchParams({});
+                }}
+                className="inline-flex items-center gap-2 rounded-full border border-[#7a342f]/60 bg-[#160809]/85 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d0c7] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#241012] hover:text-white"
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#cb5c57]/15 text-[#ff9b88]">
+                  <HiXMark size={12} />
+                </span>
+                {t("catalog.clearFilters")}
+              </button>
               {selectedCategory && (
-                <span className="inline-flex animate-fade-in-up items-center gap-1.5 rounded-full border border-[#5f2825] bg-[#1a0c0c]/80 px-3 py-1 text-xs shadow-sm backdrop-blur-sm">
+                <span className="inline-flex animate-fade-in-up items-center gap-1.5 rounded-full border border-[#5f2825]/40 bg-[#1a0c0c]/80 px-3 py-1 text-xs shadow-sm backdrop-blur-sm">
                   <FaTag size={8} className="text-[#ff9b88]" />
-                  {selectedCategory.name}
+                  {getLocalizedCategoryName(selectedCategory)}
                   <button
                     onClick={() => setSelectedCategoryId(null)}
                     className="ml-0.5 rounded-full p-0.5 text-[#cb5c57] transition hover:bg-[#cb5c57]/20 hover:text-white"
@@ -781,7 +812,7 @@ function BouquetCatalog() {
                 </span>
               )}
               {activeOccasion && (
-                <span className="inline-flex animate-fade-in-up items-center gap-1.5 rounded-full border border-[#5f2825] bg-[#1a0c0c]/80 px-3 py-1 text-xs shadow-sm backdrop-blur-sm">
+                <span className="inline-flex animate-fade-in-up items-center gap-1.5 rounded-full border border-[#5f2825]/40 bg-[#1a0c0c]/80 px-3 py-1 text-xs shadow-sm backdrop-blur-sm">
                   <HiOutlineSparkles size={10} className="text-[#ff9b88]" />
                   {t("occasionSection.filteredBy", {
                     occasion: t(`occasionSection.items.${activeOccasion}.title`),
@@ -805,7 +836,7 @@ function BouquetCatalog() {
                 </span>
               )}
               {shouldShowSearchChip && (
-                <span className="inline-flex animate-fade-in-up items-center gap-1.5 rounded-full border border-[#5f2825] bg-[#1a0c0c]/80 px-3 py-1 text-xs shadow-sm backdrop-blur-sm">
+                <span className="inline-flex animate-fade-in-up items-center gap-1.5 rounded-full border border-[#5f2825]/40 bg-[#1a0c0c]/80 px-3 py-1 text-xs shadow-sm backdrop-blur-sm">
                   <HiOutlineMagnifyingGlass size={10} className="text-[#ff9b88]" />
                   "{debouncedSearch}"
                   <button
@@ -865,11 +896,23 @@ function BouquetCatalog() {
         @keyframes spin-slow {
           to { transform: rotate(360deg); }
         }
+        @keyframes floatPetals {
+          0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+          10%  { opacity: var(--petal-opacity, 0.6); }
+          90%  { opacity: var(--petal-opacity, 0.6); }
+          100% { transform: translateY(110vh) rotate(var(--petal-rotation, 720deg)); opacity: 0; }
+        }
         .animate-fade-in-up {
-          animation: fadeInUp 0.45s ease-out both;
+          animation: fadeInUp 0.6s ease-out both;
         }
         .animate-spin-slow {
           animation: spin-slow 3s linear infinite;
+        }
+        .animate-float-petal {
+          animation: floatPetals var(--float-duration, 18s) ease-in infinite normal;
+          --petal-opacity: 0.5;
+          --petal-rotation: 360deg;
+          --float-duration: 18s;
         }
         .drop-shadow-glow {
           filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.5));

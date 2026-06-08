@@ -5,6 +5,7 @@ import {
   HiBars3BottomLeft,
   HiMiniArrowLeftOnRectangle,
   HiMiniBuildingStorefront,
+  HiMiniChatBubbleBottomCenterText,
   HiMiniHome,
   HiMiniQueueList,
   HiMiniSquares2X2,
@@ -21,6 +22,7 @@ const menuItems = [
   { label: "Shops", icon: HiMiniBuildingStorefront, to: "/admin/shops", roles: ["admin"] },
   { label: "Categories", icon: HiMiniSquares2X2, to: "/admin/categories", roles: ["admin"] },
   { label: "Applications", icon: HiMiniQueueList, to: "/admin/applications", roles: ["admin"] },
+  { label: "Chats", icon: HiMiniChatBubbleBottomCenterText, to: "/admin/chats", roles: ["admin"] },
 ] satisfies Array<{
   label: string;
   icon: typeof HiMiniHome;

@@ -1384,13 +1384,16 @@ function DeliveryCheckout() {
                     <div className="pointer-events-none absolute inset-0 -translate-x-full rounded-xl bg-gradient-to-r from-transparent via-white/[0.03] to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                   </Link>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={goToPreviousStep}
+                  <a
+                    href="#"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      goToPreviousStep();
+                    }}
                     className="group relative inline-flex h-14 items-center justify-center overflow-hidden rounded-xl border border-[#7f5a3b]/40 bg-[linear-gradient(135deg,#110608,#1a0b0d)] text-lg font-semibold uppercase tracking-[0.08em] text-[#f0cfa5] transition-all duration-300 hover:border-[#f0cfa5]/30 hover:shadow-[0_4px_20px_rgba(240,207,165,0.08)] hover:-translate-y-0.5 active:translate-y-0"
                   >
                     <span className="relative z-10 flex items-center gap-2">{t("delivery.previousStep")}</span>
-                  </button>
+                  </a>
                 )}
 
                 {currentStep < 3 ? (

@@ -26,8 +26,19 @@ export function getTabs(t: (key: string) => string) {
 }
 
 function translateMethodValue(value: string) {
-  const translated = i18next.t(value);
-  if (translated !== value) return translated;
+  const translationCandidates = [
+    `delivery.${value}`,
+    `profile.${value}`,
+    `owner.${value}`,
+    value,
+  ];
+
+  for (const key of translationCandidates) {
+    const translated = i18next.t(key);
+    if (translated !== key) {
+      return translated.replace(/^[^\p{L}\p{N}]+/u, "").trim();
+    }
+  }
 
   return value
     .split("_")

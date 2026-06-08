@@ -198,6 +198,16 @@ input:-webkit-autofill:focus {
   }
 }
 
+/* ===== Shimmer animation for chat bubbles ===== */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(200%) skewX(-20deg);
+  }
+}
+
 /* ===== Cart page animations ===== */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -225,4 +235,35 @@ input:-webkit-autofill:focus {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+/* ===== Loading page animations ===== */
+@keyframes loading-progress {
+  0% {
+    transform: translateX(-100%);
+    width: 30%;
+  }
+  50% {
+    transform: translateX(0);
+    width: 60%;
+  }
+  100% {
+    transform: translateX(350%);
+    width: 30%;
+  }
+}
+
+@keyframes shimmer-text {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+/* blur-4xl (Tailwind v4 custom) */
+.blur-4xl {
+  --tw-blur: blur(80px);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }

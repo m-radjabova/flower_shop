@@ -1,19 +1,14 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import i18next from "i18next";
 import { toast } from "react-toastify";
 import {
   HiOutlineCheckBadge,
-  HiOutlineClock,
-  HiOutlineEye,
   HiOutlineQueueList,
   HiOutlineSparkles,
 } from "react-icons/hi2";
-import { useManagedBouquets, useManagedReviews, useMyLatestShopApplication, useMyShops, useShopOrders } from "../../hooks/useCatalog";
+import { useManagedBouquets, useManagedReviews, useMyShops, useShopOrders } from "../../hooks/useCatalog";
 import { AreaChartPanel, DonutChartPanel, GaugeChartPanel, MixedChartPanel } from "../admin/components/AdminCharts";
 import { formatPrice } from "../../utils/catalog";
-import { isRecentAdminNote } from "../../utils/adminNote";
 import { useOrderRealtime } from "../../hooks/useOrderRealtime";
 import bow from "../../assets/bow.png";
 
@@ -39,9 +34,7 @@ function buildLastMonths(count = 6) {
 
 function OwnerDashboard() {
   const { t } = useTranslation();
-  const [showAdminNote, setShowAdminNote] = useState(false);
   const { data: shops = [] } = useMyShops();
-  const { data: latestApplication } = useMyLatestShopApplication();
   const primaryShop = shops[0];
   const primaryShopId = primaryShop?.id;
   useOrderRealtime({
@@ -100,26 +93,6 @@ function OwnerDashboard() {
     { label: t("owner.approved"), value: approvedReviews, color: "#91e2b9" },
     { label: t("owner.pending"), value: pendingReviews, color: "#f2c98d" },
   ].filter((item) => item.value > 0);
-
-  const latestDecisionDate = latestApplication?.updated_at
-    ? new Intl.DateTimeFormat(i18next.language || "en", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(latestApplication.updated_at))
-    : null;
-  const isRecentNote = isRecentAdminNote(latestApplication?.updated_at);
-  const applicationStatusLabel = latestApplication?.status === "approved"
-    ? t("owner.approved")
-    : latestApplication?.status === "rejected"
-      ? t("owner.rejected")
-      : t("owner.pending");
-
-  useEffect(() => {
-    setShowAdminNote(isRecentNote);
-  }, [isRecentNote, latestApplication?.id]);
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5">
@@ -216,76 +189,15 @@ function OwnerDashboard() {
           <p className="mt-4 font-cormorant text-4xl text-white">{t("owner.reviewsLink")}</p>
           <p className="mt-2 text-sm text-[#d8b7b0]">{t("owner.reviewsDesc")}</p>
         </Link>
+        <Link to="/owner/support" className="group rounded-[1.6rem] border border-[#3d171c] bg-[linear-gradient(180deg,rgba(27,8,10,0.97),rgba(14,4,6,0.98))] p-5 transition hover:border-[#7a2a34]">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#251007] text-2xl text-[#f2be7f]">
+            <HiOutlineSparkles />
+          </span>
+          <p className="mt-4 font-cormorant text-4xl text-white">{t("owner.support")}</p>
+          <p className="mt-2 text-sm text-[#d8b7b0]">{t("owner.supportCardDesc")}</p>
+        </Link>
       </section>
 
-      {latestApplication?.admin_comment ? (
-        <section
-          className={`rounded-[1.8rem] border p-5 transition-all duration-300 ${
-            latestApplication.status === "approved"
-              ? "border-[#2f6d55] bg-[linear-gradient(180deg,rgba(15,36,28,0.96),rgba(9,22,17,0.98))]"
-              : "border-[#7d3943] bg-[linear-gradient(180deg,rgba(43,18,23,0.96),rgba(28,10,14,0.98))]"
-          }`}
-        >
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="flex items-center gap-3">
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/95 shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
-                  <HiOutlineCheckBadge className="text-2xl" />
-                </span>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-white/65">{t("owner.latestAdminNote")}</p>
-                  <h2 className="mt-1 font-cormorant text-4xl text-white">
-                    {latestApplication.status === "approved" ? t("owner.approvalMessage") : t("owner.applicationFeedback")}
-                  </h2>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/65">
-                  {isRecentNote ? t("owner.freshNote") : t("owner.archivedNote")}
-                </span>
-                <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/65">
-                  {t("owner.privateMessage")}
-                </span>
-              </div>
-
-              {showAdminNote ? (
-                <div className="mt-4 rounded-[1.4rem] border border-white/10 bg-black/10 p-4">
-                    <p className="text-sm uppercase tracking-[0.2em] text-white/60">{t("owner.adminNote")}</p>
-                    <p className="mt-3 text-white">{latestApplication.admin_comment}</p>
-                  </div>
-                ) : (
-                  <div className="mt-4 flex items-center justify-between gap-3 rounded-[1.4rem] border border-white/10 bg-black/10 px-4 py-3">
-                    <div className="min-w-0">
-                    <p className="text-sm uppercase tracking-[0.2em] text-white/60">{t("owner.adminNote")}</p>
-                    <p className="truncate text-sm text-white/80">
-                      {latestApplication.admin_comment}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminNote(true)}
-                    className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
-                  >
-                    <HiOutlineEye />
-                    {t("owner.open")}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-[1.4rem] border border-white/10 bg-black/10 p-4 lg:w-[220px]">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/60">{t("owner.updated")}</p>
-              <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-white">
-                <HiOutlineClock className="text-[#f2be7f]" />
-                {latestDecisionDate ?? t("owner.recently")}
-              </p>
-              <p className="mt-4 text-xs uppercase tracking-[0.18em] text-white/60">{t("owner.status")}</p>
-              <p className="mt-1 text-sm font-semibold capitalize text-white">{applicationStatusLabel}</p>
-            </div>
-          </div>
-        </section>
-      ) : null}
     </div>
   );
 }

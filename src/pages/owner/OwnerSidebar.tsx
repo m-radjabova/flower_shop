@@ -20,6 +20,7 @@ const menuItems = [
   { labelKey: "owner.bouquetsControl", icon: HiMiniGift, to: "/owner/bouquets" },
   { labelKey: "owner.orders", icon: HiMiniQueueList, to: "/owner/orders" },
   { labelKey: "owner.reviewsControl", icon: HiMiniChatBubbleBottomCenterText, to: "/owner/reviews" },
+  { labelKey: "owner.support", icon: HiMiniChatBubbleBottomCenterText, to: "/owner/support" },
 ];
 
 function SidebarContent({

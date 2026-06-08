@@ -5,6 +5,7 @@ import {
   HiOutlineXCircle,
   HiTruck,
 } from "react-icons/hi2";
+import { useTranslation } from "react-i18next";
 import type { OrderOut } from "../../types/catalog";
 
 export type OrderJourneyStep = {
@@ -29,6 +30,8 @@ const stepIcons: Record<string, React.ReactNode> = {
 };
 
 function OrderProgress({ status, steps, compact = false, className }: OrderProgressProps) {
+  const { t } = useTranslation();
+
   if (status === "cancelled") {
     return (
       <div className={className}>
@@ -37,8 +40,8 @@ function OrderProgress({ status, steps, compact = false, className }: OrderProgr
             <HiOutlineXCircle className="text-xl text-[#ff7a8a]" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-[#ff9eae]">Buyurtma bekor qilingan</p>
-            <p className="text-xs text-[#b0666f]">Bu buyurtma bekor qilingan yoki rad etilgan</p>
+            <p className="text-sm font-semibold text-[#ff9eae]">{t("owner.cancelledOrder")}</p>
+            <p className="text-xs text-[#b0666f]">{t("owner.cancelledOrderDesc")}</p>
           </div>
         </div>
       </div>
@@ -148,7 +151,7 @@ function OrderProgress({ status, steps, compact = false, className }: OrderProgr
                     <div className="mt-1.5 flex items-center gap-1">
                       <span className="h-1 w-1 rounded-full bg-[#ff8ea3]" />
                       <span className="text-[10px] font-medium uppercase tracking-wider text-[#ff8ea3]/80">
-                        Joriy
+                        {t("owner.current")}
                       </span>
                     </div>
                   )}
@@ -205,7 +208,7 @@ function OrderProgress({ status, steps, compact = false, className }: OrderProgr
                     {step.label}
                   </p>
                   {isCurrent && (
-                    <p className="mt-0.5 text-xs text-[#ff8ea3]/80">Joriy bosqich</p>
+                    <p className="mt-0.5 text-xs text-[#ff8ea3]/80">{t("owner.currentStep")}</p>
                   )}
                 </div>
               </div>
@@ -219,7 +222,7 @@ function OrderProgress({ status, steps, compact = false, className }: OrderProgr
         <div className="mt-4 flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-[#ff8ea3]" />
           <p className="text-xs uppercase tracking-[0.18em] text-[#b0807a]">
-            Joriy bosqich:{" "}
+            {t("owner.currentStage")}:{" "}
             <span className="font-semibold text-[#e8b5ad]">
               {steps[currentIndex]?.label ?? steps[0]?.label}
             </span>

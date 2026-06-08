@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import {
@@ -108,7 +108,6 @@ function injectLeafletAssets() {
 }
 
 function ShopApplicationPage() {
-  const navigate = useNavigate();
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const mapHostRef = useRef<HTMLDivElement | null>(null);
@@ -468,13 +467,12 @@ function ShopApplicationPage() {
                 </div>
               </div>
               {isOwner ? (
-                <button
-                  type="button"
-                  onClick={() => navigate("/owner/dashboard")}
+                <Link
+                  to="/owner/dashboard"
                   className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-[#163223]"
                 >
                   Open Dashboard
-                </button>
+                </Link>
               ) : null}
             </div>
           ) : null}

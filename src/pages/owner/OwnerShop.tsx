@@ -2,23 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import {
-  HiChevronDown,
-  HiChevronUp,
   HiOutlineArrowTrendingUp,
   HiOutlineArrowUpTray,
   HiOutlineBuildingStorefront,
-  HiOutlineChatBubbleLeftRight,
   HiOutlineClock,
-  HiOutlineEye,
   HiOutlineMapPin,
   HiOutlinePhone,
   HiOutlineSparkles,
   HiOutlineXMark,
 } from "react-icons/hi2";
-import { useMyLatestShopApplication, useMyShops, useUpdateShop, useUploadImage } from "../../hooks/useCatalog";
+import { useMyShops, useUpdateShop, useUploadImage } from "../../hooks/useCatalog";
 import ShopFeatureBadges from "../../components/shops/ShopFeatureBadges";
 import type { Shop } from "../../types/catalog";
-import { isRecentAdminNote } from "../../utils/adminNote";
 import {
   CITY_MAP_ZOOM,
   DEFAULT_MAP_CENTER,
@@ -109,11 +104,9 @@ function injectLeafletAssets() {
 function OwnerShop() {
   const { t } = useTranslation();
   const { data: shops = [], isLoading } = useMyShops();
-  const { data: latestApplication } = useMyLatestShopApplication();
   const updateShopMutation = useUpdateShop();
   const uploadImageMutation = useUploadImage();
   const [selectedShopId, setSelectedShopId] = useState("");
-  const [showAdminNote, setShowAdminNote] = useState(false);
   const [uploadingField, setUploadingField] = useState<"logo" | "banner" | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [isResolvingAddress, setIsResolvingAddress] = useState(false);
@@ -162,23 +155,7 @@ function OwnerShop() {
         return status ?? t("owner.none");
     }
   };
-  const formatApplicationStatus = (status?: string | null) => {
-    switch (status) {
-      case "approved":
-        return t("owner.approved");
-      case "rejected":
-        return t("owner.rejected");
-      case "pending":
-        return t("owner.pending");
-      default:
-        return status ?? t("owner.none");
-    }
-  };
-  const adminNoteTone = latestApplication?.status === "approved"
-    ? "border-[#2f6d55] bg-[linear-gradient(180deg,rgba(15,36,28,0.96),rgba(9,22,17,0.98))] text-[#dff8eb]"
-    : "border-[#7d3943] bg-[linear-gradient(180deg,rgba(43,18,23,0.96),rgba(28,10,14,0.98))] text-[#ffe0e5]";
   const changedFieldsCount = Object.keys(dirtyFields).length;
-  const isRecentNote = isRecentAdminNote(latestApplication?.updated_at);
 
   const ensureLeafletMarker = useCallback((coords: [number, number]) => {
     if (leafletMarkerRef.current || !leafletMapRef.current || !window.L) return;
@@ -230,10 +207,6 @@ function OwnerShop() {
       banner: selectedShop.banner ?? "",
     });
   }, [form, selectedShop]);
-
-  useEffect(() => {
-    setShowAdminNote(isRecentNote);
-  }, [isRecentNote, latestApplication?.id]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -441,70 +414,6 @@ function OwnerShop() {
     );
   }
 
-  const adminNoteCard = latestApplication?.admin_comment ? (
-    <section className={`rounded-[1.5rem] border p-4 sm:p-5 ${adminNoteTone}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/95 shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
-              <HiOutlineChatBubbleLeftRight className="text-xl" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-current/70">{t("owner.adminNote")}</p>
-              <h2 className="mt-1 truncate font-cormorant text-2xl leading-none text-white">
-                {latestApplication.status === "approved" ? t("owner.approvalMessage") : t("owner.applicationFeedback")}
-              </h2>
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-current/70">
-              {isRecentNote ? t("owner.freshNote") : t("owner.archivedNote")}
-            </span>
-            <span className="rounded-full border border-white/10 bg-black/10 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-current/70">
-              {formatApplicationStatus(latestApplication.status)}
-            </span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowAdminNote((current) => !current)}
-          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10"
-        >
-          <HiOutlineEye />
-          {showAdminNote ? t("owner.hideNote") : t("owner.open")}
-          {showAdminNote ? <HiChevronUp className="text-base" /> : <HiChevronDown className="text-base" />}
-        </button>
-      </div>
-
-      {showAdminNote ? (
-        <div className="mt-4 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[1.2rem] border border-white/10 bg-black/10 p-3">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-current/70">{t("owner.application")}</p>
-              <p className="mt-1 truncate text-sm font-semibold text-white">{latestApplication.shop_name}</p>
-            </div>
-            <div className="rounded-[1.2rem] border border-white/10 bg-black/10 p-3">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-current/70">{t("owner.decision")}</p>
-              <p className="mt-1 text-sm font-semibold text-white capitalize">{formatApplicationStatus(latestApplication.status)}</p>
-            </div>
-          </div>
-
-          <div className="rounded-[1.2rem] border border-white/10 bg-black/10 p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-current/60">{t("owner.privateMessage")}</p>
-            <p className="mt-2 text-sm leading-6 text-current">{latestApplication.admin_comment}</p>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-black/10 px-4 py-3">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-current/60">{t("owner.privateMessage")}</p>
-          <p className="mt-1 truncate text-sm text-current/85">{latestApplication.admin_comment}</p>
-        </div>
-      )}
-    </section>
-  ) : null;
-
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <section className="relative overflow-hidden rounded-[2rem] border border-[#44191f] bg-[linear-gradient(180deg,rgba(31,8,11,0.92),rgba(17,4,6,0.96))] p-6 sm:p-8">
@@ -623,8 +532,6 @@ function OwnerShop() {
         </div>
 
         <div className="space-y-6">
-          {adminNoteCard}
-
         <form onSubmit={onSubmit} className="rounded-[1.8rem] border border-[#3d171c] bg-[linear-gradient(180deg,rgba(27,8,10,0.97),rgba(14,4,6,0.98))] p-6 shadow-[0_26px_60px_rgba(0,0,0,0.22)] space-y-4">
           <div className="mb-2">
             <p className="text-sm uppercase tracking-[0.22em] text-[#d2a9a2]">{t("owner.editingStudio")}</p>
