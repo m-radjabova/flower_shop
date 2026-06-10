@@ -57,7 +57,7 @@ function OwnerBouquets() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <section className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,rgba(31,8,11,0.9),rgba(17,4,6,0.94))] p-6 sm:p-8">
-        <img
+        <img loading="lazy" decoding="async"
           src={bow}
           alt=""
           aria-hidden="true"
@@ -95,7 +95,7 @@ function OwnerBouquets() {
           return (
             <article key={bouquet.id} className="overflow-hidden rounded-[1.6rem] border border-[#3d171c]/70 bg-[linear-gradient(180deg,rgba(27,8,10,0.97),rgba(14,4,6,0.98))]">
               <div className="relative h-52">
-                <img src={bouquet.image} alt={bouquet.name} className="h-full w-full object-cover" />
+                <img loading="lazy" decoding="async" src={bouquet.image} alt={bouquet.name} className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(9,2,3,0.85))]" />
                 <span className="absolute right-4 top-4 rounded-full bg-[#120607] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#f7d9d2]">
                   {statusLabels[bouquet.status]}
@@ -125,7 +125,7 @@ function OwnerBouquets() {
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {(bouquet.addon_options ?? []).map((addon) => (
                     <div key={addon.id} className="overflow-hidden rounded-2xl border border-[#4a1d22] bg-[#130608]">
-                      <img src={addon.image} alt={addon.name} className="h-20 w-full object-cover" />
+                      <img loading="lazy" decoding="async" src={addon.image} alt={addon.name} className="h-20 w-full object-cover" />
                       <div className="p-2 text-xs text-[#ddb7af]">
                         <p className="truncate font-semibold text-[#f7ddd5]">{addon.name}</p>
                         <p>+{formatPrice(addon.price)}</p>

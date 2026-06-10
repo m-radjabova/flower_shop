@@ -40,7 +40,7 @@ function AnimatedBow() {
           ease: "easeInOut",
         }}
       />
-      <motion.img
+      <motion.img loading="lazy" decoding="async"
         src={bowImage}
         alt="Luxury satin bow"
         className="relative z-[3] block h-auto w-full select-none pointer-events-none"

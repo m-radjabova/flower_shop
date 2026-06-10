@@ -417,7 +417,7 @@ function OwnerShop() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <section className="relative overflow-hidden rounded-[2rem] border border-[#44191f] bg-[linear-gradient(180deg,rgba(31,8,11,0.92),rgba(17,4,6,0.96))] p-6 sm:p-8">
-        <img
+        <img loading="lazy" decoding="async"
           src={bow}
           alt=""
           aria-hidden="true"
@@ -465,7 +465,7 @@ function OwnerShop() {
         <div className="space-y-6">
           <article className="overflow-hidden rounded-[1.8rem] border border-[#3d171c] bg-[linear-gradient(180deg,rgba(27,8,10,0.97),rgba(14,4,6,0.98))] shadow-[0_26px_60px_rgba(0,0,0,0.24)]">
             <div className="relative h-72 bg-[#140608]">
-            {banner ? <img src={banner} alt={selectedShop.name} className="h-full w-full object-cover" /> : null}
+            {banner ? <img loading="lazy" decoding="async" src={banner} alt={selectedShop.name} className="h-full w-full object-cover" /> : null}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,2,4,0.02),rgba(8,1,2,0.92))]" />
             <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs uppercase tracking-[0.24em] text-[#f5d8d1] backdrop-blur">
               <HiOutlineSparkles className="text-[#f2be7f]" />
@@ -474,7 +474,7 @@ function OwnerShop() {
             <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
               <div className="flex items-end gap-4">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[1.8rem] border border-[#7a4747] bg-[#1d0a0d] shadow-[0_14px_30px_rgba(0,0,0,0.24)]">
-                {logo ? <img src={logo} alt={`${selectedShop.name} logo`} className="h-full w-full object-cover" /> : <HiOutlineBuildingStorefront className="text-4xl text-[#f2be7f]" />}
+                {logo ? <img loading="lazy" decoding="async" src={logo} alt={`${selectedShop.name} logo`} className="h-full w-full object-cover" /> : <HiOutlineBuildingStorefront className="text-4xl text-[#f2be7f]" />}
               </div>
                 <div>
                   <p className="font-cormorant text-4xl text-white sm:text-5xl">{selectedShop.name}</p>

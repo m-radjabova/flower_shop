@@ -126,7 +126,7 @@ export default function ChatMessageBubble({
                   mine ? "rounded-xl" : "rounded-xl"
                 } ${message.body ? "border-b border-white/8" : ""}`}
               >
-                <img
+                <img loading="lazy" decoding="async"
                   src={message.attachment_url}
                   alt={attachmentName}
                   className="max-h-72 w-full min-w-48 object-cover transition duration-500 group-hover/img:scale-[1.04]"

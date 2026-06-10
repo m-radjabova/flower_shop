@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import IsLoading from "./components/IsLoading";
 import NotFound from "./components/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
@@ -34,6 +36,26 @@ import Profile from "./pages/profile/Profile";
 import ShopApplicationPage from "./pages/profile/ShopApplicationPage";
 
 function App() {
+  const [isBooting, setIsBooting] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return sessionStorage.getItem("flower-shop-app-ready") !== "true";
+  });
+
+  useEffect(() => {
+    if (!isBooting) return;
+
+    const timeoutId = window.setTimeout(() => {
+      sessionStorage.setItem("flower-shop-app-ready", "true");
+      setIsBooting(false);
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isBooting]);
+
+  if (isBooting) {
+    return <IsLoading />;
+  }
+
   return (
     <>
       <ScrollToTop />

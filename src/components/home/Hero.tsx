@@ -1,10 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 import { Link } from "react-router-dom";
-import { HiArrowRight, HiOutlineBuildingStorefront, HiShoppingBag, HiSparkles } from "react-icons/hi2";
+import {
+  HiArrowRight,
+  HiOutlineBuildingStorefront,
+  HiShoppingBag,
+  HiSparkles,
+} from "react-icons/hi2";
 import { useTranslation } from "react-i18next";
 import flowerIcon from "../../assets/flower_icon.png";
 import flowerIcon2 from "../../assets/flower_icon2.png";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
   id: i,
@@ -22,16 +35,32 @@ const FLOWER_ICONS = [flowerIcon, flowerIcon2];
 function Hero() {
   const { t } = useTranslation();
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [petals, setPetals] = useState<Array<{ id: number; x: number; delay: number; icon: string; size: number }>>([]);
+  const [petals, setPetals] = useState<
+    Array<{ id: number; x: number; delay: number; icon: string; size: number }>
+  >([]);
+  const isMobile = useIsMobile();
+  const shouldReduceMotion = useReducedMotion();
+  const enableHeavyEffects = !isMobile && !shouldReduceMotion;
 
   // ── Parallax scroll — spring for silk smooth feel ──
-  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 80, damping: 28 });
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 80,
+    damping: 28,
+  });
   const textY = useTransform(smoothProgress, [0, 1], [0, 80]);
   const opacity = useTransform(smoothProgress, [0, 0.65], [1, 0]);
 
   // ── Falling petals ──
   useEffect(() => {
+    if (!enableHeavyEffects) {
+      setPetals([]);
+      return;
+    }
+
     const interval = setInterval(() => {
       setPetals((prev) => {
         const nextPetal = {
@@ -47,7 +76,7 @@ function Hero() {
     }, 1800);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [enableHeavyEffects]);
 
   // ── Container variants ──
   const containerVariants = {
@@ -71,7 +100,6 @@ function Hero() {
     <section
       ref={sectionRef}
       className="relative  isolate min-h-screen overflow-hidden"
-      
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.015]"
@@ -81,72 +109,83 @@ function Hero() {
           backgroundSize: "80px 80px",
         }}
       />
-{/* ── Hero decorations only ── */}
+      {/* ── Hero decorations only ── */}
       <div className="pointer-events-none absolute inset-x-0 top-24 bottom-0 z-0 overflow-hidden sm:top-28 lg:top-32">
         {/* ── Floating particles ── */}
-        {PARTICLES.map((p) => (
-          <motion.div
-            key={p.id}
-            className="pointer-events-none absolute rounded-full"
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: p.size,
-              height: p.size,
-              background:
-                p.id % 3 === 0
-                  ? "radial-gradient(circle, rgba(217,181,111,0.4), transparent)"
-                  : p.id % 3 === 1
-                    ? "radial-gradient(circle, rgba(216,38,63,0.3), transparent)"
-                    : "radial-gradient(circle, rgba(255,200,220,0.25), transparent)",
-              boxShadow:
-                p.id % 2 === 0 ? "0 0 20px rgba(217,181,111,0.08)" : "0 0 20px rgba(216,38,63,0.06)",
-            }}
-            animate={{
-              y: [0, -30, 0],
-              x: [0, p.id % 2 === 0 ? 15 : -15, 0],
-              scale: [1, 1.15, 1],
-              opacity: [p.opacity, p.opacity * 1.6, p.opacity],
-              rotate: [p.rotate, p.rotate + 180, p.rotate + 360],
-            }}
-            transition={{
-              duration: p.duration,
-              repeat: Infinity,
-              delay: p.delay,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
+        {enableHeavyEffects
+          ? PARTICLES.map((p) => (
+              <motion.div
+                key={p.id}
+                className="pointer-events-none absolute rounded-full"
+                style={{
+                  left: `${p.x}%`,
+                  top: `${p.y}%`,
+                  width: p.size,
+                  height: p.size,
+                  background:
+                    p.id % 3 === 0
+                      ? "radial-gradient(circle, rgba(217,181,111,0.4), transparent)"
+                      : p.id % 3 === 1
+                        ? "radial-gradient(circle, rgba(216,38,63,0.3), transparent)"
+                        : "radial-gradient(circle, rgba(255,200,220,0.25), transparent)",
+                  boxShadow:
+                    p.id % 2 === 0
+                      ? "0 0 20px rgba(217,181,111,0.08)"
+                      : "0 0 20px rgba(216,38,63,0.06)",
+                }}
+                animate={{
+                  y: [0, -30, 0],
+                  x: [0, p.id % 2 === 0 ? 15 : -15, 0],
+                  scale: [1, 1.15, 1],
+                  opacity: [p.opacity, p.opacity * 1.6, p.opacity],
+                  rotate: [p.rotate, p.rotate + 180, p.rotate + 360],
+                }}
+                transition={{
+                  duration: p.duration,
+                  repeat: Infinity,
+                  delay: p.delay,
+                  ease: "easeInOut",
+                }}
+              />
+            ))
+          : null}
 
         {/* ── Falling petals ── */}
-        <AnimatePresence>
-          {petals.map((petal) => (
-            <motion.div
-              key={petal.id}
-              className="pointer-events-none absolute z-20 select-none"
-              style={{ left: `${petal.x}%`, top: -40 }}
-              initial={{ y: -40, opacity: 0, rotate: 0 }}
-              animate={{
-                y: window.innerHeight + 40,
-                opacity: [0, 0.6, 0.6, 0],
-                rotate: [0, 120, 240, 360],
-                x: [0, petal.id % 2 === 0 ? 40 : -40, petal.id % 2 === 0 ? 80 : -80, 0],
-              }}
-              exit={{ opacity: 0 }}
-              transition={{
-                duration: 8 + Math.random() * 5,
-                ease: "easeInOut",
-              }}
-            >
-              <img
-                src={petal.icon}
-                alt=""
-                className="block h-auto w-auto select-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.25)]"
-                style={{ width: `${petal.size}px` }}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+        {enableHeavyEffects ? (
+          <AnimatePresence>
+            {petals.map((petal) => (
+              <motion.div
+                key={petal.id}
+                className="pointer-events-none absolute z-20 select-none"
+                style={{ left: `${petal.x}%`, top: -40 }}
+                initial={{ y: -40, opacity: 0, rotate: 0 }}
+                animate={{
+                  y: window.innerHeight + 40,
+                  opacity: [0, 0.6, 0.6, 0],
+                  rotate: [0, 120, 240, 360],
+                  x: [
+                    0,
+                    petal.id % 2 === 0 ? 40 : -40,
+                    petal.id % 2 === 0 ? 80 : -80,
+                    0,
+                  ],
+                }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: 8 + Math.random() * 5,
+                  ease: "easeInOut",
+                }}
+              >
+                <img loading="lazy" decoding="async"
+                  src={petal.icon}
+                  alt=""
+                  className="block h-auto w-auto select-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.25)]"
+                  style={{ width: `${petal.size}px` }}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        ) : null}
 
         {/* ── Decorative corner lines ── */}
         <div className="pointer-events-none absolute left-8 top-8 z-10 h-16 w-[1px] bg-gradient-to-b from-[#d9b56f]/40 to-transparent sm:left-12 sm:top-12" />
@@ -158,7 +197,7 @@ function Hero() {
         <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-16 w-[1px] bg-gradient-to-t from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:right-12" />
         <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-[1px] w-16 bg-gradient-to-l from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:right-12" />
       </div>
-{/* ── Main content ── */}
+      {/* ── Main content ── */}
       <motion.div
         style={{ y: textY, opacity }}
         className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 pb-16 pt-28 sm:px-6 sm:pt-32 lg:px-10 lg:pb-20 lg:pt-36"
@@ -170,7 +209,10 @@ function Hero() {
           className="max-w-4xl text-center"
         >
           {/* ── Badge ── */}
-          <motion.div variants={itemVariants} className="mb-6 inline-flex items-center justify-center">
+          <motion.div
+            variants={itemVariants}
+            className="mb-6 inline-flex items-center justify-center"
+          >
             <motion.div
               className="group relative inline-flex items-center gap-2.5 rounded-full border border-[#d9b56f]/30 bg-[#2a0d10]/60 px-5 py-2.5 backdrop-blur-md"
               whileHover={{ scale: 1.03, borderColor: "rgba(217,181,111,0.5)" }}
@@ -179,8 +221,14 @@ function Hero() {
               {/* Glow ring */}
               <motion.span
                 className="absolute inset-0 rounded-full opacity-0 blur-sm"
-                animate={{ opacity: [0, 0.4, 0] }}
-                transition={{ duration: 2.5, repeat: Infinity }}
+                animate={
+                  enableHeavyEffects ? { opacity: [0, 0.4, 0] } : undefined
+                }
+                transition={
+                  enableHeavyEffects
+                    ? { duration: 2.5, repeat: Infinity }
+                    : undefined
+                }
                 style={{
                   background:
                     "linear-gradient(135deg, rgba(217,181,111,0.2), rgba(216,38,63,0.1))",
@@ -202,8 +250,16 @@ function Hero() {
               viewBox="0 0 200 160"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              animate={{ rotate: [0, 3, 0, -3, 0], scale: [1, 1.02, 1] }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+              animate={
+                enableHeavyEffects
+                  ? { rotate: [0, 3, 0, -3, 0], scale: [1, 1.02, 1] }
+                  : undefined
+              }
+              transition={
+                enableHeavyEffects
+                  ? { duration: 8, repeat: Infinity, ease: "easeInOut" }
+                  : undefined
+              }
             >
               <path
                 d="M10 140 C40 100, 60 40, 100 30 C140 20, 160 50, 190 20"
@@ -221,57 +277,86 @@ function Hero() {
                 </linearGradient>
               </defs>
             </motion.svg>
-<motion.h1
+            <motion.h1
               className="font-great-vibes relative mt-5 text-[4.4rem] font-normal leading-[0.88] text-[#d8263f] drop-shadow-[0_16px_48px_rgba(0,0,0,0.5)] sm:text-[6.4rem] lg:text-[7.6rem]"
-              whileHover={{ scale: 1.008 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+              whileHover={enableHeavyEffects ? { scale: 1.008 } : undefined}
+              transition={
+                enableHeavyEffects
+                  ? { type: "spring", stiffness: 200, damping: 15 }
+                  : undefined
+              }
             >
-              {/* Title words staggered */}
-              <motion.span className="inline-block" style={{ textShadow: "0 4px 30px rgba(216,38,63,0.15)" }}>
-                {t("hero.title").split("").map((char, i) => (
+              {enableHeavyEffects ? (
+                <>
                   <motion.span
-                    key={i}
                     className="inline-block"
-                    initial={{ opacity: 0, y: 60, rotateX: -30 }}
-                    animate={{ opacity: 1, y: 0, rotateX: 0 }}
-                    transition={{
-                      delay: 0.5 + i * 0.035,
-                      duration: 0.6,
-                      ease: [0.16, 1, 0.3, 1] as const,
-                    }}
-                    whileHover={{
-                      color: "#e84860",
-                      textShadow: "0 0 40px rgba(216,38,63,0.4)",
-                      transition: { duration: 0.2 },
-                    }}
+                    style={{ textShadow: "0 4px 30px rgba(216,38,63,0.15)" }}
                   >
-                    {char === " " ? "\u00A0" : char}
+                    {t("hero.title")
+                      .split("")
+                      .map((char, i) => (
+                        <motion.span
+                          key={i}
+                          className="inline-block"
+                          initial={{ opacity: 0, y: 60, rotateX: -30 }}
+                          animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                          transition={{
+                            delay: 0.5 + i * 0.035,
+                            duration: 0.6,
+                            ease: [0.16, 1, 0.3, 1] as const,
+                          }}
+                          whileHover={{
+                            color: "#e84860",
+                            textShadow: "0 0 40px rgba(216,38,63,0.4)",
+                            transition: { duration: 0.2 },
+                          }}
+                        >
+                          {char === " " ? "\u00A0" : char}
+                        </motion.span>
+                      ))}
                   </motion.span>
-                ))}
-              </motion.span>
-              <br />
-              <motion.span className="inline-block" style={{ textShadow: "0 4px 30px rgba(216,38,63,0.15)" }}>
-                {t("hero.title2").split("").map((char, i) => (
+                  <br />
                   <motion.span
-                    key={i}
                     className="inline-block"
-                    initial={{ opacity: 0, y: 60, rotateX: -30 }}
-                    animate={{ opacity: 1, y: 0, rotateX: 0 }}
-                    transition={{
-                      delay: 0.5 + (t("hero.title").length + i) * 0.035,
-                      duration: 0.6,
-                      ease: [0.16, 1, 0.3, 1] as const,
-                    }}
-                    whileHover={{
-                      color: "#e84860",
-                      textShadow: "0 0 40px rgba(216,38,63,0.4)",
-                      transition: { duration: 0.2 },
-                    }}
+                    style={{ textShadow: "0 4px 30px rgba(216,38,63,0.15)" }}
                   >
-                    {char === " " ? "\u00A0" : char}
+                    {t("hero.title2")
+                      .split("")
+                      .map((char, i) => (
+                        <motion.span
+                          key={i}
+                          className="inline-block"
+                          initial={{ opacity: 0, y: 60, rotateX: -30 }}
+                          animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                          transition={{
+                            delay: 0.5 + (t("hero.title").length + i) * 0.035,
+                            duration: 0.6,
+                            ease: [0.16, 1, 0.3, 1] as const,
+                          }}
+                          whileHover={{
+                            color: "#e84860",
+                            textShadow: "0 0 40px rgba(216,38,63,0.4)",
+                            transition: { duration: 0.2 },
+                          }}
+                        >
+                          {char === " " ? "\u00A0" : char}
+                        </motion.span>
+                      ))}
                   </motion.span>
-                ))}
-              </motion.span>
+                </>
+              ) : (
+                <motion.span
+                  className="block"
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.55, ease: "easeOut" }}
+                  style={{ textShadow: "0 4px 22px rgba(216,38,63,0.12)" }}
+                >
+                  {t("hero.title")}
+                  <br />
+                  {t("hero.title2")}
+                </motion.span>
+              )}
             </motion.h1>
 
             {/* Decorative swoosh behind heading – right */}
@@ -280,8 +365,21 @@ function Hero() {
               viewBox="0 0 200 160"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              animate={{ rotate: [0, -3, 0, 3, 0], scale: [1, 1.02, 1] }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+              animate={
+                enableHeavyEffects
+                  ? { rotate: [0, -3, 0, 3, 0], scale: [1, 1.02, 1] }
+                  : undefined
+              }
+              transition={
+                enableHeavyEffects
+                  ? {
+                      duration: 8,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: 4,
+                    }
+                  : undefined
+              }
             >
               <path
                 d="M10 20 C40 60, 60 120, 100 130 C140 140, 160 110, 190 140"
@@ -300,7 +398,7 @@ function Hero() {
               </defs>
             </motion.svg>
           </motion.div>
-{/* ── CTA Buttons ── */}
+          {/* ── CTA Buttons ── */}
           <motion.div
             variants={itemVariants}
             className="mt-12 flex flex-col justify-center gap-5 sm:flex-row"
@@ -314,15 +412,21 @@ function Hero() {
               {/* Glow behind button */}
               <motion.div
                 className="pointer-events-none absolute -inset-2 rounded-2xl opacity-0 blur-xl"
-                animate={{ opacity: [0, 0.3, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                animate={
+                  enableHeavyEffects ? { opacity: [0, 0.3, 0] } : undefined
+                }
+                transition={
+                  enableHeavyEffects
+                    ? { duration: 2, repeat: Infinity }
+                    : undefined
+                }
                 style={{
                   background:
                     "linear-gradient(135deg, rgba(217,181,111,0.15), rgba(216,38,63,0.1))",
                 }}
               />
               <Link
-                to="/#bouquets"
+                to="/bouquets"
                 className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#ffc677]/25 bg-[linear-gradient(135deg,#8f111d,#c5243a_48%,#dc4156)] px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#fff8ef] shadow-[0_18px_42px_rgba(159,21,35,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(159,21,35,0.5)] active:translate-y-0"
               >
                 <span className="absolute inset-0 -translate-x-[120%] skew-x-[-12deg] bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.2),transparent)] transition-transform duration-700 group-hover:translate-x-[120%]" />
@@ -330,8 +434,12 @@ function Hero() {
                 <span className="relative z-10">{t("hero.shopNow")}</span>
                 <motion.span
                   className="relative z-10"
-                  animate={{ x: [0, 3, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
+                  animate={enableHeavyEffects ? { x: [0, 3, 0] } : undefined}
+                  transition={
+                    enableHeavyEffects
+                      ? { duration: 1.5, repeat: Infinity }
+                      : undefined
+                  }
                 >
                   <HiArrowRight />
                 </motion.span>
@@ -339,31 +447,40 @@ function Hero() {
             </motion.div>
 
             {/* Secondary CTA */}
-            <motion.div
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-            >
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Link
                 to="/shops"
                 className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#dab56f]/30 bg-[#0c0304]/60 px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#ead6c7] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#efc77e]/60 hover:bg-[#270a0c]/70 hover:shadow-[0_18px_34px_rgba(217,181,111,0.12)] active:translate-y-0"
               >
                 <motion.span
                   className="absolute inset-0"
-                  animate={{
-                    background: [
-                      "linear-gradient(110deg, transparent, rgba(217,181,111,0.03), transparent)",
-                      "linear-gradient(110deg, transparent, rgba(217,181,111,0.07), transparent)",
-                      "linear-gradient(110deg, transparent, rgba(217,181,111,0.03), transparent)",
-                    ],
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
+                  animate={
+                    enableHeavyEffects
+                      ? {
+                          background: [
+                            "linear-gradient(110deg, transparent, rgba(217,181,111,0.03), transparent)",
+                            "linear-gradient(110deg, transparent, rgba(217,181,111,0.07), transparent)",
+                            "linear-gradient(110deg, transparent, rgba(217,181,111,0.03), transparent)",
+                          ],
+                        }
+                      : undefined
+                  }
+                  transition={
+                    enableHeavyEffects
+                      ? { duration: 3, repeat: Infinity }
+                      : undefined
+                  }
                 />
                 <HiOutlineBuildingStorefront className="relative z-10 text-base" />
                 <span className="relative z-10">{t("hero.exploreShops")}</span>
                 <motion.span
                   className="relative z-10 opacity-0 transition-all duration-300 group-hover:opacity-100"
-                  animate={{ x: [0, 4, 0] }}
-                  transition={{ duration: 1.8, repeat: Infinity, delay: 0.5 }}
+                  animate={enableHeavyEffects ? { x: [0, 4, 0] } : undefined}
+                  transition={
+                    enableHeavyEffects
+                      ? { duration: 1.8, repeat: Infinity, delay: 0.5 }
+                      : undefined
+                  }
                 >
                   <HiArrowRight />
                 </motion.span>
@@ -371,8 +488,7 @@ function Hero() {
             </motion.div>
           </motion.div>
 
-
-{/* ── Scroll indicator ── */}
+          {/* ── Scroll indicator ── */}
           <motion.div
             variants={itemVariants}
             className="mt-16 flex flex-col items-center gap-2"
@@ -385,8 +501,16 @@ function Hero() {
             </span>
             <motion.div
               className="h-8 w-[1px] bg-gradient-to-b from-[#d9b56f]/30 to-transparent"
-              animate={{ height: [8, 24, 8], opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              animate={
+                enableHeavyEffects
+                  ? { height: [8, 24, 8], opacity: [0.3, 0.6, 0.3] }
+                  : undefined
+              }
+              transition={
+                enableHeavyEffects
+                  ? { duration: 2, repeat: Infinity }
+                  : undefined
+              }
             />
           </motion.div>
         </motion.div>

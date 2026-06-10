@@ -148,7 +148,7 @@ function HelloAdmin() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <section className="relative overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_top_right,rgba(200,80,97,0.18),transparent_28%),linear-gradient(180deg,rgba(31,8,11,0.9),rgba(17,4,6,0.94))] p-6 sm:p-8">
-        <img
+        <img loading="lazy" decoding="async"
           src={bow}
           alt=""
           aria-hidden="true"

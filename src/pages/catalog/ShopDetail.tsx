@@ -14,7 +14,6 @@ import {
   FaLeaf,
   FaAward,
   FaStore,
-  FaChevronDown,
   FaRegCalendarAlt,
 } from "react-icons/fa";
 import {
@@ -81,41 +80,39 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
     >
       <Link to={`/bouquets/${bouquet.id}`} className="block">
         <div className="relative overflow-hidden">
-          <motion.img
+          <motion.img loading="lazy" decoding="async"
             src={bouquet.image}
             alt={bouquet.name}
-            className="h-72 w-full object-cover sm:h-80"
+            className="h-56 sm:h-72 lg:h-80 w-full object-cover"
             animate={{ scale: isHovered ? 1.08 : 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#120608] via-transparent to-transparent opacity-70" />
 
-          {/* Badges */}
-          <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+          <div className="absolute left-3 sm:left-4 top-3 sm:top-4 flex flex-wrap gap-1.5 sm:gap-2">
             {isNewBouquet && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-emerald-500/20">
-                <FaLeaf className="text-[0.5rem]" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2 sm:px-3 py-1 text-[0.55rem] sm:text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-emerald-500/20">
+                <FaLeaf className="text-[0.4rem] sm:text-[0.5rem]" />
                 {t("catalog.new")}
               </span>
             )}
             {isPopular && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-amber-500/20">
-                <FaStar className="text-[0.5rem]" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 sm:px-3 py-1 text-[0.55rem] sm:text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-amber-500/20">
+                <FaStar className="text-[0.4rem] sm:text-[0.5rem]" />
                 {t("catalog.popular")}
               </span>
             )}
             {hasDiscount && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-rose-600/20">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-2 sm:px-3 py-1 text-[0.55rem] sm:text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-rose-600/20">
                 {t("shopDetail.sale")}
               </span>
             )}
             <BouquetAvailabilityBadge bouquet={bouquet} compact />
           </div>
 
-          {/* Quick add button on hover */}
           <motion.button
             type="button"
-              onClick={(e) => {
+            onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               if (!canAddToCart) {
@@ -126,7 +123,7 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
               toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`);
             }}
             disabled={!canAddToCart}
-            className={`absolute right-4 bottom-4 z-10 flex h-12 w-12 items-center justify-center rounded-full shadow-xl ${
+            className={`absolute right-3 sm:right-4 bottom-3 sm:bottom-4 z-10 flex h-10 sm:h-12 w-10 sm:w-12 items-center justify-center rounded-full shadow-xl ${
               canAddToCart
                 ? "bg-gradient-to-br from-[#cb5c57] to-[#a3322e] text-white shadow-[#cb5c57]/20"
                 : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94]"
@@ -137,29 +134,28 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            <HiOutlineShoppingBag className="text-lg" />
+            <HiOutlineShoppingBag className="text-base sm:text-lg" />
           </motion.button>
 
-          {/* Category tag */}
           {bouquet.category && (
-            <span className="absolute left-4 bottom-4 rounded-full border border-white/10 bg-black/30 px-3.5 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
+            <span className="absolute left-3 sm:left-4 bottom-3 sm:bottom-4 rounded-full border border-white/10 bg-black/30 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[0.5rem] sm:text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
               {bouquet.category.name}
             </span>
           )}
         </div>
       </Link>
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <Link to={`/bouquets/${bouquet.id}`}>
-              <h3 className="font-cormorant text-2xl font-semibold leading-tight text-white transition-colors duration-300 hover:text-[#f0a89a]">
+              <h3 className="font-cormorant text-lg sm:text-xl md:text-2xl font-semibold leading-tight text-white transition-colors duration-300 hover:text-[#f0a89a]">
                 {bouquet.name}
               </h3>
             </Link>
-              <div className="mt-2 flex items-center gap-2 text-sm text-[#dbb8b0]">
+            <div className="mt-1.5 sm:mt-2 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-[#dbb8b0]">
               <div className="flex items-center gap-1">
-                <FaStar className="text-[0.7rem] text-amber-400" />
+                <FaStar className="text-[0.6rem] sm:text-[0.7rem] text-amber-400" />
                 <span className="font-semibold text-white">{bouquet.rating}</span>
               </div>
               <span className="text-[#8a6a63]">·</span>
@@ -168,11 +164,11 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
           </div>
         </div>
 
-        <div className="mt-4 flex items-end justify-between border-t border-[#4a2020]/30 pt-4">
-          <div className="flex items-end gap-2.5">
-            <span className="text-2xl font-bold text-white">{formatPrice(bouquet.price)}</span>
+        <div className="mt-3 sm:mt-4 flex items-end justify-between border-t border-[#4a2020]/30 pt-3 sm:pt-4">
+          <div className="flex items-end gap-2 sm:gap-2.5">
+            <span className="text-lg sm:text-xl md:text-2xl font-bold text-white">{formatPrice(bouquet.price)}</span>
             {hasDiscount && (
-              <span className="pb-0.5 text-sm font-medium text-[#8a6a63] line-through">
+              <span className="pb-0.5 text-xs sm:text-sm font-medium text-[#8a6a63] line-through">
                 {formatPrice(bouquet.old_price!)}
               </span>
             )}
@@ -205,7 +201,7 @@ function NavPills({
   ];
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-[1.6rem] border border-[#4a2020]/50 bg-[#120608]/80 p-1.5 backdrop-blur-xl">
+    <div className="flex flex-wrap gap-1.5 sm:gap-2 rounded-[1.6rem] border border-[#4a2020]/50 bg-[#120608]/80 p-1.5 backdrop-blur-xl">
       {items.map((item) => {
         const isActive = activeSection === item.id;
         return (
@@ -213,7 +209,7 @@ function NavPills({
             key={item.id}
             type="button"
             onClick={() => scrollToSection(item.id)}
-            className={`relative flex items-center gap-2.5 rounded-[1.2rem] px-4 py-2.5 text-sm font-medium transition-all duration-300 ${
+            className={`relative flex items-center gap-1.5 sm:gap-2.5 rounded-[1.2rem] px-2.5 sm:px-4 py-2 sm:py-2.5 text-[10px] sm:text-sm font-medium transition-all duration-300 ${
               isActive
                 ? "bg-gradient-to-r from-[#cb5c57] to-[#a3322e] text-white shadow-lg shadow-[#cb5c57]/20"
                 : "text-[#cfa89e] hover:text-white hover:bg-white/5"
@@ -222,7 +218,7 @@ function NavPills({
             {item.icon}
             <span>{item.label}</span>
             {item.value !== null && (
-              <span className={`ml-0.5 rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${
+              <span className={`ml-0.5 rounded-full px-1.5 sm:px-2 py-0.5 text-[0.55rem] sm:text-[0.65rem] font-bold ${
                 isActive ? "bg-white/20 text-white" : "bg-[#4a2020]/40 text-[#cfa89e]"
               }`}>
                 {item.value}
@@ -240,13 +236,13 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   return (
     <motion.div
       variants={itemVariants}
-      className="group rounded-[1.4rem] border border-[#4a2020]/40 bg-gradient-to-br from-[#1a0a0c] to-[#100608] p-5 transition-all duration-300 hover:border-[#cb5c57]/30 hover:shadow-[0_10px_40px_rgba(203,92,87,0.08)]"
+      className="group rounded-[1.4rem] border border-[#4a2020]/40 bg-gradient-to-br from-[#1a0a0c] to-[#100608] p-3 sm:p-5 transition-all duration-300 hover:border-[#cb5c57]/30 hover:shadow-[0_10px_40px_rgba(203,92,87,0.08)]"
     >
-      <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
+      <div className={`mb-2 sm:mb-3 inline-flex h-8 sm:h-10 w-8 sm:w-10 items-center justify-center rounded-xl ${color}`}>
         {icon}
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="mt-1 text-xs font-medium uppercase tracking-[0.15em] text-[#a88680]">{label}</p>
+      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-[0.55rem] sm:text-xs font-medium uppercase tracking-[0.15em] text-[#a88680]">{label}</p>
     </motion.div>
   );
 }
@@ -351,9 +347,8 @@ function ShopDetail() {
     <main className="min-h-screen bg-[#070102] text-[#fff4f1]">
       {/* Ambient background effects */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#cb5c57]/5 blur-[120px]" />
-        <div className="absolute -right-40 bottom-0 h-[400px] w-[400px] rounded-full bg-[#ff9b88]/3 blur-[100px]" />
-        <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#a3322e]/3 blur-[150px]" />
+        <div className="absolute -left-40 -top-40 h-[400px] sm:h-[500px] w-[400px] sm:w-[500px] rounded-full bg-[#cb5c57]/5 blur-[100px] sm:blur-[120px]" />
+        <div className="absolute -right-40 bottom-0 h-[300px] sm:h-[400px] w-[300px] sm:w-[400px] rounded-full bg-[#ff9b88]/3 blur-[80px] sm:blur-[100px]" />
       </div>
 
       <div className="relative z-10">
@@ -362,7 +357,7 @@ function ShopDetail() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="relative overflow-hidden px-4 pb-8 pt-28 sm:px-6 lg:px-10"
+          className="relative overflow-hidden px-4 sm:px-6 lg:px-10 pb-6 sm:pb-8 pt-28 sm:pt-32 lg:pt-36"
         >
           <div className="mx-auto max-w-[1500px]">
             {/* Back button */}
@@ -373,7 +368,7 @@ function ShopDetail() {
             >
               <Link
                 to="/#bouquets"
-                className="group inline-flex items-center gap-2 rounded-full border border-[#4a2020]/40 bg-[#120608]/60 px-4 py-2 text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
+                className="group relative z-20 inline-flex items-center gap-2 rounded-full border border-[#4a2020]/40 bg-[#120608]/60 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
               >
                 <HiOutlineArrowLeft className="transition-transform duration-300 group-hover:-translate-x-0.5" />
                 {t("shopDetail.backToShops")}
@@ -385,28 +380,23 @@ function ShopDetail() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="relative mt-6 overflow-hidden rounded-[2.4rem] border border-[#4a2020]/40 shadow-[0_30px_80px_rgba(0,0,0,0.4)]"
+              className="relative mt-4 sm:mt-6 overflow-hidden rounded-[2rem] sm:rounded-[2.4rem] border border-[#4a2020]/40 shadow-[0_30px_80px_rgba(0,0,0,0.4)]"
             >
-              {/* Background Image */}
-              <img
+              <img loading="lazy" decoding="async"
                 src={shop.banner ?? shop.logo ?? "https://images.unsplash.com/photo-1519378058457-4c29a0a2efac?auto=format&fit=crop&w=1400&q=80"}
                 alt={shop.name}
                 className="absolute inset-0 h-full w-full object-cover"
               />
 
-              {/* Overlays */}
               <div className="absolute inset-0 bg-gradient-to-r from-[#0a0203] via-[#120608]/92 to-[#1a080a]/70" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0203] via-transparent to-transparent" />
-              <div className="absolute top-0 right-0 h-1/2 w-1/2 bg-gradient-to-bl from-[#cb5c57]/8 to-transparent" />
 
-              {/* Decorative floating elements */}
-              <div className="pointer-events-none absolute top-10 right-10 h-32 w-32 rounded-full border border-[#cb5c57]/10" />
-              <div className="pointer-events-none absolute bottom-20 left-1/4 h-20 w-20 rounded-full border border-[#ff9b88]/8" />
+              <div className="pointer-events-none absolute top-10 right-10 h-24 sm:h-32 w-24 sm:w-32 rounded-full border border-[#cb5c57]/10" />
 
-              <div className="relative z-10 flex min-h-[26rem] flex-col justify-between gap-8 p-6 sm:p-8 lg:min-h-[32rem] lg:p-12">
+              <div className="relative z-10 flex min-h-[20rem] sm:min-h-[26rem] lg:min-h-[32rem] flex-col justify-between gap-6 sm:gap-8 p-4 sm:p-8 lg:p-12">
                 {/* Top Row */}
-                <div className="flex flex-wrap items-start justify-between gap-5">
-                  <div className="flex items-start gap-5 sm:gap-7">
+                <div className="flex flex-wrap items-start justify-between gap-4 sm:gap-5">
+                  <div className="flex items-start gap-4 sm:gap-7">
                     {/* Logo */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
@@ -414,26 +404,26 @@ function ShopDetail() {
                       transition={{ duration: 0.5, delay: 0.3 }}
                     >
                       {shop.logo ? (
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={shop.logo}
                           alt={`${shop.name} logo`}
-                          className="h-28 w-28 rounded-[2rem] border-2 border-[#d9a86d]/60 object-cover shadow-[0_20px_50px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
+                          className="h-20 w-20 sm:h-28 sm:w-28 lg:h-36 lg:w-36 rounded-[1.5rem] sm:rounded-[2rem] border-2 border-[#d9a86d]/60 object-cover shadow-[0_20px_50px_rgba(0,0,0,0.4)]"
                         />
                       ) : (
-                        <div className="flex h-28 w-28 items-center justify-center rounded-[2rem] border-2 border-[#d9a86d]/60 bg-gradient-to-br from-[#2b1012] to-[#1a0809] font-cormorant text-4xl font-bold text-[#f7d9a6] shadow-[0_20px_50px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36 sm:text-5xl">
+                        <div className="flex h-20 w-20 sm:h-28 sm:w-28 lg:h-36 lg:w-36 items-center justify-center rounded-[1.5rem] sm:rounded-[2rem] border-2 border-[#d9a86d]/60 bg-gradient-to-br from-[#2b1012] to-[#1a0809] font-cormorant text-2xl sm:text-4xl lg:text-5xl font-bold text-[#f7d9a6] shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
                           {shop.name.charAt(0)}
                         </div>
                       )}
                     </motion.div>
 
                     {/* Name & Info */}
-                    <div className="max-w-2xl pt-2">
-                      <div className="flex flex-wrap items-center gap-3.5">
+                    <div className="max-w-2xl pt-0 sm:pt-2">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3.5">
                         <motion.h1
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: 0.35 }}
-                          className="font-cormorant text-4xl font-bold leading-none text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)] sm:text-5xl lg:text-6xl xl:text-7xl"
+                          className="font-cormorant text-3xl sm:text-4xl lg:text-5xl xl:text-7xl font-bold leading-none text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
                         >
                           {shop.name}
                         </motion.h1>
@@ -444,59 +434,56 @@ function ShopDetail() {
                             transition={{ duration: 0.35, delay: 0.42 }}
                           >
                             <ShopVerifiedBadge
-                              className="h-7 w-7 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
-                              iconClassName="h-7 w-7 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
+                              className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
+                              iconClassName="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
                             />
                           </motion.div>
                         ) : null}
                       </div>
 
-                      {/* Rating, Location, Member Since */}
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.4 }}
-                        className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2.5 text-sm sm:text-base"
+                        className="mt-2 sm:mt-4 flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-2 text-xs sm:text-sm md:text-base"
                       >
-                        <span className="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 backdrop-blur-sm">
+                        <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-black/20 px-2 sm:px-3 py-0.5 sm:py-1 backdrop-blur-sm">
                           <FaStar className="text-amber-400" />
                           <span className="font-bold text-white">{shop.rating}</span>
-                          <span className="text-[#cfa89e]">({shop.reviews_count} {t("shopDetail.reviews")})</span>
+                          <span className="text-[#cfa89e] hidden sm:inline">({shop.reviews_count} {t("shopDetail.reviews")})</span>
                         </span>
                         {shop.city && (
-                          <span className="inline-flex items-center gap-2 text-[#f0d2ca]">
+                          <span className="inline-flex items-center gap-1.5 sm:gap-2 text-[#f0d2ca]">
                             <HiOutlineMapPin className="text-[#f0a89a]" />
                             {shop.city}
                           </span>
                         )}
-                        <span className="inline-flex items-center gap-2 text-[#f0d2ca]">
-                          <FaRegCalendarAlt className="text-[0.7rem] text-[#f0a89a]" />
+                        <span className="inline-flex items-center gap-1.5 sm:gap-2 text-[#f0d2ca]">
+                          <FaRegCalendarAlt className="text-[0.6rem] sm:text-[0.7rem] text-[#f0a89a]" />
                           {t("shopDetail.memberSince")} {formatMemberSince(shop.created_at)}
                         </span>
                       </motion.div>
 
-                      {/* Description */}
                       <motion.p
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.45 }}
-                        className="mt-4 max-w-xl text-base leading-8 text-[#e8c9c1] drop-shadow-[0_6px_20px_rgba(0,0,0,0.35)]"
+                        className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base leading-6 sm:leading-8 text-[#e8c9c1] drop-shadow-[0_6px_20px_rgba(0,0,0,0.35)]"
                       >
                         {shop.description ?? t("shopDetail.noDescription")}
                       </motion.p>
                     </div>
                   </div>
 
-                  {/* Share Button */}
                   <motion.button
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.5 }}
                     type="button"
                     onClick={handleShare}
-                    className="group inline-flex items-center gap-2.5 rounded-full border border-[#4a2020]/50 bg-black/30 px-5 py-2.5 text-sm font-medium text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
+                    className="group inline-flex items-center gap-2 rounded-full border border-[#4a2020]/50 bg-black/30 px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
                   >
-                    <FaShareAlt className="text-xs transition-transform duration-300 group-hover:scale-110" />
+                    <FaShareAlt className="text-[10px] sm:text-xs transition-transform duration-300 group-hover:scale-110" />
                     {t("shopDetail.share")}
                   </motion.button>
                 </div>
@@ -506,13 +493,13 @@ function ShopDetail() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.5 }}
-                  className="flex flex-wrap gap-3"
+                  className="flex flex-wrap gap-2 sm:gap-3"
                 >
                   <a
                     href={`tel:${shop.phone}`}
-                    className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-[#be2338] via-[#cf2b44] to-[#dd3752] px-7 text-sm font-semibold text-white shadow-[0_16px_34px_rgba(199,44,69,0.28)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_20px_40px_rgba(199,44,69,0.35)] active:scale-[0.98]"
+                    className="group inline-flex h-11 sm:h-13 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#be2338] via-[#cf2b44] to-[#dd3752] px-5 sm:px-7 text-xs sm:text-sm font-semibold text-white shadow-[0_16px_34px_rgba(199,44,69,0.28)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_20px_40px_rgba(199,44,69,0.35)] active:scale-[0.98]"
                   >
-                    <FaPhoneAlt className="text-xs" />
+                    <FaPhoneAlt className="text-[10px] sm:text-xs" />
                     {t("shopDetail.callShop")}
                   </a>
                   {telegramUrl && (
@@ -520,7 +507,7 @@ function ShopDetail() {
                       href={telegramUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-6 text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
+                      className="group inline-flex h-11 sm:h-13 items-center justify-center gap-2 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-5 sm:px-6 text-xs sm:text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
                     >
                       <FaTelegramPlane />
                       {t("shopDetail.message")}
@@ -531,7 +518,7 @@ function ShopDetail() {
                       href={instagramUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="group inline-flex h-13 items-center justify-center gap-2.5 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-6 text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
+                      className="group inline-flex h-11 sm:h-13 items-center justify-center gap-2 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-5 sm:px-6 text-xs sm:text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
                     >
                       <FaInstagram />
                       {t("shopDetail.instagram")}
@@ -546,66 +533,28 @@ function ShopDetail() {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+              className="mt-4 sm:mt-6 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:grid-cols-6"
             >
-              <StatCard
-                icon={<FaShoppingBag className="text-white" />}
-                label={t("shopDetail.totalBouquets")}
-                value={String(bouquets.length)}
-                color="bg-gradient-to-br from-[#cb5c57] to-[#a3322e]"
-              />
-              <StatCard
-                icon={<FaCheckCircle className="text-white" />}
-                label={t("shopDetail.inStock")}
-                value={String(inStockCount)}
-                color="bg-gradient-to-br from-emerald-500 to-teal-600"
-              />
-              <StatCard
-                icon={<FaStar className="text-white" />}
-                label={t("shopDetail.topRated")}
-                value={String(topRatedCount)}
-                color="bg-gradient-to-br from-amber-500 to-orange-600"
-              />
-              <StatCard
-                icon={<FaLeaf className="text-white" />}
-                label={t("shopDetail.newArrivals")}
-                value={String(newBouquetsCount)}
-                color="bg-gradient-to-br from-rose-500 to-pink-600"
-              />
-              <StatCard
-                icon={<FaAward className="text-white" />}
-                label={t("shopDetail.avgPrice")}
-                value={averagePrice}
-                color="bg-gradient-to-br from-violet-500 to-purple-600"
-              />
-              <StatCard
-                icon={<FaTruck className="text-white" />}
-                label={t("shopDetail.delivery")}
-                value={shop.city ?? t("shopDetail.availableNow")}
-                color="bg-gradient-to-br from-sky-500 to-blue-600"
-              />
+              <StatCard icon={<FaShoppingBag className="text-white" />} label={t("shopDetail.totalBouquets")} value={String(bouquets.length)} color="bg-gradient-to-br from-[#cb5c57] to-[#a3322e]" />
+              <StatCard icon={<FaCheckCircle className="text-white" />} label={t("shopDetail.inStock")} value={String(inStockCount)} color="bg-gradient-to-br from-emerald-500 to-teal-600" />
+              <StatCard icon={<FaStar className="text-white" />} label={t("shopDetail.topRated")} value={String(topRatedCount)} color="bg-gradient-to-br from-amber-500 to-orange-600" />
+              <StatCard icon={<FaLeaf className="text-white" />} label={t("shopDetail.newArrivals")} value={String(newBouquetsCount)} color="bg-gradient-to-br from-rose-500 to-pink-600" />
+              <StatCard icon={<FaAward className="text-white" />} label={t("shopDetail.avgPrice")} value={averagePrice} color="bg-gradient-to-br from-violet-500 to-purple-600" />
+              <StatCard icon={<FaTruck className="text-white" />} label={t("shopDetail.delivery")} value={shop.city ?? t("shopDetail.availableNow")} color="bg-gradient-to-br from-sky-500 to-blue-600" />
             </motion.div>
 
-            {/* ─── NAV + SORT ─────────────────────────── */}
+            {/* ─── NAV ─────────────────────────── */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.6 }}
-              className="mt-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between"
+              className="mt-4 sm:mt-6 flex flex-col gap-3 sm:gap-4 xl:flex-row xl:items-center xl:justify-between"
             >
               <NavPills
                 activeSection={activeSection}
                 scrollToSection={scrollToSection}
                 counts={{ bouquets: bouquets.length, reviews: shop.reviews_count }}
               />
-
-              <div className="inline-flex items-center gap-3 rounded-[1.4rem] border border-[#4a2020]/40 bg-[#120608]/70 px-5 py-3 text-sm backdrop-blur-md">
-                <span className="text-[#a88680]">{t("shopDetail.sortBy")}</span>
-                <span className="flex items-center gap-2 font-semibold text-[#f5d0a4]">
-                  {t("shopDetail.sortNewest")}
-                  <FaChevronDown className="text-[0.55rem] text-[#a88680]" />
-                </span>
-              </div>
             </motion.div>
 
             {/* ─── MAIN GRID: Bouquets + Sidebar ────────── */}
@@ -613,7 +562,7 @@ function ShopDetail() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.7 }}
-              className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]"
+              className="mt-4 sm:mt-6 grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]"
             >
               {/* Bouquets Grid */}
               <div id="bouquets" className="scroll-mt-28">
@@ -624,7 +573,7 @@ function ShopDetail() {
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
-                    className="grid gap-5 md:grid-cols-2"
+                    className="grid gap-4 sm:gap-5 md:grid-cols-2"
                   >
                     {bouquets.map((bouquet) => (
                       <BouquetCard key={bouquet.id} bouquet={bouquet} />
@@ -634,17 +583,17 @@ function ShopDetail() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[#4a2020]/50 bg-[#120608]/60 p-16 text-center"
+                    className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[#4a2020]/50 bg-[#120608]/60 p-8 sm:p-16 text-center"
                   >
-                    <FaShoppingBag className="text-5xl text-[#4a2020]/50 mb-4" />
-                    <p className="font-cormorant text-3xl text-white">{t("shopDetail.noBouquetsYet")}</p>
-                    <p className="mt-2 text-sm text-[#a88680]">{t("shopDetail.noBouquetsDesc")}</p>
+                    <FaShoppingBag className="text-4xl sm:text-5xl text-[#4a2020]/50 mb-3 sm:mb-4" />
+                    <p className="font-cormorant text-2xl sm:text-3xl text-white">{t("shopDetail.noBouquetsYet")}</p>
+                    <p className="mt-2 text-xs sm:text-sm text-[#a88680]">{t("shopDetail.noBouquetsDesc")}</p>
                   </motion.div>
                 )}
               </div>
 
               {/* ─── SIDEBAR ─────────────────────────────── */}
-              <aside className="space-y-5">
+              <aside className="space-y-4 sm:space-y-5">
                 {/* About Shop */}
                 <motion.div
                   id="about-shop"
@@ -652,86 +601,62 @@ function ShopDetail() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ duration: 0.5 }}
-                  className="scroll-mt-28 overflow-hidden rounded-[2rem] border border-[#4a2020]/40 bg-gradient-to-b from-[#1a0a0c] to-[#100608] shadow-lg"
+                  className="scroll-mt-28 overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] border border-[#4a2020]/40 bg-gradient-to-b from-[#1a0a0c] to-[#100608] shadow-lg"
                 >
-                  <div className="p-6 sm:p-7">
+                  <div className="p-5 sm:p-7">
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57] to-[#a3322e]">
+                      <span className="inline-flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57] to-[#a3322e]">
                         <FaStore className="text-xs text-white" />
                       </span>
-                      <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.about")}</span>
+                      <span className="text-[0.55rem] sm:text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.about")}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">{shop.name}</h2>
-                      {shop.is_verified ? <ShopVerifiedBadge className="h-6 w-6" iconClassName="h-6 w-6" /> : null}
+                      <h2 className="font-cormorant text-2xl sm:text-3xl md:text-4xl font-bold text-white">{shop.name}</h2>
+                      {shop.is_verified ? <ShopVerifiedBadge className="h-5 w-5 sm:h-6 sm:w-6" iconClassName="h-5 w-5 sm:h-6 sm:w-6" /> : null}
                     </div>
-                    <p className="mt-4 text-sm leading-7 text-[#dbb8b0]">
+                    <p className="mt-3 sm:mt-4 text-xs sm:text-sm leading-6 sm:leading-7 text-[#dbb8b0]">
                       {shop.description ?? t("shopDetail.aboutShopFallback")}
                     </p>
 
-                    {/* Contact Info */}
-                    <div className="mt-6 space-y-3 border-t border-[#4a2020]/30 pt-5">
+                    <div className="mt-4 sm:mt-6 space-y-2.5 sm:space-y-3 border-t border-[#4a2020]/30 pt-4 sm:pt-5">
                       {shop.phone && (
-                        <a href={`tel:${shop.phone}`} className="flex items-center gap-3 rounded-xl bg-[#120608] px-4 py-3 text-sm text-[#dbb8b0] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57]/20 to-[#a3322e]/20 text-[#cb5c57] group-hover:scale-110 transition-transform duration-200">
-                            <FaPhoneAlt className="text-[0.65rem]" />
+                        <a href={`tel:${shop.phone}`} className="flex items-center gap-3 rounded-xl bg-[#120608] px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-[#dbb8b0] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
+                          <span className="flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57]/20 to-[#a3322e]/20 text-[#cb5c57] group-hover:scale-110 transition-transform duration-200">
+                            <FaPhoneAlt className="text-[0.55rem] sm:text-[0.65rem]" />
                           </span>
                           <div>
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.phone")}</p>
+                            <p className="text-[0.5rem] sm:text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.phone")}</p>
                             <p className="font-medium text-white">{formatUzbekPhone(shop.phone)}</p>
                           </div>
                         </a>
                       )}
-                      {instagramUrl && (
-                        <a href={instagramUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl bg-[#120608] px-4 py-3 text-sm text-[#dbb8b0] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500/20 to-rose-500/20 text-pink-400 group-hover:scale-110 transition-transform duration-200">
-                            <FaInstagram className="text-[0.65rem]" />
-                          </span>
-                          <div>
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.instagram")}</p>
-                            <p className="font-medium text-white">{shop.instagram}</p>
-                          </div>
-                        </a>
-                      )}
-                      {telegramUrl && (
-                        <a href={telegramUrl} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl bg-[#120608] px-4 py-3 text-sm text-[#dbb8b0] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500/20 to-blue-500/20 text-sky-400 group-hover:scale-110 transition-transform duration-200">
-                            <FaTelegramPlane className="text-[0.65rem]" />
-                          </span>
-                          <div>
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.telegram")}</p>
-                            <p className="font-medium text-white">{shop.telegram}</p>
-                          </div>
-                        </a>
-                      )}
                       {shop.address && (
-                        <div className="flex items-start gap-3 rounded-xl bg-[#120608] px-4 py-3 text-sm text-[#dbb8b0]">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400">
-                            <FaMapMarkerAlt className="text-[0.65rem]" />
+                        <div className="flex items-start gap-3 rounded-xl bg-[#120608] px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-[#dbb8b0]">
+                          <span className="flex h-7 sm:h-8 w-7 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400">
+                            <FaMapMarkerAlt className="text-[0.55rem] sm:text-[0.65rem]" />
                           </span>
                           <div>
-                            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.address")}</p>
+                            <p className="text-[0.5rem] sm:text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.address")}</p>
                             <p className="font-medium text-white">{shop.address}</p>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Features */}
-                    <div className="mt-6 grid gap-3 border-t border-[#4a2020]/30 pt-5 sm:grid-cols-2">
-                      <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-4 transition-all duration-200 hover:border-emerald-500/20 hover:bg-[#120608]">
-                        <div className="flex items-center gap-2.5 text-emerald-400">
-                          <FaTruck className="text-sm" />
-                          <p className="text-sm font-semibold text-white">{t("shopDetail.sameDayDelivery")}</p>
+                    <div className="mt-4 sm:mt-6 grid gap-2 sm:gap-3 border-t border-[#4a2020]/30 pt-4 sm:pt-5 sm:grid-cols-2">
+                      <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-3 sm:p-4 transition-all duration-200 hover:border-emerald-500/20">
+                        <div className="flex items-center gap-2 text-emerald-400">
+                          <FaTruck className="text-xs sm:text-sm" />
+                          <p className="text-xs sm:text-sm font-semibold text-white">{t("shopDetail.sameDayDelivery")}</p>
                         </div>
-                        <p className="mt-2 text-xs text-[#a88680]">{t("shopDetail.sameDayDeliveryDesc")}</p>
+                        <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-[#a88680]">{t("shopDetail.sameDayDeliveryDesc")}</p>
                       </div>
-                      <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-4 transition-all duration-200 hover:border-amber-500/20 hover:bg-[#120608]">
-                        <div className="flex items-center gap-2.5 text-amber-400">
-                          <FaLeaf className="text-sm" />
-                          <p className="text-sm font-semibold text-white">{t("shopDetail.freshFlowers")}</p>
+                      <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-3 sm:p-4 transition-all duration-200 hover:border-amber-500/20">
+                        <div className="flex items-center gap-2 text-amber-400">
+                          <FaLeaf className="text-xs sm:text-sm" />
+                          <p className="text-xs sm:text-sm font-semibold text-white">{t("shopDetail.freshFlowers")}</p>
                         </div>
-                        <p className="mt-2 text-xs text-[#a88680]">{t("shopDetail.freshFlowersDesc")}</p>
+                        <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-[#a88680]">{t("shopDetail.freshFlowersDesc")}</p>
                       </div>
                     </div>
                   </div>
@@ -744,18 +669,18 @@ function ShopDetail() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ duration: 0.5, delay: 0.1 }}
-                  className="scroll-mt-28 overflow-hidden rounded-[2rem] border border-[#4a2020]/40 bg-gradient-to-b from-[#1a0a0c] to-[#100608] shadow-lg"
+                  className="scroll-mt-28 overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] border border-[#4a2020]/40 bg-gradient-to-b from-[#1a0a0c] to-[#100608] shadow-lg"
                 >
-                  <div className="p-6 sm:p-7">
+                  <div className="p-5 sm:p-7">
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
+                      <span className="inline-flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
                         <FaRegClock className="text-xs text-white" />
                       </span>
-                      <span className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.info")}</span>
+                      <span className="text-[0.55rem] sm:text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.info")}</span>
                     </div>
-                    <h3 className="font-cormorant text-3xl font-bold text-white sm:text-4xl">{t("shopDetail.shopDetails")}</h3>
+                    <h3 className="font-cormorant text-2xl sm:text-3xl md:text-4xl font-bold text-white">{t("shopDetail.shopDetails")}</h3>
 
-                    <div className="mt-6 space-y-4">
+                    <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
                       {[
                         { label: t("shopDetail.totalProducts"), value: String(bouquets.length), color: "from-[#cb5c57] to-[#a3322e]" },
                         { label: t("shopDetail.availableNow"), value: String(inStockCount), color: "from-emerald-500 to-teal-600" },
@@ -764,22 +689,19 @@ function ShopDetail() {
                         { label: t("shopDetail.topRatedLabel"), value: String(topRatedCount), color: "from-rose-500 to-pink-600" },
                         { label: t("shopDetail.newThisWeek"), value: String(newBouquetsCount), color: "from-sky-500 to-blue-600" },
                       ].map((item) => (
-                        <div
-                          key={item.label}
-                          className="flex items-center justify-between gap-3 rounded-xl bg-[#120608] px-4 py-3 transition-all duration-200 hover:bg-[#1a0a0c]"
-                        >
-                          <span className="text-sm text-[#dbb8b0]">{item.label}</span>
-                          <div className="flex items-center gap-2.5">
+                        <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl bg-[#120608] px-3 sm:px-4 py-2.5 sm:py-3 transition-all duration-200 hover:bg-[#1a0a0c]">
+                          <span className="text-xs sm:text-sm text-[#dbb8b0]">{item.label}</span>
+                          <div className="flex items-center gap-2">
                             <span className={`h-1.5 w-1.5 rounded-full bg-gradient-to-r ${item.color}`} />
-                            <span className="text-sm font-bold text-white">{item.value}</span>
+                            <span className="text-xs sm:text-sm font-bold text-white">{item.value}</span>
                           </div>
                         </div>
                       ))}
                     </div>
 
                     {shop.working_hours && (
-                      <div className="mt-5 border-t border-[#4a2020]/30 pt-5">
-                        <div className="flex items-center gap-2.5 text-sm text-[#dbb8b0]">
+                      <div className="mt-4 sm:mt-5 border-t border-[#4a2020]/30 pt-4 sm:pt-5">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-[#dbb8b0]">
                           <HiOutlineClock className="text-[#f0a89a]" />
                           <span className="font-semibold text-white">{t("shopDetail.workingHours")}</span>
                           <span>{shop.working_hours}</span>
@@ -795,28 +717,28 @@ function ShopDetail() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="overflow-hidden rounded-[2rem] border border-[#4a2020]/40 bg-[#100608] shadow-lg"
+                  className="overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] border border-[#4a2020]/40 bg-[#100608] shadow-lg"
                 >
                   {mapUrl ? (
                     <>
-                      <div className="border-b border-[#4a2020]/30 px-6 py-4">
-                        <p className="text-[0.55rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.location")}</p>
-                        <p className="mt-1.5 font-semibold text-white">{shop.address}</p>
+                      <div className="border-b border-[#4a2020]/30 px-4 sm:px-6 py-3 sm:py-4">
+                        <p className="text-[0.5rem] sm:text-[0.55rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.location")}</p>
+                        <p className="mt-1 text-sm sm:text-base font-semibold text-white">{shop.address}</p>
                       </div>
                       <iframe
                         title={`${shop.name} location`}
                         src={mapUrl}
-                        className="h-[20rem] w-full border-0 sepia-[0.12] grayscale-[0.1]"
+                        className="h-[16rem] sm:h-[20rem] w-full border-0 sepia-[0.12] grayscale-[0.1]"
                         loading="lazy"
                       />
                     </>
                   ) : (
-                    <div className="flex flex-col items-center justify-center px-8 py-16 text-center">
-                      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4a2020] to-[#2b1012]">
-                        <FaMapMarkerAlt className="text-2xl text-[#a88680]" />
+                    <div className="flex flex-col items-center justify-center px-6 sm:px-8 py-12 sm:py-16 text-center">
+                      <div className="mb-3 sm:mb-4 flex h-12 sm:h-16 w-12 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4a2020] to-[#2b1012]">
+                        <FaMapMarkerAlt className="text-xl sm:text-2xl text-[#a88680]" />
                       </div>
-                      <p className="font-cormorant text-2xl font-bold text-white">{t("shopDetail.locationComingSoon")}</p>
-                      <p className="mt-2 text-sm text-[#a88680]">{t("shopDetail.locationComingSoonDesc")}</p>
+                      <p className="font-cormorant text-xl sm:text-2xl font-bold text-white">{t("shopDetail.locationComingSoon")}</p>
+                      <p className="mt-2 text-xs sm:text-sm text-[#a88680]">{t("shopDetail.locationComingSoonDesc")}</p>
                     </div>
                   )}
                 </motion.div>

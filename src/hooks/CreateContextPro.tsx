@@ -28,6 +28,24 @@ type SetLoadingAction = { type: "SET_LOADING"; payload: boolean };
 
 type Action = SetUserAction | UpdateUserAction | LogoutAction | SetLoadingAction;
 
+function isAuthScopedQuery(queryKey: readonly unknown[]) {
+  const [scope, subScope] = queryKey;
+
+  if (scope === "orders") return true;
+  if (scope === "addresses") return true;
+  if (scope === "referrals") return true;
+  if (scope === "important-dates") return true;
+  if (scope === "support-chats") return true;
+
+  if (scope === "bouquets") return subScope === "manage";
+  if (scope === "reviews") return subScope === "me" || subScope === "manage";
+  if (scope === "shops") return subScope === "me" || subScope === "admin";
+  if (scope === "shop-applications") return subScope === "me" || subScope === "admin";
+  if (scope === "users") return subScope === "admin";
+
+  return false;
+}
+
 function reducer(state: TypeState, action: Action): TypeState {
   switch (action.type) {
     case "SET_USER":
@@ -69,7 +87,7 @@ function CreateContextPro({ children }: { children: ReactNode }) {
     const requestId = ++authRequestIdRef.current;
 
     if (!getStoredAccessToken()) {
-      queryClient.clear();
+      queryClient.removeQueries({ predicate: ({ queryKey }) => isAuthScopedQuery(queryKey) });
       setStoredCurrentUserId(null);
       if (requestId === authRequestIdRef.current) {
         dispatch({ type: "SET_USER", payload: null });
@@ -91,7 +109,7 @@ function CreateContextPro({ children }: { children: ReactNode }) {
       if (requestId === authRequestIdRef.current) {
         clearStoredAuth();
         setStoredCurrentUserId(null);
-        queryClient.clear();
+        queryClient.removeQueries({ predicate: ({ queryKey }) => isAuthScopedQuery(queryKey) });
         dispatch({ type: "SET_USER", payload: null });
       }
     } finally {
@@ -110,7 +128,7 @@ function CreateContextPro({ children }: { children: ReactNode }) {
     const normalized = normalizeUser(user);
     persistTokens(tokens);
     setStoredCurrentUserId(normalized.id);
-    queryClient.clear();
+    queryClient.removeQueries({ predicate: ({ queryKey }) => isAuthScopedQuery(queryKey) });
     dispatch({ type: "SET_USER", payload: normalized });
     dispatch({ type: "SET_LOADING", payload: false });
   }, [queryClient]);
@@ -125,7 +143,7 @@ function CreateContextPro({ children }: { children: ReactNode }) {
     } finally {
       setStoredCurrentUserId(null);
       clearStoredAuth();
-      queryClient.clear();
+      queryClient.removeQueries({ predicate: ({ queryKey }) => isAuthScopedQuery(queryKey) });
       dispatch({ type: "LOGOUT" });
       navigate("/login", { replace: true });
     }

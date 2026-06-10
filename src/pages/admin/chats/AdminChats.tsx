@@ -289,7 +289,7 @@ function AdminChats() {
                       }`}
                     >
                       {chat.owner.avatar_url ? (
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={chat.owner.avatar_url}
                           alt=""
                           className="h-full w-full rounded-2xl object-cover"
@@ -369,7 +369,7 @@ function AdminChats() {
               {/* Avatar */}
               <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#3d171c] bg-gradient-to-br from-[#230c10] to-[#1a090c]">
                 {activeChat.owner.avatar_url ? (
-                  <img
+                  <img loading="lazy" decoding="async"
                     src={activeChat.owner.avatar_url}
                     alt=""
                     className="h-full w-full rounded-2xl object-cover"

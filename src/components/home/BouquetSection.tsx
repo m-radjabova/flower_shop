@@ -10,7 +10,6 @@ import {
   HiOutlineSparkles,
   HiOutlineShoppingBag,
   HiStar,
-  HiChevronRight,
   HiEye,
 } from "react-icons/hi2";
 import { LuCakeSlice, LuFlower2 } from "react-icons/lu";
@@ -118,15 +117,25 @@ function BouquetSection({
 
     const cards = document.querySelectorAll(".bouquet-card");
     cards.forEach((card) => observer.observe(card));
+    const revealFallback = window.setTimeout(() => {
+      setVisibleCards((prev) => {
+        const next = new Set(prev);
+        cards.forEach((card) => next.add(card.id));
+        return next;
+      });
+    }, 300);
 
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(revealFallback);
+      observer.disconnect();
+    };
   }, [bouquets]);
 
   // Reset visibility when bouquets change
   useEffect(() => {
     setVisibleCards(new Set());
     setImageLoaded({});
-  }, [selectedCategoryId]);
+  }, [bouquets, selectedCategoryId, selectedOccasion]);
 
   const handleFavoriteClick = (event: React.MouseEvent, bouquet: Bouquet) => {
     event.stopPropagation();
@@ -155,7 +164,7 @@ function BouquetSection({
   return (
     <section
       ref={sectionRef}
-      className="relative mx-auto max-w-7xl px-4 pb-32 sm:px-6 lg:px-10"
+      className="relative mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-10 sm:pb-32"
     >
       {/* Background decoration */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -166,7 +175,7 @@ function BouquetSection({
 
       <div id="categories" className="scroll-mt-28">
         {/* ─── Header Section ─── */}
-        <div className="relative mb-12">
+        <div className="relative mb-8 sm:mb-12">
           {/* Desktop Header */}
           <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-8 md:grid">
             <div className="h-px bg-gradient-to-r from-transparent via-[#5b2524] to-transparent" />
@@ -195,10 +204,10 @@ function BouquetSection({
             <div className="relative">
               <div className="absolute inset-0 blur-2xl bg-gradient-to-r from-[#cb5c57]/20 to-[#ff9b88]/20 rounded-full" />
               <div className="relative">
-                <h2 className="mt-5 font-great-vibes text-[clamp(3.2rem,7vw,6.4rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]">
+                <h2 className="mt-5 font-great-vibes text-[clamp(2.4rem,7vw,3.2rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]">
                   {t("bouquetSection.newFlowers")}
                 </h2>
-                <div className="mx-auto mt-3 h-0.5 w-16 rounded-full bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] opacity-40" />
+                <div className="mx-auto mt-2 h-0.5 w-12 rounded-full bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] opacity-40 sm:w-16" />
               </div>
             </div>
           </div>
@@ -209,10 +218,10 @@ function BouquetSection({
         ) : (
           <>
             {/* ─── Categories Section ─── */}
-            <div className="relative mt-8">
+            <div className="relative mt-6 sm:mt-8">
               {selectedOccasion ? (
-                <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[#c75b66]/35 bg-[#1b0b0d]/90 px-4 py-2 text-sm font-semibold text-[#ffe5de]">
+                <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#c75b66]/35 bg-[#1b0b0d]/90 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-[#ffe5de]">
                     <HiOutlineSparkles className="text-[#ff9b88]" />
                     {t("occasionSection.filteredBy", {
                       occasion: t(`occasionSection.items.${selectedOccasion}.title`),
@@ -221,16 +230,16 @@ function BouquetSection({
                   <button
                     type="button"
                     onClick={onClearOccasion}
-                    className="inline-flex items-center gap-2 rounded-full border border-[#6c3034] bg-[#17090b] px-4 py-2 text-sm font-semibold text-[#f1d5cb] transition hover:border-[#cb5c57] hover:text-white"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#6c3034] bg-[#17090b] px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-[#f1d5cb] transition hover:border-[#cb5c57] hover:text-white"
                   >
                     {t("occasionSection.clear")}
                   </button>
                 </div>
               ) : null}
 
-              {/* Categories scroll hint */}
-              <div className="flex overflow-x-auto pb-4 scrollbar-none md:pb-0">
-                <div className="flex gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 min-w-max md:min-w-full mx-auto">
+              {/* Categories scroll */}
+              <div className="flex overflow-x-auto pb-3 scrollbar-none md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+                <div className="flex gap-3 md:gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 min-w-max md:min-w-full mx-auto">
                   {categories.map((category, idx) => {
                     const Icon = getCategoryIcon(category.slug);
                     const active = selectedCategoryId === category.id;
@@ -248,20 +257,17 @@ function BouquetSection({
                           animationDelay: `${idx * 50}ms`,
                         }}
                       >
-  
-                        
                         {/* Category icon container */}
                         <div
-                          className={`relative inline-flex h-[5.5rem] w-[5.5rem] items-center justify-center rounded-[4rem] border-2 transition-all duration-300 sm:h-[6.5rem] sm:w-[6.5rem] ${
+                          className={`relative inline-flex h-[4.2rem] w-[4.2rem] sm:h-[5.5rem] sm:w-[5.5rem] md:h-[6.5rem] md:w-[6.5rem] items-center justify-center rounded-[4rem] border-2 transition-all duration-300 ${
                             active
                               ? `border-[#cb5c57] bg-gradient-to-br ${gradient} shadow-2xl shadow-[#cb5c57]/10`
                               : `border-[#3a1a1a] bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] shadow-lg ${borderHover} hover:shadow-xl`
                           }`}
                         >
-                          
                           <Icon
-                            size={36}
-                            className={`relative z-10 transition-all duration-300 ${
+                            size={24}
+                            className={`relative z-10 transition-all duration-300 sm:size-[28] md:size-[36] ${
                               active
                                 ? "text-[#ff9b88] drop-shadow-lg scale-110"
                                 : "text-[#b87a6a] group-hover:text-[#ff9b88] group-hover:scale-110"
@@ -271,7 +277,7 @@ function BouquetSection({
                         
                         {/* Category name */}
                         <p
-                          className={`mt-3 text-sm font-semibold leading-snug transition-all duration-300 ${
+                          className={`mt-2 sm:mt-3 text-[0.65rem] sm:text-sm font-semibold leading-snug transition-all duration-300 ${
                             active
                               ? "bg-gradient-to-r from-[#ff9b88] to-[#f1ddd3] bg-clip-text text-transparent"
                               : `text-[#b99a92] ${textHover}`
@@ -286,12 +292,12 @@ function BouquetSection({
               </div>
 
               {/* Mobile scroll indicator */}
-              <div className="mt-4 flex justify-center gap-1.5 md:hidden">
+              <div className="mt-3 flex justify-center gap-1.5 md:hidden">
                 {categories.map((_, i) => (
                   <div
                     key={i}
                     className={`h-1 rounded-full transition-all duration-300 ${
-                      i === 0 ? "w-6 bg-[#cb5c57]" : "w-1.5 bg-[#3a1a1a]"
+                      i === 0 ? "w-5 bg-[#cb5c57] sm:w-6" : "w-1.5 bg-[#3a1a1a]"
                     }`}
                   />
                 ))}
@@ -299,10 +305,10 @@ function BouquetSection({
             </div>
 
             {/* Mobile View All Button */}
-            <div className="mt-6 flex justify-center md:hidden">
+            <div className="mt-4 flex justify-center md:hidden">
               <Link
                 to="/bouquets"
-                className="group inline-flex items-center gap-2 rounded-full border border-[#cb5c57]/30 bg-[#1a0c0c]/50 px-6 py-2.5 text-sm font-semibold text-[#f1d5cb] backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/15 hover:text-white hover:shadow-lg"
+                className="group inline-flex items-center gap-2 rounded-full border border-[#cb5c57]/30 bg-[#1a0c0c]/50 px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-[#f1d5cb] backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/15 hover:text-white hover:shadow-lg"
               >
                 {t("bouquetSection.all")}
                 <HiArrowRight className="text-[#cb5c57] transition-all duration-300 group-hover:translate-x-1" />
@@ -313,7 +319,7 @@ function BouquetSection({
 
             {/* ─── Bouquets Grid ─── */}
             {bouquets.length ? (
-              <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+              <div className="mt-8 sm:mt-12 grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {bouquets.map((bouquet, idx) => {
                   const bouquetImages = getBouquetImages(bouquet);
                   const previewImages = bouquetImages.slice(1, 4);
@@ -359,16 +365,16 @@ function BouquetSection({
                         )}
 
                         {/* Badges */}
-                        <div className="absolute left-4 top-4 z-20 flex flex-wrap gap-2">
+                        <div className="absolute left-3 sm:left-4 top-3 sm:top-4 z-20 flex flex-wrap gap-1.5 sm:gap-2">
                           {showNewBadge && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#dd3045] to-[#ff5b72] px-3 py-1.5 text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-red-500/20">
-                              <HiOutlineSparkles className="animate-pulse" size={12} />
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#dd3045] to-[#ff5b72] px-2 sm:px-3 py-1 text-[0.6rem] sm:text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-red-500/20">
+                              <HiOutlineSparkles className="animate-pulse" size={10} />
                                {t("bouquetSection.new")}
                             </span>
                           )}
                           {isPopular && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-amber-500/20">
-                              <HiStar className="animate-pulse" size={12} />
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 sm:px-3 py-1 text-[0.6rem] sm:text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-amber-500/20">
+                              <HiStar className="animate-pulse" size={10} />
                                {t("bouquetSection.popular")}
                             </span>
                           )}
@@ -380,12 +386,12 @@ function BouquetSection({
                           type="button"
                           onClick={(e) => handleFavoriteClick(e, bouquet)}
                           aria-label={isFavorite ? t("bouquetSection.removeFromFavorites") : t("bouquetSection.addToFavorites")}
-                          className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#8c6158] bg-[#19090a]/80 text-[#f6dacf] backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff5b72] hover:bg-[#ff5b72]/20 hover:shadow-lg active:scale-90"
+                          className="absolute right-3 sm:right-4 top-3 sm:top-4 z-20 inline-flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-full border border-[#8c6158] bg-[#19090a]/80 text-[#f6dacf] backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff5b72] hover:bg-[#ff5b72]/20 hover:shadow-lg active:scale-90"
                         >
                           {isFavorite ? (
-                            <HiHeart size={18} className="animate-heart-beat text-[#ff5b72]" />
+                            <HiHeart size={16} className="animate-heart-beat text-[#ff5b72]" />
                           ) : (
-                            <HiOutlineHeart size={18} />
+                            <HiOutlineHeart size={16} />
                           )}
                         </button>
 
@@ -393,9 +399,9 @@ function BouquetSection({
                         <div className={`absolute inset-0 z-20 flex items-center justify-center transition-all duration-500 ${
                           isHovered ? "opacity-100" : "opacity-0"
                         }`}>
-                          <div className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 backdrop-blur-sm border border-white/10">
-                            <HiEye className="text-white" size={16} />
-                            <span className="text-sm font-medium text-white">{t("bouquetSection.view")}</span>
+                          <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 sm:px-4 py-1.5 sm:py-2 backdrop-blur-sm border border-white/10">
+                            <HiEye className="text-white" size={14} />
+                            <span className="text-xs sm:text-sm font-medium text-white">{t("bouquetSection.view")}</span>
                           </div>
                         </div>
 
@@ -407,26 +413,26 @@ function BouquetSection({
                               alt={bouquet.name}
                               loading="lazy"
                               onLoad={() => setImageLoaded(prev => ({ ...prev, [`bouquet-${bouquet.id}`]: true }))}
-                              className={`h-[320px] w-full object-cover transition-all duration-700 ease-out group-hover:scale-110 ${
+                              className={`h-[220px] sm:h-[280px] md:h-[320px] lg:h-[380px] w-full object-cover transition-all duration-700 ease-out group-hover:scale-110 ${
                                 imageReady ? "opacity-100" : "opacity-0"
-                              } md:h-[380px]`}
+                              }`}
                             />
                           </Link>
                         </div>
 
                         {/* Preview Images */}
                         {previewImages.length > 0 && (
-                          <div className="absolute bottom-4 left-4 z-20 flex gap-2">
+                          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 flex gap-1.5 sm:gap-2">
                             {previewImages.map((image, index) => (
                               <div
                                 key={image}
-                                className="overflow-hidden rounded-xl border-2 border-white/30 shadow-lg transition-all duration-300 hover:scale-110 hover:border-white/60 hover:shadow-xl"
+                                className="overflow-hidden rounded-lg sm:rounded-xl border-2 border-white/30 shadow-lg transition-all duration-300 hover:scale-110 hover:border-white/60 hover:shadow-xl"
                               >
                                 <img
                                   src={image}
                                   alt={`${bouquet.name} — ko'rinish ${index + 2}`}
                                   loading="lazy"
-                                  className="h-12 w-12 object-cover"
+                                  className="h-8 w-8 sm:h-12 sm:w-12 object-cover"
                                 />
                               </div>
                             ))}
@@ -435,33 +441,32 @@ function BouquetSection({
                       </div>
 
                       {/* ── Content Section ── */}
-                      <div className="relative p-5">
+                      <div className="relative p-4 sm:p-5">
                         {/* Shop link */}
                         <Link
-                          to={`/shops/${bouquet.shop.slug}`}
+                          to={`/shops/${bouquet.shop?.slug ?? "#"}`}
                           onClick={(event) => event.stopPropagation()}
-                          className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-[#cb5c57] transition-all duration-300 hover:text-[#ff9b88]"
+                          className="inline-flex items-center gap-1 text-[0.65rem] sm:text-xs font-semibold uppercase tracking-wider text-[#cb5c57] transition-all duration-300 hover:text-[#ff9b88]"
                         >
-                          <span>{bouquet.shop.name}</span>
-                          {bouquet.shop.is_verified ? (
-                            <ShopVerifiedBadge className="h-3.5 w-3.5" iconClassName="h-3.5 w-3.5" />
+                          <span>{bouquet.shop?.name ?? "-"}</span>
+                          {bouquet.shop?.is_verified ? (
+                            <ShopVerifiedBadge className="h-3 w-3 sm:h-3.5 sm:w-3.5" iconClassName="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           ) : null}
-                          <HiChevronRight className="opacity-0 -translate-x-2 transition-all duration-300 group-hover/name:opacity-100 group-hover/name:translate-x-0" size={12} />
                         </Link>
 
                         {/* Bouquet name */}
                         <Link
                           to={`/bouquets/${bouquet.id}`}
                           onClick={(event) => event.stopPropagation()}
-                          className="mt-1.5 block font-cormorant text-2xl font-bold leading-tight text-[#f8ede6] transition-all duration-300 hover:text-[#ff9b88] md:text-3xl"
+                          className="mt-1 block sm:mt-1.5 font-cormorant text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold leading-tight text-[#f8ede6] transition-all duration-300 hover:text-[#ff9b88]"
                         >
-                          {bouquet.name.length > 30
-                            ? `${bouquet.name.substring(0, 30)}...`
+                          {bouquet.name.length > 22
+                            ? `${bouquet.name.substring(0, 22)}...`
                             : bouquet.name}
                         </Link>
 
                         {/* Rating */}
-                        <div className="mt-3 flex items-center gap-2">
+                        <div className="mt-2 sm:mt-3 flex items-center gap-1.5 sm:gap-2">
                           <div className="flex items-center gap-0.5" aria-label={`Reyting: ${bouquet.rating}`}>
                             {[...Array(5)].map((_, i) => {
                               const starValue = Number(bouquet.rating) || 0;
@@ -471,7 +476,7 @@ function BouquetSection({
                               return (
                                 <HiStar
                                   key={i}
-                                  className={`text-sm transition-all duration-200 ${
+                                  className={`text-xs sm:text-sm transition-all duration-200 ${
                                     filled
                                       ? "text-amber-400 drop-shadow-sm"
                                       : halfFilled
@@ -482,23 +487,23 @@ function BouquetSection({
                               );
                             })}
                           </div>
-                          <span className="text-sm font-semibold text-white">
+                          <span className="text-xs sm:text-sm font-semibold text-white">
                             {Number(bouquet.rating).toFixed(1)}
                           </span>
-                          <span className="text-xs text-[#b08d86]">
+                          <span className="text-[0.65rem] sm:text-xs text-[#b08d86]">
                             ({bouquet.reviews_count} {t("bouquetSection.reviews")})
                           </span>
                         </div>
 
                         {/* Price */}
-                        <div className="mt-4">
-                          <p className="flex items-center gap-2 text-3xl font-bold text-white">
+                        <div className="mt-3 sm:mt-4">
+                          <p className="flex items-center gap-2 text-xl sm:text-2xl md:text-3xl font-bold text-white">
                             {formatPrice(bouquet.price)}
                           </p>
                           {bouquet.old_price && (
-                            <p className="mt-1 flex items-center gap-2 text-sm text-gray-400">
+                            <p className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-gray-400">
                               <span className="line-through">{formatPrice(bouquet.old_price)}</span>
-                              <span className="rounded-full bg-[#dd3045]/20 px-2 py-0.5 text-[0.65rem] font-bold text-[#ff5b72]">
+                              <span className="rounded-full bg-[#dd3045]/20 px-2 py-0.5 text-[0.6rem] sm:text-[0.65rem] font-bold text-[#ff5b72]">
                                 -{Math.round((1 - Number(bouquet.price) / Number(bouquet.old_price)) * 100)}%
                               </span>
                             </p>
@@ -510,13 +515,13 @@ function BouquetSection({
                           type="button"
                           onClick={(e) => handleAddToCart(e, bouquet)}
                           disabled={!canAddToCart}
-                          className={`group/btn mt-5 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl text-sm font-bold uppercase tracking-wider shadow-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb5c57] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0c0c] ${
+                          className={`group/btn mt-3 sm:mt-5 inline-flex h-11 sm:h-12 w-full items-center justify-center gap-2 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider shadow-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb5c57] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0c0c] ${
                             canAddToCart
                               ? "bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-white shadow-[#8f1220]/20 hover:from-[#aa1828] hover:via-[#bb2435] hover:to-[#dd3045] hover:shadow-xl hover:shadow-[#bb2435]/30 active:scale-[0.97]"
                               : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94] opacity-80"
                           }`}
                         >
-                          <HiOutlineShoppingBag className="text-base transition-all duration-300 group-hover/btn:-translate-x-1 group-hover/btn:scale-110" />
+                          <HiOutlineShoppingBag className="text-sm sm:text-base transition-all duration-300 group-hover/btn:-translate-x-1 group-hover/btn:scale-110" />
                            <span>{canAddToCart ? t("bouquetSection.addToCart") : t("availability.outOfStock")}</span>
                         </button>
                       </div>
@@ -526,19 +531,19 @@ function BouquetSection({
               </div>
             ) : (
               // ── Empty State ──
-              <div className="mt-12 rounded-2xl border border-dashed border-[#623535] bg-gradient-to-br from-[#150809] to-[#0a0405] px-8 py-20 text-center">
-                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] ring-1 ring-[#623535]/50">
-                  <HiOutlineHeart className="text-4xl text-[#cb5c57]" />
+              <div className="mt-8 sm:mt-12 rounded-2xl border border-dashed border-[#623535] bg-gradient-to-br from-[#150809] to-[#0a0405] px-4 sm:px-8 py-12 sm:py-20 text-center">
+                <div className="mx-auto mb-4 sm:mb-6 flex h-16 sm:h-20 w-16 sm:w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] ring-1 ring-[#623535]/50">
+                  <HiOutlineHeart className="text-3xl sm:text-4xl text-[#cb5c57]" />
                 </div>
-                 <h3 className="font-cormorant text-4xl font-semibold text-[#fff0ea]">
+                 <h3 className="font-cormorant text-3xl sm:text-4xl font-semibold text-[#fff0ea]">
                    {t("bouquetSection.noFlowersTitle")}
                  </h3>
-                 <p className="mt-3 max-w-md mx-auto text-sm text-[#caaba5] leading-relaxed">
+                 <p className="mt-3 max-w-md mx-auto text-xs sm:text-sm text-[#caaba5] leading-relaxed">
                    {t("bouquetSection.noFlowersDesc")}
                  </p>
                  <Link
                    to="/bouquets"
-                   className="group mt-8 inline-flex items-center gap-2 rounded-full border border-[#764342] bg-[#1b0b0c] px-7 py-3 text-sm font-semibold text-[#f5ddd6] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white hover:shadow-lg hover:shadow-[#cb5c57]/10"
+                   className="group mt-6 sm:mt-8 inline-flex items-center gap-2 rounded-full border border-[#764342] bg-[#1b0b0c] px-5 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-[#f5ddd6] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white hover:shadow-lg hover:shadow-[#cb5c57]/10"
                  >
                    {t("bouquetSection.browseAllFlowers")}
                   <HiArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
@@ -550,11 +555,11 @@ function BouquetSection({
 
         {/* ─── Bottom View All Button ─── */}
         {bouquets.length > 0 && (
-          <div className="relative mt-16 flex justify-center">
-            <div className="absolute inset-x-0 -top-8 h-px bg-gradient-to-r from-transparent via-[#5b2524] to-transparent" />
+          <div className="relative mt-10 sm:mt-16 flex justify-center">
+            <div className="absolute inset-x-0 -top-6 sm:-top-8 h-px bg-gradient-to-r from-transparent via-[#5b2524] to-transparent" />
             <Link
               to="/bouquets"
-              className="group relative inline-flex h-12 items-center justify-center gap-3 rounded-xl border border-[#cb5c57]/40 bg-gradient-to-b from-[#1f0a0b]/90 to-[#180708]/80 px-8 text-sm font-bold uppercase tracking-[0.14em] text-[#fff0ea] shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#cb5c57] hover:bg-[#cb5c57]/20 hover:shadow-xl hover:shadow-[#cb5c57]/10"
+              className="group relative inline-flex h-11 sm:h-12 items-center justify-center gap-3 rounded-xl border border-[#cb5c57]/40 bg-gradient-to-b from-[#1f0a0b]/90 to-[#180708]/80 px-6 sm:px-8 text-xs sm:text-sm font-bold uppercase tracking-[0.14em] text-[#fff0ea] shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#cb5c57] hover:bg-[#cb5c57]/20 hover:shadow-xl hover:shadow-[#cb5c57]/10"
             >
                <span className="relative z-10">{t("bouquetSection.browseAllFlowers")}</span>
               <HiArrowRight className="relative z-10 transition-transform duration-300 group-hover:translate-x-1" />
@@ -614,6 +619,12 @@ function BouquetSection({
         /* Smooth image loading */
         .bouquet-card img {
           transition: opacity 0.5s ease, transform 0.7s ease-out;
+        }
+
+        @media (max-width: 640px) {
+          .bouquet-card .font-cormorant.text-2xl {
+            font-size: 1.25rem;
+          }
         }
       `}</style>
     </section>

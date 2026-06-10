@@ -443,7 +443,7 @@ function OwnerOrders() {
     <div className="mx-auto max-w-7xl text-[#fff6f4]">
       {/* ============ HEADER ============ */}
       <section className="relative overflow-hidden rounded-[2.2rem] border border-[#4d1f25] bg-[linear-gradient(180deg,rgba(31,8,11,0.92),rgba(17,4,6,0.97))] p-6 shadow-[0_28px_70px_rgba(0,0,0,0.28)] sm:p-8">
-        <img
+        <img loading="lazy" decoding="async"
           src={bow}
           alt=""
           aria-hidden="true"
@@ -1141,7 +1141,7 @@ function OwnerOrders() {
                                           className="flex gap-3 rounded-[1.2rem] border border-white/6 bg-white/[0.03] p-3 transition hover:bg-white/[0.05]"
                                         >
                                           {item.bouquet_image ? (
-                                            <img
+                                            <img loading="lazy" decoding="async"
                                               src={item.bouquet_image}
                                               alt={item.bouquet_name}
                                               className="h-20 w-20 shrink-0 rounded-[0.8rem] object-cover"

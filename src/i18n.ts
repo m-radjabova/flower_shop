@@ -4,7 +4,7 @@ import uz from "./locales/uz.json";
 import en from "./locales/en.json";
 import ru from "./locales/ru.json";
 
-const rawSaved = (localStorage.getItem("i18nextLng") || "uz").toString();
+const rawSaved = (localStorage.getItem("i18nextLng") || "en").toString();
 const savedLanguage = rawSaved.split("-")[0].toLowerCase();
 
 i18n.use(initReactI18next).init({
@@ -14,7 +14,7 @@ i18n.use(initReactI18next).init({
     ru: { translation: ru },
   },
   lng: savedLanguage,
-  fallbackLng: "uz",
+  fallbackLng: "en",
   interpolation: {
     escapeValue: false,
   },

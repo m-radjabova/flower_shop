@@ -815,22 +815,22 @@ function Profile() {
     return (
       <div className="space-y-5">
         {/* Welcome Hero */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0a0f] via-[#200e14] to-[#15080c] p-6 sm:p-8">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0a0f] via-[#200e14] to-[#15080c] p-4 sm:p-8">
           <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#ff4d6d]/5 blur-3xl" />
           <div className="absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-[#c7233f]/5 blur-3xl" />
           <div className="relative">
-            <div className="flex items-center gap-3">
-              <span className="text-4xl">👋</span>
-              <h1 className="font-cormorant text-[2.8rem] leading-tight text-white sm:text-[3.5rem]">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-2xl sm:text-4xl">👋</span>
+              <h1 className="font-cormorant text-[1.8rem] leading-tight text-white sm:text-[3.5rem]">
                 Hello, {firstName}
               </h1>
             </div>
-            <p className="mt-2 max-w-lg text-base text-[#c4a39b] sm:text-lg">
+            <p className="mt-1 max-w-lg text-sm text-[#c4a39b] sm:mt-2 sm:text-lg">
               Welcome back! Here's what's happening with your account today.
             </p>
 
             {/* Quick Stats */}
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-6 sm:gap-3 sm:grid-cols-4">
               {[
                 {
                   value: orders.length,
@@ -867,14 +867,14 @@ function Profile() {
               ].map((stat) => (
                 <div
                   key={stat.label}
-                  className={`group relative overflow-hidden rounded-2xl bg-gradient-to-b ${stat.gradient} border border-white/5 p-4 transition-all duration-300 hover:border-white/10 hover:shadow-lg`}
+                  className={`group relative overflow-hidden rounded-2xl bg-gradient-to-b ${stat.gradient} border border-white/5 p-3 transition-all duration-300 hover:border-white/10 hover:shadow-lg sm:p-4`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-3xl font-bold text-white">{stat.value}</p>
-                      <p className="mt-1 text-xs font-medium uppercase tracking-wider text-[#a08782]">{stat.label}</p>
+                      <p className="text-2xl font-bold text-white sm:text-3xl">{stat.value}</p>
+                      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-[#a08782] sm:mt-1 sm:text-xs">{stat.label}</p>
                     </div>
-                    <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.iconBg} ${stat.iconText} transition-transform duration-300 group-hover:scale-110`}>
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${stat.iconBg} ${stat.iconText} transition-transform duration-300 group-hover:scale-110 sm:h-11 sm:w-11`}>
                       {stat.icon}
                     </span>
                   </div>
@@ -890,25 +890,25 @@ function Profile() {
         />
 
         {/* Recent Orders */}
-        <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-cormorant text-3xl text-white">Recent Orders</h2>
-              <p className="mt-1 text-sm text-[#a08782]">Your latest purchases</p>
+        <div className="rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="font-cormorant text-2xl text-white sm:text-3xl">{t("profile.recentOrders")}</h2>
+              <p className="mt-0.5 text-xs text-[#a08782] sm:mt-1 sm:text-sm">{t("profile.recentOrdersSubtitle")}</p>
             </div>
             <button
               type="button"
               onClick={() => setActiveTab("orders")}
-              className="rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-[#ff8fa3] transition-colors hover:bg-white/10"
+              className="shrink-0 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-[#ff8fa3] transition-colors hover:bg-white/10 sm:px-4 sm:py-2 sm:text-sm"
             >
-              View All
+              {t("profile.viewAllOrders")}
             </button>
           </div>
-          <div className="mt-5 space-y-3">
+          <div className="mt-4 space-y-2 sm:mt-5 sm:space-y-3">
             {!orders.length ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-12 text-center">
                 <HiOutlineShoppingBagCard className="text-4xl text-[#5a3a3e]" />
-                <p className="mt-3 text-[#a08782]">Hozircha order yo'q.</p>
+                <p className="mt-3 text-[#a08782]">{t("profile.noOrders")}</p>
               </div>
             ) : null}
             {orders.slice(0, 4).map((order, index) => (
@@ -924,7 +924,7 @@ function Profile() {
                 <div className="flex items-center gap-4">
                   {order.items[0]?.bouquet_image ? (
                     <div className="relative h-14 w-14 overflow-hidden rounded-xl">
-                      <img
+                      <img loading="lazy" decoding="async"
                         src={order.items[0].bouquet_image}
                         alt={order.items[0]?.bouquet_name ?? "Bouquet"}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
@@ -1139,43 +1139,43 @@ function Profile() {
   };
 
   return (
-    <main className="min-h-screen bg-transparent px-4 pb-16 pt-28 text-[#fff6f4] sm:px-6 lg:px-10">
+    <main className="min-h-screen bg-transparent px-3 pb-16 pt-32 text-[#fff6f4] sm:px-5 sm:pt-36 lg:px-8 lg:pt-28 xl:px-10">
       <div className="mx-auto max-w-[1500px]">
         {/* Mobile Profile Header */}
-        <div className="mb-6 xl:hidden">
-          <div className="flex items-center gap-4 rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-5">
+        <div className="mb-5 sm:mb-6 xl:hidden">
+          <div className="flex items-center gap-3 rounded-3xl border border-white/5 bg-gradient-to-b from-[#1a0a0f] to-[#120609] p-4 sm:p-5">
                 <div className="relative shrink-0">
               {avatarPreviewUrl ? (
-                <img src={avatarPreviewUrl} alt="Avatar preview" className="h-20 w-20 rounded-full object-cover ring-2 ring-[#ff6d84]/50" />
+                <img loading="lazy" decoding="async" src={avatarPreviewUrl} alt="Avatar preview" className="h-16 w-16 rounded-full object-cover ring-2 ring-[#ff6d84]/50 sm:h-20 sm:w-20" />
               ) : user?.avatar_url ? (
-                <img src={user.avatar_url} alt="avatar" className="h-20 w-20 rounded-full object-cover" />
+                <img loading="lazy" decoding="async" src={user.avatar_url} alt="avatar" className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20" />
               ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#3a161c] to-[#2a0e14] text-2xl font-bold text-white">{userInitials}</div>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#3a161c] to-[#2a0e14] text-xl font-bold text-white sm:h-20 sm:w-20 sm:text-2xl">{userInitials}</div>
               )}
               <button
                 type="button"
                 disabled={isAvatarSubmitting}
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] text-white shadow-lg disabled:opacity-60"
+                className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] text-white shadow-lg disabled:opacity-60 sm:h-8 sm:w-8"
               >
-                <HiOutlineCamera className="text-sm" />
+                <HiOutlineCamera className="text-xs sm:text-sm" />
               </button>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleAvatarSelect(event.target.files?.[0] ?? null)} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xl font-bold text-white">{user?.full_name}</p>
-              <p className="truncate text-sm text-[#a08782]">{user?.email}</p>
+              <p className="truncate text-lg font-bold text-white sm:text-xl">{user?.full_name}</p>
+              <p className="truncate text-xs text-[#a08782] sm:text-sm">{user?.email}</p>
             </div>
-            <button type="button" onClick={logout} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[#ff8fa3] transition-colors hover:bg-white/10">
-                <HiArrowLeftOnRectangle className="text-lg" />
+            <button type="button" onClick={logout} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[#ff8fa3] transition-colors hover:bg-white/10 sm:h-10 sm:w-10">
+                <HiArrowLeftOnRectangle className="text-base sm:text-lg" />
               </button>
           </div>
         </div>
 
         {/* Mobile Tab Navigation */}
         {!isOwnerAccount ? (
-        <div className="mb-6 xl:hidden">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div className="mb-5 sm:mb-6 xl:hidden">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1">
             {visibleTabs.map((tab) => {
               const active = activeTab === tab.key;
               return (
@@ -1183,14 +1183,14 @@ function Profile() {
                   key={tab.key}
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-200 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
                     active
                       ? "bg-gradient-to-r from-[#c7233f] to-[#ff4d6d] text-white shadow-lg shadow-[#c7233f]/20"
                       : "border border-white/5 bg-white/[0.03] text-[#c4a39b] hover:bg-white/[0.06]"
                   }`}
                 >
-                  <span className="text-base">{tab.icon}</span>
-                  <span>{tab.label}</span>
+                  <span className="text-sm sm:text-base">{tab.icon}</span>
+                  <span className="whitespace-nowrap">{tab.label}</span>
                 </button>
               );
             })}
@@ -1199,7 +1199,7 @@ function Profile() {
         ) : null}
 
         {/* Desktop 3-column layout */}
-        <div className={`grid gap-6 ${isOwnerAccount ? "xl:grid-cols-[260px_1fr]" : "xl:grid-cols-[260px_1fr_380px]"}`}>
+        <div className={`grid gap-4 sm:gap-6 ${isOwnerAccount ? "xl:grid-cols-[260px_1fr]" : "xl:grid-cols-[260px_1fr_380px]"}`}>
           {/* Left Sidebar - Desktop */}
           <aside className="hidden xl:block">
             <div className="sticky top-28 space-y-5">
@@ -1208,9 +1208,9 @@ function Profile() {
                 <div className="flex flex-col items-center text-center">
                   <div className="relative">
                     {avatarPreviewUrl ? (
-                      <img src={avatarPreviewUrl} alt="Avatar preview" className="h-24 w-24 rounded-full object-cover ring-2 ring-[#ff6d84]/50" />
+                      <img loading="lazy" decoding="async" src={avatarPreviewUrl} alt="Avatar preview" className="h-24 w-24 rounded-full object-cover ring-2 ring-[#ff6d84]/50" />
                     ) : user?.avatar_url ? (
-                      <img src={user.avatar_url} alt="avatar" className="h-24 w-24 rounded-full object-cover" />
+                      <img loading="lazy" decoding="async" src={user.avatar_url} alt="avatar" className="h-24 w-24 rounded-full object-cover" />
                     ) : (
                       <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#3a161c] to-[#2a0e14] text-3xl font-bold text-white">{userInitials}</div>
                     )}
@@ -1396,7 +1396,7 @@ function Profile() {
                   <div className="p-5 pt-3">
                     <article className="group overflow-hidden rounded-2xl bg-white/[0.03] border border-white/5">
                       <div className="relative h-48 overflow-hidden">
-                        <img
+                        <img loading="lazy" decoding="async"
                           src={activeRecommended.image}
                           alt={activeRecommended.name}
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"

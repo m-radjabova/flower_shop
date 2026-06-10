@@ -568,7 +568,7 @@ function OwnerBouquetEditor() {
       {/* ===== HERO HEADER ===== */}
       <header className="relative overflow-hidden rounded-[2rem] border border-[#3d171c]/60 bg-[linear-gradient(135deg,rgba(31,8,11,0.97),rgba(14,4,6,0.99))] px-6 py-8 sm:px-8 sm:py-10">
         {/* Decorative bow */}
-        <img
+        <img loading="lazy" decoding="async"
           src={bow}
           alt=""
           aria-hidden="true"
@@ -852,7 +852,7 @@ function OwnerBouquetEditor() {
                       </label>
                       {sizeField.image ? (
                         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#4a1d22]/50">
-                          <img src={sizeField.image} alt={sizeLabels[sizeKey]} className="h-full w-full object-cover" />
+                          <img loading="lazy" decoding="async" src={sizeField.image} alt={sizeLabels[sizeKey]} className="h-full w-full object-cover" />
                         </div>
                       ) : null}
                     </div>
@@ -891,7 +891,7 @@ function OwnerBouquetEditor() {
                         sizeField.image ? (
                           <div className="rounded-lg border border-[#4a1d22]/50 bg-[#140607] p-3">
                             <div className="mb-3 flex items-center gap-3">
-                              <img src={sizeField.image} alt={sizeLabels[sizeKey]} className="h-14 w-14 rounded-lg object-cover" />
+                              <img loading="lazy" decoding="async" src={sizeField.image} alt={sizeLabels[sizeKey]} className="h-14 w-14 rounded-lg object-cover" />
                               <p className="text-xs leading-5 text-[#c9a49d]">{t("owner.imageReadyHint")}</p>
                             </div>
                             <div className="grid gap-2 sm:grid-cols-2">
@@ -959,7 +959,7 @@ function OwnerBouquetEditor() {
                       </span>
                       {addon.image ? (
                         <div className="ml-auto h-8 w-8 shrink-0 overflow-hidden rounded-lg border border-[#4a1d22]/40">
-                          <img src={addon.image} alt={addon.name || ""} className="h-full w-full object-cover" />
+                          <img loading="lazy" decoding="async" src={addon.image} alt={addon.name || ""} className="h-full w-full object-cover" />
                         </div>
                       ) : null}
                     </div>
@@ -997,7 +997,7 @@ function OwnerBouquetEditor() {
                       {addon.image ? (
                         <div className="rounded-lg border border-[#4a1d22]/40 bg-[#140607] p-3">
                           <div className="overflow-hidden rounded-lg border border-[#4a1d22]/40">
-                            <img
+                            <img loading="lazy" decoding="async"
                               src={addon.image}
                               alt={addon.name || t("owner.addonAlt", { index: index + 1 })}
                               className="h-32 w-full object-cover"
@@ -1044,7 +1044,7 @@ function OwnerBouquetEditor() {
             {/* Preview image */}
             <div className="relative h-56">
               {enabledSizeOptions[0]?.image ? (
-                <img src={enabledSizeOptions[0].image} alt={bouquetName || t("owner.newBouquet")} className="h-full w-full object-cover" />
+                <img loading="lazy" decoding="async" src={enabledSizeOptions[0].image} alt={bouquetName || t("owner.newBouquet")} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-3 bg-[radial-gradient(ellipse_at_top,rgba(179,60,86,0.25),transparent_60%),linear-gradient(180deg,#220a0e,#100406)]">
                   <HiOutlineSparkles className="text-4xl text-[#f0bcc1]/60" />

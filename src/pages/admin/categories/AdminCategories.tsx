@@ -141,7 +141,7 @@ function AdminCategories() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <section className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,rgba(31,8,11,0.9),rgba(17,4,6,0.94))] p-6 sm:p-8">
-        <img
+        <img loading="lazy" decoding="async"
           src={bow}
           alt=""
           aria-hidden="true"
@@ -182,7 +182,7 @@ function AdminCategories() {
           >
             <div className="relative h-40">
               {category.image ? (
-                <img src={category.image} alt={category.name} className="h-full w-full object-cover" />
+                <img loading="lazy" decoding="async" src={category.image} alt={category.name} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full items-center justify-center bg-[#20090c] text-[#f2be7f]">
                   <HiOutlineSquares2X2 className="text-5xl" />
@@ -302,7 +302,7 @@ function AdminCategories() {
             </label>
             {imageValue ? (
               <div className="overflow-hidden rounded-2xl border border-[#4a1d22] bg-[#180709] p-2">
-                <img src={imageValue} alt="Category preview" className="h-44 w-full rounded-xl object-cover" />
+                <img loading="lazy" decoding="async" src={imageValue} alt="Category preview" className="h-44 w-full rounded-xl object-cover" />
               </div>
             ) : null}
             <label className="flex items-center gap-3 rounded-2xl border border-[#4a1d22] bg-[#180709] px-4 py-4 text-[#f5dfd9]">

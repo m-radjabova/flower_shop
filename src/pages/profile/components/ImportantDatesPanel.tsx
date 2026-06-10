@@ -119,41 +119,41 @@ function ImportantDatesPanel({ dates, isLoading = false }: ImportantDatesPanelPr
   };
 
   return (
-    <section className="rounded-[1.4rem] border border-white/8 bg-[#120607] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#2a1014] text-[#ffb1bd]">
-            <HiOutlineBellAlert className="text-xl" />
+    <section className="rounded-[1.4rem] border border-white/8 bg-[#120607] p-4 shadow-[0_18px_40px_rgba(0,0,0,0.18)] sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#2a1014] text-[#ffb1bd] sm:h-11 sm:w-11">
+            <HiOutlineBellAlert className="text-base sm:text-xl" />
           </span>
-          <div>
-            <p className="text-2xl font-semibold text-white">{t("saveImportantDates")}</p>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#c9aba4]">{t("importantDatesDesc")}</p>
+          <div className="min-w-0">
+            <p className="text-lg font-semibold text-white sm:text-2xl">{t("saveImportantDates")}</p>
+            <p className="mt-0.5 max-w-2xl text-xs leading-5 text-[#c9aba4] sm:mt-1 sm:text-sm sm:leading-6">{t("importantDatesDesc")}</p>
           </div>
         </div>
-        <div className="rounded-2xl border border-[#3e1c22] bg-[#1a090c] px-4 py-3 text-right">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[#b7918a]">{t("upcomingReminders")}</p>
-          <p className="mt-1 text-2xl font-semibold text-white">{upcomingDates.length}</p>
+        <div className="shrink-0 rounded-2xl border border-[#3e1c22] bg-[#1a090c] px-3 py-2 text-right sm:px-4 sm:py-3">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-[#b7918a] sm:text-[11px]">{t("upcomingReminders")}</p>
+          <p className="mt-0.5 text-xl font-semibold text-white sm:mt-1 sm:text-2xl">{upcomingDates.length}</p>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <form onSubmit={handleSubmit} className="rounded-[1.3rem] border border-white/8 bg-[#17080b] p-4">
-          <div className="grid gap-4">
+      <div className="mt-4 grid gap-4 sm:mt-5 sm:gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <form onSubmit={handleSubmit} className="rounded-[1.3rem] border border-white/8 bg-[#17080b] p-3 sm:p-4">
+          <div className="grid gap-3 sm:gap-4">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#f1d5cb]">{t("eventLabel")}</span>
+              <span className="mb-1.5 block text-xs font-medium text-[#f1d5cb] sm:mb-2 sm:text-sm">{t("eventLabel")}</span>
               <input
                 {...form.register("title")}
                 placeholder={t("eventTitlePlaceholder")}
-                className="h-12 w-full rounded-2xl border border-white/8 bg-[#1c0a0d] px-4 text-white outline-none transition placeholder:text-[#8f6d68] focus:border-[#b54b58] focus:bg-[#210c10]"
+                className="h-11 w-full rounded-2xl border border-white/8 bg-[#1c0a0d] px-4 text-sm text-white outline-none transition placeholder:text-[#8f6d68] focus:border-[#b54b58] focus:bg-[#210c10] sm:h-12 sm:text-base"
               />
             </label>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[#f1d5cb]">{t("eventType")}</span>
+                <span className="mb-1.5 block text-xs font-medium text-[#f1d5cb] sm:mb-2 sm:text-sm">{t("eventType")}</span>
                 <select
                   {...form.register("event_type")}
-                  className="h-12 w-full rounded-2xl border border-white/8 bg-[#1c0a0d] px-4 text-white outline-none transition focus:border-[#b54b58] focus:bg-[#210c10]"
+                  className="h-11 w-full rounded-2xl border border-white/8 bg-[#1c0a0d] px-4 text-sm text-white outline-none transition focus:border-[#b54b58] focus:bg-[#210c10] sm:h-12 sm:text-base"
                 >
                   <option value="birthday">{t("eventTypeBirthday")}</option>
                   <option value="anniversary">{t("eventTypeAnniversary")}</option>
@@ -162,31 +162,31 @@ function ImportantDatesPanel({ dates, isLoading = false }: ImportantDatesPanelPr
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[#f1d5cb]">{t("eventDate")}</span>
+                <span className="mb-1.5 block text-xs font-medium text-[#f1d5cb] sm:mb-2 sm:text-sm">{t("eventDate")}</span>
                 <input
                   type="date"
                   {...form.register("event_date")}
-                  className="h-12 w-full rounded-2xl border border-white/8 bg-[#1c0a0d] px-4 text-white outline-none transition focus:border-[#b54b58] focus:bg-[#210c10]"
+                  className="h-11 w-full rounded-2xl border border-white/8 bg-[#1c0a0d] px-4 text-sm text-white outline-none transition focus:border-[#b54b58] focus:bg-[#210c10] sm:h-12 sm:text-base"
                 />
               </label>
             </div>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#f1d5cb]">{t("notesOptional")}</span>
+              <span className="mb-1.5 block text-xs font-medium text-[#f1d5cb] sm:mb-2 sm:text-sm">{t("notesOptional")}</span>
               <textarea
                 {...form.register("note")}
                 rows={4}
                 placeholder={t("importantDateNotePlaceholder")}
-                className="w-full rounded-2xl border border-white/8 bg-[#1c0a0d] px-4 py-3 text-white outline-none transition placeholder:text-[#8f6d68] focus:border-[#b54b58] focus:bg-[#210c10]"
+                className="w-full rounded-2xl border border-white/8 bg-[#1c0a0d] px-4 py-3 text-sm text-white outline-none transition placeholder:text-[#8f6d68] focus:border-[#b54b58] focus:bg-[#210c10] sm:text-base"
               />
             </label>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-4 flex flex-wrap gap-2 sm:mt-5 sm:gap-3">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex h-11 min-w-[170px] items-center justify-center rounded-xl bg-gradient-to-r from-[#8f1220] to-[#bb2435] px-5 font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex h-10 min-w-[150px] items-center justify-center rounded-xl bg-gradient-to-r from-[#8f1220] to-[#bb2435] px-4 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70 sm:h-11 sm:min-w-[170px] sm:px-5"
             >
               {editingId ? t("updateImportantDate") : t("saveImportantDate")}
             </button>
@@ -194,7 +194,7 @@ function ImportantDatesPanel({ dates, isLoading = false }: ImportantDatesPanelPr
               <button
                 type="button"
                 onClick={resetForm}
-                className="inline-flex h-11 min-w-[120px] items-center justify-center rounded-xl border border-white/8 bg-[#2a0f12] px-5 font-semibold text-[#f3d6d0] transition hover:bg-[#381419]"
+                className="inline-flex h-10 min-w-[100px] items-center justify-center rounded-xl border border-white/8 bg-[#2a0f12] px-4 text-sm font-semibold text-[#f3d6d0] transition hover:bg-[#381419] sm:h-11 sm:min-w-[120px] sm:px-5"
               >
                 {t("cancel")}
               </button>
@@ -285,29 +285,29 @@ export function UpcomingImportantDatesCard({ dates, onManageClick }: UpcomingImp
   const items = orderedDates.slice(0, 3);
 
   return (
-    <div className="rounded-3xl border border-white/5 bg-gradient-to-br from-[#18090d] via-[#1f0b11] to-[#110608] p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="rounded-3xl border border-white/5 bg-gradient-to-br from-[#18090d] via-[#1f0b11] to-[#110608] p-4 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">🎂</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-2xl sm:text-3xl">🎂</span>
             <div>
-              <h2 className="font-cormorant text-3xl text-white">{t("upcomingReminders")}</h2>
-              <p className="mt-1 text-sm text-[#b7928a]">{t("upcomingRemindersDesc")}</p>
+              <h2 className="font-cormorant text-2xl text-white sm:text-3xl">{t("upcomingReminders")}</h2>
+              <p className="mt-0.5 text-xs text-[#b7928a] sm:mt-1 sm:text-sm">{t("upcomingRemindersDesc")}</p>
             </div>
           </div>
         </div>
         <button
           type="button"
           onClick={onManageClick}
-          className="rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-[#ffb1bd] transition hover:bg-white/10"
+          className="shrink-0 rounded-xl bg-white/5 px-3 py-1.5 text-xs font-medium text-[#ffb1bd] transition hover:bg-white/10 sm:px-4 sm:py-2 sm:text-sm"
         >
           {t("manageImportantDates")}
         </button>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-4 space-y-2 sm:mt-5 sm:space-y-3">
         {!items.length ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-[#c7a39a]">
+          <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-xs text-[#c7a39a] sm:p-5 sm:text-sm">
             {t("noUpcomingReminders")}
           </div>
         ) : null}
@@ -317,18 +317,18 @@ export function UpcomingImportantDatesCard({ dates, onManageClick }: UpcomingImp
           const meta = getImportantDateMeta(item.event_type);
 
           return (
-            <article key={item.id} className="flex items-center justify-between gap-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+            <article key={item.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3 sm:gap-4 sm:p-4">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm text-[#ffd7ce]">
+                <div className="flex items-center gap-1.5 text-xs text-[#ffd7ce] sm:gap-2 sm:text-sm">
                   <span>{meta.emoji}</span>
                   <span>{t(`eventTypeBadge.${item.event_type}`)}</span>
                 </div>
-                <p className="mt-1 text-lg font-semibold text-white">{item.title}</p>
-                <p className="mt-1 text-sm text-[#b7928a]">{formatImportantDate(item.event_date, i18n.language)}</p>
+                <p className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">{item.title}</p>
+                <p className="mt-0.5 text-xs text-[#b7928a] sm:mt-1 sm:text-sm">{formatImportantDate(item.event_date, i18n.language)}</p>
               </div>
-              <div className="shrink-0 rounded-2xl bg-[#2a1014] px-4 py-3 text-right">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#b7928a]">{t("reminder")}</p>
-                <p className="mt-1 text-sm font-semibold text-white">{getReminderLabel(daysUntil, t)}</p>
+              <div className="shrink-0 rounded-2xl bg-[#2a1014] px-3 py-2 text-right sm:px-4 sm:py-3">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#b7928a] sm:text-[11px]">{t("reminder")}</p>
+                <p className="mt-0.5 text-xs font-semibold text-white sm:mt-1 sm:text-sm">{getReminderLabel(daysUntil, t)}</p>
               </div>
             </article>
           );

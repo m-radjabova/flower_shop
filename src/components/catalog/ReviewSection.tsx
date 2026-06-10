@@ -61,7 +61,7 @@ function ReviewCard({ review }: { review: Review }) {
 
       {review.text ? <p className="mt-4 leading-7 text-[#dbc0b9]">{review.text}</p> : null}
       {review.image ? (
-        <img
+        <img loading="lazy" decoding="async"
           src={review.image}
           alt={`${review.user.full_name} review`}
           className="mt-4 h-52 w-full rounded-[1.2rem] object-cover"
@@ -213,7 +213,7 @@ function ReviewForm({ bouquet, embedded = false }: { bouquet: Bouquet; embedded?
       {uploadedImageUrl ? (
         <div className="mt-4 overflow-hidden rounded-[1.4rem] border border-[#7b413a] bg-[#100607]">
           <div className="relative">
-            <img src={uploadedImageUrl} alt="Uploaded review" className="h-56 w-full object-cover" />
+            <img loading="lazy" decoding="async" src={uploadedImageUrl} alt="Uploaded review" className="h-56 w-full object-cover" />
             <button
               type="button"
               onClick={() => setUploadedImageUrl("")}
