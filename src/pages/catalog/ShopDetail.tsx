@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   FaInstagram,
@@ -17,16 +17,15 @@ import {
   FaRegCalendarAlt,
 } from "react-icons/fa";
 import {
-  HiOutlineArrowLeft,
   HiOutlineShoppingBag,
   HiOutlineMapPin,
-  HiOutlineClock,
+  HiOutlineStar,
 } from "react-icons/hi2";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
-import { motion } from "framer-motion";
 import NotFound from "../../components/NotFound";
 import BouquetAvailabilityBadge from "../../components/catalog/BouquetAvailabilityBadge";
+import PremiumBreadcrumb from "../../components/catalog/PremiumBreadcrumb";
 import ShopVerifiedBadge from "../../components/shops/ShopVerifiedBadge";
 import { ShopDetailSkeleton } from "../../components/PageSkeletons";
 import { useBouquets, useShop } from "../../hooks/useCatalog";
@@ -35,6 +34,88 @@ import { addToCart } from "../../utils/cart";
 import { formatUzbekPhone } from "../../utils/phone";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 import type { Bouquet } from "../../types/catalog";
+
+// ─── Intersection observer hook ──────────────────────────────────────────────
+const EMPTY_OPTIONS: IntersectionObserverInit = {};
+function useInView(options: IntersectionObserverInit = EMPTY_OPTIONS): [React.RefObject<HTMLDivElement | null>, boolean] {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setVisible(true); obs.unobserve(el); }
+    }, { threshold: 0.1, ...options });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [options]);
+  return [ref, visible];
+}
+
+// ─── Animated reveal block ───────────────────────────────────────────────────
+function Reveal({
+  children,
+  className = "",
+  delay = 0,
+  from = "bottom",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+  from?: "bottom" | "left" | "right" | "none";
+}) {
+  const [ref, visible] = useInView();
+  const initial = {
+    bottom: "translate-y-10",
+    left: "-translate-x-8",
+    right: "translate-x-8",
+    none: "",
+  }[from];
+
+  return (
+    <div
+      ref={ref as React.Ref<HTMLDivElement>}
+      className={`transition-all duration-700 ease-out ${
+        visible ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${initial}`
+      } ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── Floating particles ──────────────────────────────────────────────────────
+function FloatingOrbs() {
+  const orbs = useMemo(() =>
+    Array.from({ length: 6 }, (_, i) => ({
+      id: i,
+      left: `${12 + i * 15}%`,
+      top: `${-8 + (i % 3) * 12}%`,
+      size: 6 + (i % 3) * 4,
+      duration: 14 + i * 3,
+      delay: i * 2.5,
+    })), []);
+
+  return (
+    <div className="pointer-events-none fixed inset-0 overflow-hidden">
+      {orbs.map(({ id, left, top, size, duration, delay }) => (
+        <span
+          key={id}
+          className="absolute animate-floatOrb rounded-full opacity-20"
+          style={{
+            left, top,
+            width: size, height: size,
+            background: "radial-gradient(circle, #ff9b88, #cb5c57)",
+            animationDuration: `${duration}s`,
+            animationDelay: `${delay}s`,
+            animationIterationCount: "infinite",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 // ─── Helpers ───────────────────────────────────────────────
 function buildMapUrl(latitude: string, longitude: string) {
@@ -48,20 +129,6 @@ function isNew(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
 }
 
-// ─── Animation Variants ────────────────────────────────────
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
-};
-
 // ─── Bouquet Card ──────────────────────────────────────────
 function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
   const { t } = useTranslation();
@@ -72,111 +139,105 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
   const canAddToCart = isBouquetAvailable(bouquet);
 
   return (
-    <motion.article
-      variants={itemVariants}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="group relative overflow-hidden rounded-[1.8rem] border border-[#4a2020]/60 bg-gradient-to-b from-[#1e0b0d] to-[#120608] shadow-lg transition-all duration-500 hover:border-[#cb5c57]/40 hover:shadow-[0_20px_60px_rgba(203,92,87,0.15)]"
-    >
-      <Link to={`/bouquets/${bouquet.id}`} className="block">
-        <div className="relative overflow-hidden">
-          <motion.img loading="lazy" decoding="async"
-            src={bouquet.image}
-            alt={bouquet.name}
-            className="h-56 sm:h-72 lg:h-80 w-full object-cover"
-            animate={{ scale: isHovered ? 1.08 : 1 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#120608] via-transparent to-transparent opacity-70" />
+    <Reveal>
+      <div
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className="group relative overflow-hidden rounded-2xl border border-[#3a1214]/50 bg-[#0d0405]/80 backdrop-blur-sm shadow-lg transition-all duration-400 hover:-translate-y-1.5 hover:border-[#cb5c57]/35 hover:shadow-2xl hover:shadow-black/30"
+      >
+        <Link to={`/bouquets/${bouquet.id}`} className="block">
+          <div className="relative overflow-hidden">
+            <img loading="lazy" decoding="async"
+              src={bouquet.image}
+              alt={bouquet.name}
+              className={`h-56 sm:h-72 lg:h-80 w-full object-cover transition-all duration-600 ease-out ${isHovered ? "scale-108" : "scale-100"}`}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080204]/80 via-transparent to-transparent" />
 
-          <div className="absolute left-3 sm:left-4 top-3 sm:top-4 flex flex-wrap gap-1.5 sm:gap-2">
-            {isNewBouquet && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2 sm:px-3 py-1 text-[0.55rem] sm:text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-emerald-500/20">
-                <FaLeaf className="text-[0.4rem] sm:text-[0.5rem]" />
-                {t("catalog.new")}
+            <div className="absolute left-3 sm:left-4 top-3 sm:top-4 flex flex-wrap gap-1.5 sm:gap-2">
+              {isNewBouquet && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-emerald-500/20">
+                  <FaLeaf size={8} />
+                  {t("catalog.new")}
+                </span>
+              )}
+              {isPopular && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-amber-500/20">
+                  <FaStar size={8} />
+                  {t("catalog.popular")}
+                </span>
+              )}
+              {hasDiscount && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-rose-600/20">
+                  Sale
+                </span>
+              )}
+              <BouquetAvailabilityBadge bouquet={bouquet} compact />
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!canAddToCart) {
+                  toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`);
+                  return;
+                }
+                addToCart(bouquet);
+                toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`);
+              }}
+              disabled={!canAddToCart}
+              className={`absolute right-3 sm:right-4 bottom-3 sm:bottom-4 z-10 flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-full shadow-xl transition-all duration-300 ${
+                canAddToCart
+                  ? "bg-[#9f1525] text-white hover:bg-[#b51b2c] hover:scale-110 active:scale-95"
+                  : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94]"
+              } ${isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}
+            >
+              <HiOutlineShoppingBag size={16} />
+            </button>
+
+            {bouquet.category && (
+              <span className="absolute left-3 sm:left-4 bottom-3 sm:bottom-4 rounded-full border border-white/10 bg-black/40 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[8px] sm:text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
+                {bouquet.category.name}
               </span>
             )}
-            {isPopular && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 sm:px-3 py-1 text-[0.55rem] sm:text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-amber-500/20">
-                <FaStar className="text-[0.4rem] sm:text-[0.5rem]" />
-                {t("catalog.popular")}
-              </span>
-            )}
-            {hasDiscount && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-2 sm:px-3 py-1 text-[0.55rem] sm:text-[0.65rem] font-bold uppercase tracking-[0.12em] text-white shadow-lg shadow-rose-600/20">
-                {t("shopDetail.sale")}
-              </span>
-            )}
-            <BouquetAvailabilityBadge bouquet={bouquet} compact />
           </div>
+        </Link>
 
-          <motion.button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!canAddToCart) {
-                toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`);
-                return;
-              }
-              addToCart(bouquet);
-              toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`);
-            }}
-            disabled={!canAddToCart}
-            className={`absolute right-3 sm:right-4 bottom-3 sm:bottom-4 z-10 flex h-10 sm:h-12 w-10 sm:w-12 items-center justify-center rounded-full shadow-xl ${
-              canAddToCart
-                ? "bg-gradient-to-br from-[#cb5c57] to-[#a3322e] text-white shadow-[#cb5c57]/20"
-                : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94]"
-            }`}
-            initial={{ opacity: 0, scale: 0.5, y: 10 }}
-            animate={{ opacity: isHovered ? 1 : 0, scale: isHovered ? 1 : 0.5, y: isHovered ? 0 : 10 }}
-            transition={{ duration: 0.25 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <HiOutlineShoppingBag className="text-base sm:text-lg" />
-          </motion.button>
-
-          {bouquet.category && (
-            <span className="absolute left-3 sm:left-4 bottom-3 sm:bottom-4 rounded-full border border-white/10 bg-black/30 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[0.5rem] sm:text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-white/80 backdrop-blur-md">
-              {bouquet.category.name}
-            </span>
-          )}
-        </div>
-      </Link>
-
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <Link to={`/bouquets/${bouquet.id}`}>
-              <h3 className="font-cormorant text-lg sm:text-xl md:text-2xl font-semibold leading-tight text-white transition-colors duration-300 hover:text-[#f0a89a]">
-                {bouquet.name}
-              </h3>
-            </Link>
-            <div className="mt-1.5 sm:mt-2 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-[#dbb8b0]">
-              <div className="flex items-center gap-1">
-                <FaStar className="text-[0.6rem] sm:text-[0.7rem] text-amber-400" />
-                <span className="font-semibold text-white">{bouquet.rating}</span>
+        <div className="p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <Link to={`/bouquets/${bouquet.id}`}>
+                <h3 className="font-cormorant text-lg sm:text-xl md:text-2xl font-semibold leading-tight text-white transition-colors duration-300 hover:text-[#cb5c57]">
+                  {bouquet.name}
+                </h3>
+              </Link>
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-[#c9a09a]">
+                <div className="flex items-center gap-1">
+                  <HiOutlineStar size={11} className="text-amber-400" />
+                  <span className="font-semibold text-white">{bouquet.rating}</span>
+                </div>
+                <span className="text-[#5f2825]">·</span>
+                <span className="text-[#8a6a63]">{bouquet.reviews_count} {t("catalog.reviews")}</span>
               </div>
-              <span className="text-[#8a6a63]">·</span>
-              <span className="text-[#8a6a63]">{bouquet.reviews_count} {t("catalog.reviews")}</span>
             </div>
           </div>
-        </div>
 
-        <div className="mt-3 sm:mt-4 flex items-end justify-between border-t border-[#4a2020]/30 pt-3 sm:pt-4">
-          <div className="flex items-end gap-2 sm:gap-2.5">
-            <span className="text-lg sm:text-xl md:text-2xl font-bold text-white">{formatPrice(bouquet.price)}</span>
-            {hasDiscount && (
-              <span className="pb-0.5 text-xs sm:text-sm font-medium text-[#8a6a63] line-through">
-                {formatPrice(bouquet.old_price!)}
-              </span>
-            )}
+          <div className="mt-3 flex items-end justify-between border-t border-[#3a1214]/30 pt-3">
+            <div className="flex items-end gap-2">
+              <span className="text-lg sm:text-xl md:text-2xl font-bold text-white">{formatPrice(bouquet.price)}</span>
+              {hasDiscount && (
+                <span className="pb-0.5 text-xs sm:text-sm font-medium text-[#8a6a63] line-through">
+                  {formatPrice(bouquet.old_price!)}
+                </span>
+              )}
+            </div>
+            <BouquetAvailabilityBadge bouquet={bouquet} compact />
           </div>
-          <BouquetAvailabilityBadge bouquet={bouquet} compact />
         </div>
       </div>
-    </motion.article>
+    </Reveal>
   );
 }
 
@@ -194,14 +255,14 @@ function NavPills({
 }) {
   const { t } = useTranslation();
   const items = [
-    { id: "bouquets", label: t("shopDetail.bouquets"), icon: <FaShoppingBag className="text-xs" />, value: counts.bouquets },
-    { id: "about-shop", label: t("shopDetail.about"), icon: <FaStore className="text-xs" />, value: null },
-    { id: "reviews", label: t("shopDetail.reviews"), icon: <FaStar className="text-xs" />, value: counts.reviews },
-    { id: "policies", label: t("shopDetail.info"), icon: <FaRegClock className="text-xs" />, value: null },
+    { id: "bouquets", label: t("shopDetail.bouquets"), icon: <FaShoppingBag size={11} />, value: counts.bouquets },
+    { id: "about-shop", label: t("shopDetail.about"), icon: <FaStore size={11} />, value: null },
+    { id: "reviews", label: t("shopDetail.reviews"), icon: <FaStar size={11} />, value: counts.reviews },
+    { id: "policies", label: t("shopDetail.info"), icon: <FaRegClock size={11} />, value: null },
   ];
 
   return (
-    <div className="flex flex-wrap gap-1.5 sm:gap-2 rounded-[1.6rem] border border-[#4a2020]/50 bg-[#120608]/80 p-1.5 backdrop-blur-xl">
+    <div className="flex flex-wrap gap-1.5 sm:gap-2 rounded-[1.4rem] border border-[#3a1214]/40 bg-[#120607]/70 p-1.5 backdrop-blur-xl">
       {items.map((item) => {
         const isActive = activeSection === item.id;
         return (
@@ -209,17 +270,17 @@ function NavPills({
             key={item.id}
             type="button"
             onClick={() => scrollToSection(item.id)}
-            className={`relative flex items-center gap-1.5 sm:gap-2.5 rounded-[1.2rem] px-2.5 sm:px-4 py-2 sm:py-2.5 text-[10px] sm:text-sm font-medium transition-all duration-300 ${
+            className={`relative flex items-center gap-1.5 sm:gap-2 rounded-[1.2rem] px-2.5 sm:px-4 py-2 sm:py-2.5 text-[10px] sm:text-xs font-medium transition-all duration-300 ${
               isActive
-                ? "bg-gradient-to-r from-[#cb5c57] to-[#a3322e] text-white shadow-lg shadow-[#cb5c57]/20"
-                : "text-[#cfa89e] hover:text-white hover:bg-white/5"
+                ? "bg-[#9f1525] text-white shadow-lg"
+                : "text-[#c9a09a] hover:text-white hover:bg-white/5"
             }`}
           >
             {item.icon}
             <span>{item.label}</span>
             {item.value !== null && (
-              <span className={`ml-0.5 rounded-full px-1.5 sm:px-2 py-0.5 text-[0.55rem] sm:text-[0.65rem] font-bold ${
-                isActive ? "bg-white/20 text-white" : "bg-[#4a2020]/40 text-[#cfa89e]"
+              <span className={`ml-0.5 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] font-bold ${
+                isActive ? "bg-white/20 text-white" : "bg-[#3a1214]/40 text-[#c9a09a]"
               }`}>
                 {item.value}
               </span>
@@ -234,16 +295,15 @@ function NavPills({
 // ─── Stat Card ────────────────────────────────────────────
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
   return (
-    <motion.div
-      variants={itemVariants}
-      className="group rounded-[1.4rem] border border-[#4a2020]/40 bg-gradient-to-br from-[#1a0a0c] to-[#100608] p-3 sm:p-5 transition-all duration-300 hover:border-[#cb5c57]/30 hover:shadow-[0_10px_40px_rgba(203,92,87,0.08)]"
-    >
-      <div className={`mb-2 sm:mb-3 inline-flex h-8 sm:h-10 w-8 sm:w-10 items-center justify-center rounded-xl ${color}`}>
-        {icon}
+    <Reveal>
+      <div className="group rounded-xl border border-[#3a1214]/40 bg-[#120607]/60 p-3 sm:p-4 backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57]/30 hover:bg-[#160809]">
+        <div className={`mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl ${color}`}>
+          {icon}
+        </div>
+        <p className="text-lg sm:text-xl font-bold text-white">{value}</p>
+        <p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-[#b9978f]">{label}</p>
       </div>
-      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">{value}</p>
-      <p className="mt-1 text-[0.55rem] sm:text-xs font-medium uppercase tracking-[0.15em] text-[#a88680]">{label}</p>
-    </motion.div>
+    </Reveal>
   );
 }
 
@@ -344,409 +404,374 @@ function ShopDetail() {
   };
 
   return (
-    <main className="min-h-screen bg-[#070102] text-[#fff4f1]">
-      {/* Ambient background effects */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-40 -top-40 h-[400px] sm:h-[500px] w-[400px] sm:w-[500px] rounded-full bg-[#cb5c57]/5 blur-[100px] sm:blur-[120px]" />
-        <div className="absolute -right-40 bottom-0 h-[300px] sm:h-[400px] w-[300px] sm:w-[400px] rounded-full bg-[#ff9b88]/3 blur-[80px] sm:blur-[100px]" />
+    <main className="relative isolate min-h-screen overflow-hidden text-[#fff6f4]">
+
+      {/* ── Backgrounds ── */}
+      <div className="pointer-events-none fixed inset-0 -z-20 bg-[#0a0203]" />
+      <div className="pointer-events-none fixed inset-0 -z-15">
+        <div className="absolute left-1/2 top-0 h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#cb5c57]/10 blur-3xl animate-pulse-soft" />
+        <div className="absolute -left-24 top-40 h-72 w-72 rounded-full bg-[#ff9b88]/6 blur-3xl" />
+        <div className="absolute -right-20 top-56 h-80 w-80 rounded-full bg-[#d9b56f]/5 blur-3xl animate-pulse-soft" style={{ animationDelay: "2.5s" }} />
       </div>
+      <FloatingOrbs />
 
       <div className="relative z-10">
         {/* ─── HERO SECTION ─────────────────────────── */}
-        <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          className="relative overflow-hidden px-4 sm:px-6 lg:px-10 pb-6 sm:pb-8 pt-28 sm:pt-32 lg:pt-36"
-        >
+        <section className="relative px-4 sm:px-6 lg:px-10 pb-6 sm:pb-8 pt-28 sm:pt-32 lg:pt-36">
           <div className="mx-auto max-w-[1500px]">
-            {/* Back button */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-            >
-              <Link
-                to="/#bouquets"
-                className="group relative z-20 inline-flex items-center gap-2 rounded-full border border-[#4a2020]/40 bg-[#120608]/60 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
-              >
-                <HiOutlineArrowLeft className="transition-transform duration-300 group-hover:-translate-x-0.5" />
-                {t("shopDetail.backToShops")}
-              </Link>
-            </motion.div>
+            {/* Breadcrumb */}
+            <Reveal>
+              <PremiumBreadcrumb
+                items={[
+                  { label: t("header.shops"), to: "/shops" },
+                  { label: shop.name },
+                ]}
+              />
+            </Reveal>
 
             {/* Hero Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.15 }}
-              className="relative mt-4 sm:mt-6 overflow-hidden rounded-[2rem] sm:rounded-[2.4rem] border border-[#4a2020]/40 shadow-[0_30px_80px_rgba(0,0,0,0.4)]"
-            >
-              <img loading="lazy" decoding="async"
-                src={shop.banner ?? shop.logo ?? "https://images.unsplash.com/photo-1519378058457-4c29a0a2efac?auto=format&fit=crop&w=1400&q=80"}
-                alt={shop.name}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
+            <Reveal delay={100}>
+              <div className="relative mt-4 sm:mt-6 overflow-hidden rounded-2xl border border-[#3a1214]/40 shadow-lg transition-all duration-300 hover:shadow-xl hover:shadow-black/30">
+                <img loading="lazy" decoding="async"
+                  src={shop.banner ?? shop.logo ?? "https://images.unsplash.com/photo-1519378058457-4c29a0a2efac?auto=format&fit=crop&w=1400&q=80"}
+                  alt={shop.name}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
 
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0a0203] via-[#120608]/92 to-[#1a080a]/70" />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0203] via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0a0203] via-[#0a0203]/92 to-[#0a0203]/70" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0203] via-transparent to-transparent" />
 
-              <div className="pointer-events-none absolute top-10 right-10 h-24 sm:h-32 w-24 sm:w-32 rounded-full border border-[#cb5c57]/10" />
-
-              <div className="relative z-10 flex min-h-[20rem] sm:min-h-[26rem] lg:min-h-[32rem] flex-col justify-between gap-6 sm:gap-8 p-4 sm:p-8 lg:p-12">
-                {/* Top Row */}
-                <div className="flex flex-wrap items-start justify-between gap-4 sm:gap-5">
-                  <div className="flex items-start gap-4 sm:gap-7">
-                    {/* Logo */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, delay: 0.3 }}
-                    >
-                      {shop.logo ? (
-                        <img loading="lazy" decoding="async"
-                          src={shop.logo}
-                          alt={`${shop.name} logo`}
-                          className="h-20 w-20 sm:h-28 sm:w-28 lg:h-36 lg:w-36 rounded-[1.5rem] sm:rounded-[2rem] border-2 border-[#d9a86d]/60 object-cover shadow-[0_20px_50px_rgba(0,0,0,0.4)]"
-                        />
-                      ) : (
-                        <div className="flex h-20 w-20 sm:h-28 sm:w-28 lg:h-36 lg:w-36 items-center justify-center rounded-[1.5rem] sm:rounded-[2rem] border-2 border-[#d9a86d]/60 bg-gradient-to-br from-[#2b1012] to-[#1a0809] font-cormorant text-2xl sm:text-4xl lg:text-5xl font-bold text-[#f7d9a6] shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
-                          {shop.name.charAt(0)}
-                        </div>
-                      )}
-                    </motion.div>
-
-                    {/* Name & Info */}
-                    <div className="max-w-2xl pt-0 sm:pt-2">
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3.5">
-                        <motion.h1
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5, delay: 0.35 }}
-                          className="font-cormorant text-3xl sm:text-4xl lg:text-5xl xl:text-7xl font-bold leading-none text-white drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-                        >
-                          {shop.name}
-                        </motion.h1>
-                        {shop.is_verified ? (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.35, delay: 0.42 }}
-                          >
-                            <ShopVerifiedBadge
-                              className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
-                              iconClassName="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
-                            />
-                          </motion.div>
-                        ) : null}
-                      </div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.4 }}
-                        className="mt-2 sm:mt-4 flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-2 text-xs sm:text-sm md:text-base"
-                      >
-                        <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-black/20 px-2 sm:px-3 py-0.5 sm:py-1 backdrop-blur-sm">
-                          <FaStar className="text-amber-400" />
-                          <span className="font-bold text-white">{shop.rating}</span>
-                          <span className="text-[#cfa89e] hidden sm:inline">({shop.reviews_count} {t("shopDetail.reviews")})</span>
-                        </span>
-                        {shop.city && (
-                          <span className="inline-flex items-center gap-1.5 sm:gap-2 text-[#f0d2ca]">
-                            <HiOutlineMapPin className="text-[#f0a89a]" />
-                            {shop.city}
-                          </span>
+                <div className="relative z-10 flex min-h-[20rem] sm:min-h-[26rem] lg:min-h-[32rem] flex-col justify-between gap-6 sm:gap-8 p-6 sm:p-8 lg:p-10">
+                  {/* Top Row */}
+                  <div className="flex flex-wrap items-start justify-between gap-4 sm:gap-5">
+                    <div className="flex items-start gap-4 sm:gap-6">
+                      {/* Logo */}
+                      <Reveal from="left">
+                        {shop.logo ? (
+                          <img loading="lazy" decoding="async"
+                            src={shop.logo}
+                            alt={`${shop.name} logo`}
+                            className="h-20 w-20 sm:h-28 sm:w-28 lg:h-36 lg:w-36 rounded-2xl sm:rounded-[1.7rem] border-2 border-[#cb5c57]/40 object-cover shadow-lg"
+                          />
+                        ) : (
+                          <div className="flex h-20 w-20 sm:h-28 sm:w-28 lg:h-36 lg:w-36 items-center justify-center rounded-2xl sm:rounded-[1.7rem] border-2 border-[#cb5c57]/40 bg-gradient-to-br from-[#2b1012] to-[#1a0809] font-cormorant text-3xl sm:text-4xl lg:text-5xl font-bold text-[#ff9b88] shadow-lg">
+                            {shop.name.charAt(0)}
+                          </div>
                         )}
-                        <span className="inline-flex items-center gap-1.5 sm:gap-2 text-[#f0d2ca]">
-                          <FaRegCalendarAlt className="text-[0.6rem] sm:text-[0.7rem] text-[#f0a89a]" />
-                          {t("shopDetail.memberSince")} {formatMemberSince(shop.created_at)}
-                        </span>
-                      </motion.div>
+                      </Reveal>
 
-                      <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.45 }}
-                        className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base leading-6 sm:leading-8 text-[#e8c9c1] drop-shadow-[0_6px_20px_rgba(0,0,0,0.35)]"
-                      >
-                        {shop.description ?? t("shopDetail.noDescription")}
-                      </motion.p>
+                      {/* Name & Info */}
+                      <div className="max-w-2xl pt-0 sm:pt-2">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3.5">
+                          <Reveal delay={120} from="bottom">
+                            <h1 className="font-cormorant text-3xl sm:text-4xl lg:text-5xl xl:text-7xl font-bold leading-none text-white [text-shadow:0_8px_24px_rgba(0,0,0,0.35)]">
+                              {shop.name}
+                            </h1>
+                          </Reveal>
+                          {shop.is_verified && (
+                            <Reveal delay={200}>
+                              <ShopVerifiedBadge
+                                className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
+                                iconClassName="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10"
+                              />
+                            </Reveal>
+                          )}
+                        </div>
+
+                        <Reveal delay={180}>
+                          <div className="mt-2 sm:mt-4 flex flex-wrap items-center gap-x-4 sm:gap-x-6 gap-y-2 text-xs sm:text-sm md:text-base">
+                            <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-black/30 px-2 sm:px-3 py-0.5 sm:py-1 backdrop-blur-sm">
+                              <HiOutlineStar size={12} className="text-amber-400" />
+                              <span className="font-bold text-white">{shop.rating}</span>
+                              <span className="text-[#c9a09a] hidden sm:inline text-xs">({shop.reviews_count} {t("shopDetail.reviews")})</span>
+                            </span>
+                            {shop.city && (
+                              <span className="inline-flex items-center gap-1.5 text-[#c9a09a]">
+                                <HiOutlineMapPin size={12} className="text-[#cb5c57]" />
+                                {shop.city}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1.5 text-[#c9a09a]">
+                              <FaRegCalendarAlt size={10} className="text-[#cb5c57]" />
+                              {t("shopDetail.memberSince")} {formatMemberSince(shop.created_at)}
+                            </span>
+                          </div>
+                        </Reveal>
+
+                        <Reveal delay={240}>
+                          <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base leading-6 sm:leading-8 text-[#c9a09a]">
+                            {shop.description ?? t("shopDetail.noDescription")}
+                          </p>
+                        </Reveal>
+                      </div>
                     </div>
+
+                    <Reveal delay={300} from="right">
+                      <button
+                        type="button"
+                        onClick={handleShare}
+                        className="group inline-flex items-center gap-2 rounded-full border border-[#5f2825]/50 bg-[#120607]/70 px-3 sm:px-5 py-2 sm:py-2.5 text-[10px] sm:text-xs font-semibold text-[#f0ddd8] backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57]/50 hover:text-white"
+                      >
+                        <FaShareAlt size={10} className="transition-transform duration-300 group-hover:scale-110" />
+                        {t("shopDetail.share")}
+                      </button>
+                    </Reveal>
                   </div>
 
-                  <motion.button
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.5 }}
-                    type="button"
-                    onClick={handleShare}
-                    className="group inline-flex items-center gap-2 rounded-full border border-[#4a2020]/50 bg-black/30 px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#cb5c57]/50 hover:bg-[#cb5c57]/10 hover:text-white"
-                  >
-                    <FaShareAlt className="text-[10px] sm:text-xs transition-transform duration-300 group-hover:scale-110" />
-                    {t("shopDetail.share")}
-                  </motion.button>
-                </div>
-
-                {/* Action Buttons */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.5 }}
-                  className="flex flex-wrap gap-2 sm:gap-3"
-                >
-                  <a
-                    href={`tel:${shop.phone}`}
-                    className="group inline-flex h-11 sm:h-13 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#be2338] via-[#cf2b44] to-[#dd3752] px-5 sm:px-7 text-xs sm:text-sm font-semibold text-white shadow-[0_16px_34px_rgba(199,44,69,0.28)] transition-all duration-300 hover:brightness-110 hover:shadow-[0_20px_40px_rgba(199,44,69,0.35)] active:scale-[0.98]"
-                  >
-                    <FaPhoneAlt className="text-[10px] sm:text-xs" />
-                    {t("shopDetail.callShop")}
-                  </a>
-                  {telegramUrl && (
-                    <a
-                      href={telegramUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group inline-flex h-11 sm:h-13 items-center justify-center gap-2 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-5 sm:px-6 text-xs sm:text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
-                    >
-                      <FaTelegramPlane />
-                      {t("shopDetail.message")}
-                    </a>
-                  )}
-                  {!telegramUrl && instagramUrl && (
-                    <a
-                      href={instagramUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group inline-flex h-11 sm:h-13 items-center justify-center gap-2 rounded-xl border border-[#4a2020]/50 bg-[#120608]/60 px-5 sm:px-6 text-xs sm:text-sm font-semibold text-[#f0d2ca] backdrop-blur-md transition-all duration-300 hover:border-[#d9a06b]/50 hover:bg-[#d9a06b]/10 hover:text-white"
-                    >
-                      <FaInstagram />
-                      {t("shopDetail.instagram")}
-                    </a>
-                  )}
-                </motion.div>
-              </div>
-            </motion.div>
-
-            {/* ─── STATS ROW ───────────────────────────── */}
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="mt-4 sm:mt-6 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:grid-cols-6"
-            >
-              <StatCard icon={<FaShoppingBag className="text-white" />} label={t("shopDetail.totalBouquets")} value={String(bouquets.length)} color="bg-gradient-to-br from-[#cb5c57] to-[#a3322e]" />
-              <StatCard icon={<FaCheckCircle className="text-white" />} label={t("shopDetail.inStock")} value={String(inStockCount)} color="bg-gradient-to-br from-emerald-500 to-teal-600" />
-              <StatCard icon={<FaStar className="text-white" />} label={t("shopDetail.topRated")} value={String(topRatedCount)} color="bg-gradient-to-br from-amber-500 to-orange-600" />
-              <StatCard icon={<FaLeaf className="text-white" />} label={t("shopDetail.newArrivals")} value={String(newBouquetsCount)} color="bg-gradient-to-br from-rose-500 to-pink-600" />
-              <StatCard icon={<FaAward className="text-white" />} label={t("shopDetail.avgPrice")} value={averagePrice} color="bg-gradient-to-br from-violet-500 to-purple-600" />
-              <StatCard icon={<FaTruck className="text-white" />} label={t("shopDetail.delivery")} value={shop.city ?? t("shopDetail.availableNow")} color="bg-gradient-to-br from-sky-500 to-blue-600" />
-            </motion.div>
-
-            {/* ─── NAV ─────────────────────────── */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
-              className="mt-4 sm:mt-6 flex flex-col gap-3 sm:gap-4 xl:flex-row xl:items-center xl:justify-between"
-            >
-              <NavPills
-                activeSection={activeSection}
-                scrollToSection={scrollToSection}
-                counts={{ bouquets: bouquets.length, reviews: shop.reviews_count }}
-              />
-            </motion.div>
-
-            {/* ─── MAIN GRID: Bouquets + Sidebar ────────── */}
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              className="mt-4 sm:mt-6 grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]"
-            >
-              {/* Bouquets Grid */}
-              <div id="bouquets" className="scroll-mt-28">
-                {shopBouquetsQuery.isLoading ? (
-                  <ShopDetailSkeleton />
-                ) : bouquets.length ? (
-                  <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="grid gap-4 sm:gap-5 md:grid-cols-2"
-                  >
-                    {bouquets.map((bouquet) => (
-                      <BouquetCard key={bouquet.id} bouquet={bouquet} />
-                    ))}
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center rounded-[2rem] border border-dashed border-[#4a2020]/50 bg-[#120608]/60 p-8 sm:p-16 text-center"
-                  >
-                    <FaShoppingBag className="text-4xl sm:text-5xl text-[#4a2020]/50 mb-3 sm:mb-4" />
-                    <p className="font-cormorant text-2xl sm:text-3xl text-white">{t("shopDetail.noBouquetsYet")}</p>
-                    <p className="mt-2 text-xs sm:text-sm text-[#a88680]">{t("shopDetail.noBouquetsDesc")}</p>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* ─── SIDEBAR ─────────────────────────────── */}
-              <aside className="space-y-4 sm:space-y-5">
-                {/* About Shop */}
-                <motion.div
-                  id="about-shop"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.5 }}
-                  className="scroll-mt-28 overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] border border-[#4a2020]/40 bg-gradient-to-b from-[#1a0a0c] to-[#100608] shadow-lg"
-                >
-                  <div className="p-5 sm:p-7">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="inline-flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57] to-[#a3322e]">
-                        <FaStore className="text-xs text-white" />
-                      </span>
-                      <span className="text-[0.55rem] sm:text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.about")}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-cormorant text-2xl sm:text-3xl md:text-4xl font-bold text-white">{shop.name}</h2>
-                      {shop.is_verified ? <ShopVerifiedBadge className="h-5 w-5 sm:h-6 sm:w-6" iconClassName="h-5 w-5 sm:h-6 sm:w-6" /> : null}
-                    </div>
-                    <p className="mt-3 sm:mt-4 text-xs sm:text-sm leading-6 sm:leading-7 text-[#dbb8b0]">
-                      {shop.description ?? t("shopDetail.aboutShopFallback")}
-                    </p>
-
-                    <div className="mt-4 sm:mt-6 space-y-2.5 sm:space-y-3 border-t border-[#4a2020]/30 pt-4 sm:pt-5">
-                      {shop.phone && (
-                        <a href={`tel:${shop.phone}`} className="flex items-center gap-3 rounded-xl bg-[#120608] px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-[#dbb8b0] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
-                          <span className="flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#cb5c57]/20 to-[#a3322e]/20 text-[#cb5c57] group-hover:scale-110 transition-transform duration-200">
-                            <FaPhoneAlt className="text-[0.55rem] sm:text-[0.65rem]" />
-                          </span>
-                          <div>
-                            <p className="text-[0.5rem] sm:text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.phone")}</p>
-                            <p className="font-medium text-white">{formatUzbekPhone(shop.phone)}</p>
-                          </div>
+                  {/* Action Buttons */}
+                  <Reveal delay={360}>
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                      <a
+                        href={`tel:${shop.phone}`}
+                        className="group relative inline-flex h-11 sm:h-12 items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#9f1525] px-5 sm:px-7 text-xs sm:text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_14px_32px_rgba(159,21,37,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#b51b2c] hover:shadow-[0_18px_38px_rgba(159,21,37,0.38)] active:scale-[0.98]"
+                      >
+                        <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-white/0 via-white/10 to-white/0 transition-transform duration-500 group-hover:translate-x-full" />
+                        <span className="relative z-10 flex items-center gap-2">
+                          <FaPhoneAlt size={10} />
+                          {t("shopDetail.callShop")}
+                        </span>
+                      </a>
+                      {telegramUrl && (
+                        <a
+                          href={telegramUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-xl border border-[#5f2825]/50 bg-[#120607]/60 px-5 sm:px-6 text-xs sm:text-xs font-semibold uppercase tracking-[0.12em] text-[#f0ddd8] backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57]/50 hover:text-white"
+                        >
+                          <FaTelegramPlane size={12} />
+                          {t("shopDetail.message")}
                         </a>
                       )}
-                      {shop.address && (
-                        <div className="flex items-start gap-3 rounded-xl bg-[#120608] px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-[#dbb8b0]">
-                          <span className="flex h-7 sm:h-8 w-7 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-400">
-                            <FaMapMarkerAlt className="text-[0.55rem] sm:text-[0.65rem]" />
+                      {!telegramUrl && instagramUrl && (
+                        <a
+                          href={instagramUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-xl border border-[#5f2825]/50 bg-[#120607]/60 px-5 sm:px-6 text-xs sm:text-xs font-semibold uppercase tracking-[0.12em] text-[#f0ddd8] backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57]/50 hover:text-white"
+                        >
+                          <FaInstagram size={12} />
+                          {t("shopDetail.instagram")}
+                        </a>
+                      )}
+                    </div>
+                  </Reveal>
+                </div>
+              </div>
+            </Reveal>
+
+            {/* ─── STATS ROW ───────────────────────────── */}
+            <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <StatCard icon={<FaShoppingBag size={14} className="text-white" />} label={t("shopDetail.totalBouquets")} value={String(bouquets.length)} color="bg-gradient-to-br from-[#9f1525] to-[#cb2a3d]" />
+              <StatCard icon={<FaCheckCircle size={14} className="text-white" />} label={t("shopDetail.inStock")} value={String(inStockCount)} color="bg-gradient-to-br from-emerald-500 to-teal-600" />
+              <StatCard icon={<FaStar size={14} className="text-white" />} label={t("shopDetail.topRated")} value={String(topRatedCount)} color="bg-gradient-to-br from-amber-500 to-orange-600" />
+              <StatCard icon={<FaLeaf size={14} className="text-white" />} label={t("shopDetail.newArrivals")} value={String(newBouquetsCount)} color="bg-gradient-to-br from-rose-500 to-pink-600" />
+              <StatCard icon={<FaAward size={14} className="text-white" />} label={t("shopDetail.avgPrice")} value={averagePrice} color="bg-gradient-to-br from-violet-500 to-purple-600" />
+              <StatCard icon={<FaTruck size={14} className="text-white" />} label={t("shopDetail.delivery")} value={shop.city ?? t("shopDetail.availableNow")} color="bg-gradient-to-br from-sky-500 to-blue-600" />
+            </div>
+
+            {/* ─── NAV ─────────────────────────── */}
+            <Reveal delay={100}>
+              <div className="mt-4 sm:mt-6 flex flex-col gap-3 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <NavPills
+                  activeSection={activeSection}
+                  scrollToSection={scrollToSection}
+                  counts={{ bouquets: bouquets.length, reviews: shop.reviews_count }}
+                />
+              </div>
+            </Reveal>
+
+            {/* ─── MAIN GRID: Bouquets + Sidebar ────────── */}
+            <Reveal delay={150}>
+              <div className="mt-4 sm:mt-6 grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
+                {/* Bouquets Grid */}
+                <div id="bouquets" className="scroll-mt-28">
+                  {shopBouquetsQuery.isLoading ? (
+                    <ShopDetailSkeleton />
+                  ) : bouquets.length ? (
+                    <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
+                      {bouquets.map((bouquet) => (
+                        <BouquetCard key={bouquet.id} bouquet={bouquet} />
+                      ))}
+                    </div>
+                  ) : (
+                    <Reveal>
+                      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#3a1214]/50 bg-[#120607]/60 p-8 sm:p-16 text-center">
+                        <FaShoppingBag size={36} className="text-[#3a1214]/50 mb-3" />
+                        <p className="font-cormorant text-2xl sm:text-3xl text-white">{t("shopDetail.noBouquetsYet")}</p>
+                        <p className="mt-2 text-xs sm:text-sm text-[#b9978f]">{t("shopDetail.noBouquetsDesc")}</p>
+                      </div>
+                    </Reveal>
+                  )}
+                </div>
+
+                {/* ─── SIDEBAR ─────────────────────────────── */}
+                <aside className="space-y-4 sm:space-y-5">
+                  {/* About Shop */}
+                  <Reveal>
+                    <div
+                      id="about-shop"
+                      className="scroll-mt-28 overflow-hidden rounded-2xl border border-[#3a1214]/40 bg-[#0d0405]/80 backdrop-blur-sm shadow-lg"
+                    >
+                      <div className="p-5 sm:p-7">
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="inline-flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#9f1525] to-[#cb2a3d]">
+                            <FaStore size={11} className="text-white" />
                           </span>
-                          <div>
-                            <p className="text-[0.5rem] sm:text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#a88680]">{t("shopDetail.address")}</p>
-                            <p className="font-medium text-white">{shop.address}</p>
+                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#b9978f]">{t("shopDetail.about")}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="font-cormorant text-2xl sm:text-3xl md:text-4xl font-bold text-white">{shop.name}</h2>
+                          {shop.is_verified && <ShopVerifiedBadge className="h-5 w-5 sm:h-6 sm:w-6" iconClassName="h-5 w-5 sm:h-6 sm:w-6" />}
+                        </div>
+                        <p className="mt-3 sm:mt-4 text-xs sm:text-sm leading-6 sm:leading-7 text-[#c9a09a]">
+                          {shop.description ?? t("shopDetail.aboutShopFallback")}
+                        </p>
+
+                        <div className="mt-4 sm:mt-6 space-y-2.5 sm:space-y-3 border-t border-[#3a1214]/30 pt-4 sm:pt-5">
+                          {shop.phone && (
+                            <a href={`tel:${shop.phone}`} className="flex items-center gap-3 rounded-xl bg-[#120607]/60 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-[#c9a09a] transition-all duration-200 hover:bg-[#1a0a0c] hover:text-white group">
+                              <span className="flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-[#9f1525]/20 text-[#cb5c57] group-hover:scale-110 transition-transform duration-200">
+                                <FaPhoneAlt size={9} />
+                              </span>
+                              <div>
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#b9978f]">{t("shopDetail.phone")}</p>
+                                <p className="font-medium text-white">{formatUzbekPhone(shop.phone)}</p>
+                              </div>
+                            </a>
+                          )}
+                          {shop.address && (
+                            <div className="flex items-start gap-3 rounded-xl bg-[#120607]/60 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-[#c9a09a]">
+                              <span className="flex h-7 sm:h-8 w-7 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
+                                <FaMapMarkerAlt size={9} />
+                              </span>
+                              <div>
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-[#b9978f]">{t("shopDetail.address")}</p>
+                                <p className="font-medium text-white">{shop.address}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-4 sm:mt-6 grid gap-2 sm:gap-3 border-t border-[#3a1214]/30 pt-4 sm:pt-5 sm:grid-cols-2">
+                          <div className="rounded-xl border border-[#3a1214]/40 bg-[#120607]/60 p-3 sm:p-4 transition-all duration-200 hover:border-emerald-500/20">
+                            <div className="flex items-center gap-2 text-emerald-400">
+                              <FaTruck size={11} />
+                              <p className="text-xs sm:text-sm font-semibold text-white">{t("shopDetail.sameDayDelivery")}</p>
+                            </div>
+                            <p className="mt-1 text-[10px] text-[#b9978f]">{t("shopDetail.sameDayDeliveryDesc")}</p>
                           </div>
+                          <div className="rounded-xl border border-[#3a1214]/40 bg-[#120607]/60 p-3 sm:p-4 transition-all duration-200 hover:border-amber-500/20">
+                            <div className="flex items-center gap-2 text-amber-400">
+                              <FaLeaf size={11} />
+                              <p className="text-xs sm:text-sm font-semibold text-white">{t("shopDetail.freshFlowers")}</p>
+                            </div>
+                            <p className="mt-1 text-[10px] text-[#b9978f]">{t("shopDetail.freshFlowersDesc")}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Reveal>
+
+                  {/* Shop Information / Policies */}
+                  <Reveal delay={80}>
+                    <div
+                      id="policies"
+                      className="scroll-mt-28 overflow-hidden rounded-2xl border border-[#3a1214]/40 bg-[#0d0405]/80 backdrop-blur-sm shadow-lg"
+                    >
+                      <div className="p-5 sm:p-7">
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="inline-flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
+                            <FaRegClock size={11} className="text-white" />
+                          </span>
+                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#b9978f]">{t("shopDetail.info")}</span>
+                        </div>
+                        <h3 className="font-cormorant text-2xl sm:text-3xl md:text-4xl font-bold text-white">{t("shopDetail.shopDetails")}</h3>
+
+                        <div className="mt-4 sm:mt-6 space-y-3">
+                          {[
+                            { label: t("shopDetail.totalProducts"), value: String(bouquets.length), color: "from-[#9f1525] to-[#cb2a3d]" },
+                            { label: t("shopDetail.availableNow"), value: String(inStockCount), color: "from-emerald-500 to-teal-600" },
+                            { label: t("shopDetail.priceRange"), value: `${minPriceFormatted} — ${maxPriceFormatted}`, color: "from-violet-500 to-purple-600" },
+                            { label: t("shopDetail.averagePrice"), value: averagePrice, color: "from-amber-500 to-orange-600" },
+                            { label: t("shopDetail.topRatedLabel"), value: String(topRatedCount), color: "from-rose-500 to-pink-600" },
+                            { label: t("shopDetail.newThisWeek"), value: String(newBouquetsCount), color: "from-sky-500 to-blue-600" },
+                          ].map((item) => (
+                            <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl bg-[#120607]/60 px-3 sm:px-4 py-2.5 sm:py-3 transition-all duration-200 hover:bg-[#1a0a0c]">
+                              <span className="text-xs sm:text-sm text-[#c9a09a]">{item.label}</span>
+                              <div className="flex items-center gap-2">
+                                <span className={`h-1.5 w-1.5 rounded-full bg-gradient-to-r ${item.color}`} />
+                                <span className="text-xs sm:text-sm font-bold text-white">{item.value}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {shop.working_hours && (
+                          <div className="mt-4 sm:mt-5 border-t border-[#3a1214]/30 pt-4 sm:pt-5">
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-[#c9a09a]">
+                              <FaRegClock size={11} className="text-[#cb5c57]" />
+                              <span className="font-semibold text-white">{t("shopDetail.workingHours")}</span>
+                              <span>{shop.working_hours}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Reveal>
+
+                  {/* Map */}
+                  <Reveal delay={160}>
+                    <div className="overflow-hidden rounded-2xl border border-[#3a1214]/40 bg-[#0d0405]/80 backdrop-blur-sm shadow-lg">
+                      {mapUrl ? (
+                        <>
+                          <div className="border-b border-[#3a1214]/30 px-4 sm:px-6 py-3 sm:py-4">
+                            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#b9978f]">{t("shopDetail.location")}</p>
+                            <p className="mt-1 text-sm sm:text-base font-semibold text-white">{shop.address}</p>
+                          </div>
+                          <iframe
+                            title={`${shop.name} location`}
+                            src={mapUrl}
+                            className="h-[16rem] sm:h-[20rem] w-full border-0"
+                            loading="lazy"
+                          />
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center px-6 sm:px-8 py-12 sm:py-16 text-center">
+                          <div className="mb-3 sm:mb-4 flex h-12 sm:h-16 w-12 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3a1214] to-[#1a0809]">
+                            <FaMapMarkerAlt size={20} className="text-[#b9978f]" />
+                          </div>
+                          <p className="font-cormorant text-xl sm:text-2xl font-bold text-white">{t("shopDetail.locationComingSoon")}</p>
+                          <p className="mt-2 text-xs sm:text-sm text-[#b9978f]">{t("shopDetail.locationComingSoonDesc")}</p>
                         </div>
                       )}
                     </div>
-
-                    <div className="mt-4 sm:mt-6 grid gap-2 sm:gap-3 border-t border-[#4a2020]/30 pt-4 sm:pt-5 sm:grid-cols-2">
-                      <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-3 sm:p-4 transition-all duration-200 hover:border-emerald-500/20">
-                        <div className="flex items-center gap-2 text-emerald-400">
-                          <FaTruck className="text-xs sm:text-sm" />
-                          <p className="text-xs sm:text-sm font-semibold text-white">{t("shopDetail.sameDayDelivery")}</p>
-                        </div>
-                        <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-[#a88680]">{t("shopDetail.sameDayDeliveryDesc")}</p>
-                      </div>
-                      <div className="rounded-xl border border-[#4a2020]/30 bg-[#120608] p-3 sm:p-4 transition-all duration-200 hover:border-amber-500/20">
-                        <div className="flex items-center gap-2 text-amber-400">
-                          <FaLeaf className="text-xs sm:text-sm" />
-                          <p className="text-xs sm:text-sm font-semibold text-white">{t("shopDetail.freshFlowers")}</p>
-                        </div>
-                        <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-[#a88680]">{t("shopDetail.freshFlowersDesc")}</p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Shop Information / Policies */}
-                <motion.div
-                  id="policies"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                  className="scroll-mt-28 overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] border border-[#4a2020]/40 bg-gradient-to-b from-[#1a0a0c] to-[#100608] shadow-lg"
-                >
-                  <div className="p-5 sm:p-7">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="inline-flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600">
-                        <FaRegClock className="text-xs text-white" />
-                      </span>
-                      <span className="text-[0.55rem] sm:text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.info")}</span>
-                    </div>
-                    <h3 className="font-cormorant text-2xl sm:text-3xl md:text-4xl font-bold text-white">{t("shopDetail.shopDetails")}</h3>
-
-                    <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
-                      {[
-                        { label: t("shopDetail.totalProducts"), value: String(bouquets.length), color: "from-[#cb5c57] to-[#a3322e]" },
-                        { label: t("shopDetail.availableNow"), value: String(inStockCount), color: "from-emerald-500 to-teal-600" },
-                        { label: t("shopDetail.priceRange"), value: `${minPriceFormatted} — ${maxPriceFormatted}`, color: "from-violet-500 to-purple-600" },
-                        { label: t("shopDetail.averagePrice"), value: averagePrice, color: "from-amber-500 to-orange-600" },
-                        { label: t("shopDetail.topRatedLabel"), value: String(topRatedCount), color: "from-rose-500 to-pink-600" },
-                        { label: t("shopDetail.newThisWeek"), value: String(newBouquetsCount), color: "from-sky-500 to-blue-600" },
-                      ].map((item) => (
-                        <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl bg-[#120608] px-3 sm:px-4 py-2.5 sm:py-3 transition-all duration-200 hover:bg-[#1a0a0c]">
-                          <span className="text-xs sm:text-sm text-[#dbb8b0]">{item.label}</span>
-                          <div className="flex items-center gap-2">
-                            <span className={`h-1.5 w-1.5 rounded-full bg-gradient-to-r ${item.color}`} />
-                            <span className="text-xs sm:text-sm font-bold text-white">{item.value}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {shop.working_hours && (
-                      <div className="mt-4 sm:mt-5 border-t border-[#4a2020]/30 pt-4 sm:pt-5">
-                        <div className="flex items-center gap-2 text-xs sm:text-sm text-[#dbb8b0]">
-                          <HiOutlineClock className="text-[#f0a89a]" />
-                          <span className="font-semibold text-white">{t("shopDetail.workingHours")}</span>
-                          <span>{shop.working_hours}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-
-                {/* Map */}
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] border border-[#4a2020]/40 bg-[#100608] shadow-lg"
-                >
-                  {mapUrl ? (
-                    <>
-                      <div className="border-b border-[#4a2020]/30 px-4 sm:px-6 py-3 sm:py-4">
-                        <p className="text-[0.5rem] sm:text-[0.55rem] font-bold uppercase tracking-[0.2em] text-[#a88680]">{t("shopDetail.location")}</p>
-                        <p className="mt-1 text-sm sm:text-base font-semibold text-white">{shop.address}</p>
-                      </div>
-                      <iframe
-                        title={`${shop.name} location`}
-                        src={mapUrl}
-                        className="h-[16rem] sm:h-[20rem] w-full border-0 sepia-[0.12] grayscale-[0.1]"
-                        loading="lazy"
-                      />
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center px-6 sm:px-8 py-12 sm:py-16 text-center">
-                      <div className="mb-3 sm:mb-4 flex h-12 sm:h-16 w-12 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4a2020] to-[#2b1012]">
-                        <FaMapMarkerAlt className="text-xl sm:text-2xl text-[#a88680]" />
-                      </div>
-                      <p className="font-cormorant text-xl sm:text-2xl font-bold text-white">{t("shopDetail.locationComingSoon")}</p>
-                      <p className="mt-2 text-xs sm:text-sm text-[#a88680]">{t("shopDetail.locationComingSoonDesc")}</p>
-                    </div>
-                  )}
-                </motion.div>
-              </aside>
-            </motion.div>
+                  </Reveal>
+                </aside>
+              </div>
+            </Reveal>
           </div>
-        </motion.section>
+        </section>
       </div>
+
+      <style>{`
+        @keyframes floatOrb {
+          0%   { transform: translateY(0) scale(1); opacity: 0; }
+          10%  { opacity: 0.2; }
+          90%  { opacity: 0.15; }
+          100% { transform: translateY(110vh) scale(0.7); opacity: 0; }
+        }
+        .animate-floatOrb { animation: floatOrb linear infinite; }
+
+        @keyframes pulse-soft {
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50%       { opacity: 1;   transform: scale(1.06); }
+        }
+        .animate-pulse-soft { animation: pulse-soft 6s ease-in-out infinite; }
+
+        .duration-400 { transition-duration: 400ms; }
+        .duration-600 { transition-duration: 600ms; }
+        .group-hover\\:scale-108:hover { transform: scale(1.08); }
+      `}</style>
     </main>
   );
 }

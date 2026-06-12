@@ -81,8 +81,6 @@ interface BouquetSectionProps {
   isLoading: boolean;
   selectedCategoryId: string | null;
   onSelectCategory: (categoryId: string | null) => void;
-  selectedOccasion?: "birthday" | "anniversary" | "wedding" | "newBaby" | "getWell" | "romantic" | null;
-  onClearOccasion?: () => void;
 }
 
 function BouquetSection({
@@ -91,8 +89,6 @@ function BouquetSection({
   isLoading,
   selectedCategoryId,
   onSelectCategory,
-  selectedOccasion = null,
-  onClearOccasion,
 }: BouquetSectionProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -135,7 +131,7 @@ function BouquetSection({
   useEffect(() => {
     setVisibleCards(new Set());
     setImageLoaded({});
-  }, [bouquets, selectedCategoryId, selectedOccasion]);
+  }, [bouquets, selectedCategoryId]);
 
   const handleFavoriteClick = (event: React.MouseEvent, bouquet: Bouquet) => {
     event.stopPropagation();
@@ -219,24 +215,6 @@ function BouquetSection({
           <>
             {/* ─── Categories Section ─── */}
             <div className="relative mt-6 sm:mt-8">
-              {selectedOccasion ? (
-                <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[#c75b66]/35 bg-[#1b0b0d]/90 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-[#ffe5de]">
-                    <HiOutlineSparkles className="text-[#ff9b88]" />
-                    {t("occasionSection.filteredBy", {
-                      occasion: t(`occasionSection.items.${selectedOccasion}.title`),
-                    })}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onClearOccasion}
-                    className="inline-flex items-center gap-2 rounded-full border border-[#6c3034] bg-[#17090b] px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-[#f1d5cb] transition hover:border-[#cb5c57] hover:text-white"
-                  >
-                    {t("occasionSection.clear")}
-                  </button>
-                </div>
-              ) : null}
-
               {/* Categories scroll */}
               <div className="flex overflow-x-auto pb-3 scrollbar-none md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
                 <div className="flex gap-3 md:gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 min-w-max md:min-w-full mx-auto">

@@ -18,6 +18,7 @@ import bow from "../../../assets/bow.png";
 type CategoryFormValues = {
   name: string;
   slug: string;
+  description: string;
   image: string;
   is_active: boolean;
 };
@@ -25,6 +26,7 @@ type CategoryFormValues = {
 const defaultValues: CategoryFormValues = {
   name: "",
   slug: "",
+  description: "",
   image: "",
   is_active: true,
 };
@@ -57,6 +59,7 @@ function AdminCategories() {
     form.reset({
       name: category.name,
       slug: category.slug,
+      description: category.description ?? "",
       image: category.image ?? "",
       is_active: category.is_active,
     });
@@ -85,6 +88,7 @@ function AdminCategories() {
           payload: {
             name: values.name.trim(),
             slug: values.slug.trim() || undefined,
+            description: values.description.trim() || null,
             image,
             is_active: values.is_active,
           },
@@ -94,6 +98,7 @@ function AdminCategories() {
         await createCategoryMutation.mutateAsync({
           name: values.name.trim(),
           slug: values.slug.trim() || undefined,
+          description: values.description.trim() || null,
           image,
           is_active: values.is_active,
         });
@@ -199,6 +204,9 @@ function AdminCategories() {
                 <div className="min-w-0">
                   <p className="truncate font-cormorant text-4xl text-white">{category.name}</p>
                   <p className="mt-1 truncate text-sm text-[#cbaba4]">{category.slug}</p>
+                  {category.description ? (
+                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#b99189]">{category.description}</p>
+                  ) : null}
                 </div>
                 <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#251007] text-[#f2be7f]">
                   <HiOutlineSparkles />
@@ -287,6 +295,12 @@ function AdminCategories() {
               {...form.register("slug")}
               placeholder="Slug (optional)"
               className="h-12 w-full rounded-2xl border border-[#4a1d22] bg-[#180709] px-4 text-white outline-none"
+            />
+            <textarea
+              {...form.register("description")}
+              placeholder="Description for occasion/category cards"
+              rows={4}
+              className="w-full resize-none rounded-2xl border border-[#4a1d22] bg-[#180709] px-4 py-3 text-white outline-none"
             />
             <input type="hidden" {...form.register("image")} />
             <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-[#6d3740] bg-[#180709] px-4 text-sm font-semibold text-[#f7d9d2] transition hover:border-[#b45c69]">

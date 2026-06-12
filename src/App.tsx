@@ -21,7 +21,6 @@ import AdminApplications from "./pages/admin/applications/AdminApplications";
 import AdminCategories from "./pages/admin/categories/AdminCategories";
 import AdminShops from "./pages/admin/shops/AdminShops";
 import AdminUsers from "./pages/admin/users/AdminUsers";
-import Home from "./pages/home/Home";
 import Login from "./pages/login/Login";
 import Register from "./pages/login/Register";
 import OwnerDashboard from "./pages/owner/OwnerDashboard";
@@ -34,6 +33,9 @@ import OwnerShop from "./pages/owner/OwnerShop";
 import OwnerSupport from "./pages/owner/OwnerSupport";
 import Profile from "./pages/profile/Profile";
 import ShopApplicationPage from "./pages/profile/ShopApplicationPage";
+import Home from "./pages/home/Home";
+import Occasions from "./pages/home/Occasions";
+import AboutUs from "./pages/home/AboutUs";
 
 function App() {
   const [isBooting, setIsBooting] = useState(() => {
@@ -62,6 +64,8 @@ function App() {
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
+          <Route path="/about-us" element={<AboutUs />} />
+          <Route path="/occasions" element={<Occasions />} />
           <Route
             path="/favorites"
             element={(

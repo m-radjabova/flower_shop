@@ -23,11 +23,11 @@ import { toast } from "react-toastify";
 import { getPrimaryRole } from "../../utils/roles";
 
 const navItems = [
-  { label: "header.home", href: "/" },
-  { label: "header.bouquets", href: "#bouquets" },
-  { label: "header.categories", href: "#categories" },
-  { label: "header.aboutUs", href: "#about" },
-  { label: "header.contact", href: "#contact" },
+  { label: "header.home", to: "/" },
+  { label: "header.bouquets", to: "/bouquets" },
+  { label: "header.shops", to: "/shops" },
+  { label: "header.occasions", to: "/occasions" },
+  { label: "header.aboutUs", to: "/about-us" },
 ];
 
 function getUserInitials(fullName?: string) {
@@ -118,7 +118,6 @@ function Header() {
   const [profileMenuAnchor, setProfileMenuAnchor] =
     useState<HTMLElement | null>(null);
   const [scrolled, setScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState("home");
   const location = useLocation();
   const navigate = useNavigate();
   const {
@@ -133,6 +132,8 @@ function Header() {
   const cartCount = useCartCount();
   const cartActive = location.pathname === "/cart";
   const closeMobileMenu = () => setMenuOpen(false);
+  const isNavActive = (to: string) =>
+    to === "/" ? location.pathname === "/" : location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -148,75 +149,14 @@ function Header() {
   useEffect(() => {
     closeMobileMenu();
 
-    if (location.pathname !== "/") {
-      const handlePageScroll = () => setScrolled(window.scrollY > 20);
-      setActiveSection(
-        location.pathname.startsWith("/bouquets") ? "bouquets" : "home",
-      );
-      handlePageScroll();
-      window.addEventListener("scroll", handlePageScroll, { passive: true });
-      return () => window.removeEventListener("scroll", handlePageScroll);
-    }
-
     const handleScroll = () => {
-      // Keep header visually merged with the hero until user scrolls deeper.
-      const scrollPosition = window.scrollY;
-      setScrolled(scrollPosition > 120);
-
-      const sectionIds = ["about", "categories", "bouquets", "contact"];
-      const currentSection = sectionIds.reduce((current, sectionId) => {
-        const section = document.getElementById(sectionId);
-
-        if (!section) return current;
-
-        const top = section.getBoundingClientRect().top + window.scrollY - 150;
-        return scrollPosition >= top ? sectionId : current;
-      }, "home");
-
-      const reachedPageEnd =
-        window.innerHeight + scrollPosition >=
-        document.documentElement.scrollHeight - 8;
-
-      setActiveSection(reachedPageEnd ? "contact" : currentSection);
+      setScrolled(window.scrollY > 20);
     };
 
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [location.pathname]);
-
-  const handleNavClick =
-    (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
-      const isHomeLink = href === "/";
-      const isHashLink = href.startsWith("#");
-
-      if (!isHomeLink && !isHashLink) return;
-
-      event.preventDefault();
-      setMenuOpen(false);
-
-      if (location.pathname !== "/" && isHashLink) {
-        navigate(`/${href}`);
-        return;
-      }
-
-      if (isHomeLink) {
-        window.history.pushState(null, "", "/");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        setActiveSection("home");
-        return;
-      }
-
-      const section = document.getElementById(href.slice(1));
-      if (!section) return;
-
-      const offset = window.innerWidth >= 1024 ? 112 : 94;
-      const top = section.getBoundingClientRect().top + window.scrollY - offset;
-
-      window.history.pushState(null, "", href);
-      window.scrollTo({ top, behavior: "smooth" });
-      setActiveSection(href.slice(1));
-    };
 
   const handleProtectedRouteClick =
     () => (event: MouseEvent<HTMLAnchorElement>) => {
@@ -229,14 +169,7 @@ function Header() {
 
   const handleSearchClick = () => {
     closeMobileMenu();
-
-    if (location.pathname !== "/") {
-      navigate("/#bouquets");
-      return;
-    }
-
-    const bouquetsSection = document.getElementById("bouquets");
-    bouquetsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+    navigate("/bouquets");
   };
 
   const handleOpenProfileMenu = (event: MouseEvent<HTMLButtonElement>) => {
@@ -262,8 +195,8 @@ function Header() {
       <header
         className={`fixed inset-x-0 top-0 z-[9999] transition-all duration-500 ${
           scrolled
-            ? "bg-[rgba(18,4,7,0.36)] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-xl"
-            : "bg-[rgba(18,4,7,0.18)] shadow-none backdrop-blur-xl lg:bg-transparent lg:backdrop-blur-0"
+            ? "bg-[rgba(18,4,7,0.36)] shadow-[0_10px_28px_rgba(0,0,0,0.18)]"
+            : "bg-[rgba(18,4,7,0.18)] shadow-none lg:bg-transparent"
         }`}
       >
         <div className="relative z-20 mx-auto flex items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-10 lg:py-4">
@@ -283,15 +216,13 @@ function Header() {
           {/* Desktop Nav */}
           <nav className="hidden items-center gap-1 lg:flex">
             {navItems.map((item) => {
-              const sectionId = item.href === "/" ? "home" : item.href.slice(1);
-              const active = activeSection === sectionId;
+              const active = isNavActive(item.to);
 
               return (
-                <a
+                <Link
                   key={item.label}
-                  href={item.href}
-                  onClick={handleNavClick(item.href)}
-                  aria-current={active ? "page" : undefined}
+                  to={item.to}
+                  onClick={closeMobileMenu}
                   className={`group relative rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ${
                     active
                       ? "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgba(255,210,210,0.12)]"
@@ -304,7 +235,7 @@ function Header() {
                       active ? "w-[64%]" : "w-0 group-hover:w-[70%]"
                     }`}
                   />
-                </a>
+                </Link>
               );
             })}
           </nav>
@@ -724,14 +655,12 @@ function Header() {
 
               <nav className="space-y-2">
                 {navItems.map((item, index) => {
-                  const sectionId =
-                    item.href === "/" ? "home" : item.href.slice(1);
-                  const active = activeSection === sectionId;
+                  const active = isNavActive(item.to);
 
                   return (
-                    <a
+                    <Link
                       key={item.label}
-                      href={item.href}
+                      to={item.to}
                       className={`group relative flex items-center rounded-[1.15rem] px-4 py-4 text-base font-semibold transition-all duration-300 ${
                         active
                           ? "bg-white/[0.09] text-white shadow-[inset_0_0_0_1px_rgba(255,214,214,0.08)]"
@@ -742,7 +671,7 @@ function Header() {
                           ? `fadeInUp 0.28s ease-out ${index * 0.045}s both`
                           : "none",
                       }}
-                      onClick={handleNavClick(item.href)}
+                      onClick={closeMobileMenu}
                     >
                       <span>{t(item.label)}</span>
                       <span
@@ -752,7 +681,7 @@ function Header() {
                             : "opacity-0 group-hover:opacity-60"
                         }`}
                       />
-                    </a>
+                    </Link>
                   );
                 })}
               </nav>

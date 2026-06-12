@@ -27,6 +27,7 @@ import type {
 export interface CategoryCreatePayload {
   name: string;
   slug?: string;
+  description?: string | null;
   image?: string;
   is_active?: boolean;
 }
@@ -34,6 +35,7 @@ export interface CategoryCreatePayload {
 export interface CategoryUpdatePayload {
   name?: string;
   slug?: string;
+  description?: string | null;
   image?: string;
   is_active?: boolean;
 }
@@ -44,6 +46,11 @@ export interface BouquetQueryParams {
   search?: string;
   limit?: number;
   offset?: number;
+}
+
+function normalizeSearchParam(search?: string) {
+  const normalized = search?.trim();
+  return normalized ? { search: normalized } : {};
 }
 
 export async function getCategories() {
@@ -65,7 +72,7 @@ export async function getBouquets(params: BouquetQueryParams = {}) {
     params: {
       ...(params.shopId ? { shop_id: params.shopId } : {}),
       ...(params.categoryId ? { category_id: params.categoryId } : {}),
-      ...(params.search ? { search: params.search } : {}),
+      ...normalizeSearchParam(params.search),
       ...(params.limit ? { limit: params.limit } : {}),
       ...(params.offset ? { offset: params.offset } : {}),
     },
@@ -78,7 +85,7 @@ export async function getBouquetPage(params: BouquetQueryParams = {}) {
     params: {
       ...(params.shopId ? { shop_id: params.shopId } : {}),
       ...(params.categoryId ? { category_id: params.categoryId } : {}),
-      ...(params.search ? { search: params.search } : {}),
+      ...normalizeSearchParam(params.search),
       limit: params.limit ?? 12,
       offset: params.offset ?? 0,
     },

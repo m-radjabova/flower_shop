@@ -459,7 +459,7 @@ function Favorites() {
                   </p>
 
                   <Link
-                    to="/#bouquets"
+                    to="/bouquets"
                     className="group relative mt-6 sm:mt-8 inline-flex h-11 sm:h-12 items-center gap-2.5 overflow-hidden rounded-xl border border-[#c03b47] bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] px-6 sm:px-8 text-xs sm:text-sm font-bold uppercase tracking-[0.1em] text-white shadow-lg shadow-[#c03b47]/30 transition-all duration-300 hover:shadow-[0_0_30px_rgba(192,59,71,0.4)] active:scale-[0.97]"
                   >
                     <span className="relative z-10 flex items-center gap-2">

@@ -5,7 +5,7 @@ import Footer from "../components/home/Footer";
 
 export default function MainLayout() {
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#070102] text-[#fff6f4]">
+    <div className="relative min-h-screen overflow-x-hidden text-[#fff6f4]">
       <img loading="lazy" decoding="async"
         src={websiteBackground}
         alt=""

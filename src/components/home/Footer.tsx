@@ -17,6 +17,8 @@ function Footer() {
   const quickLinks = [
     { label: t("footer.home"), href: "/", icon: HiOutlineHome },
     { label: t("footer.bouquets"), href: "/bouquets", icon: HiOutlineHeart },
+    { label: t("footer.shops"), href: "/shops", icon: HiOutlineShoppingBag },
+    { label: t("footer.aboutUs"), href: "/about-us", icon: HiOutlineHeart },
     { label: t("footer.favorites"), href: "/favorites", icon: HiOutlineHeart },
     { label: t("footer.cart"), href: "/cart", icon: HiOutlineShoppingBag },
   ];
@@ -38,13 +40,11 @@ function Footer() {
       icon: HiOutlineMapPin,
       label: t("contact.visitStudio"),
       value: t("contact.serviceArea"),
-      href: "#",
     },
     {
       icon: HiOutlineClock,
       label: t("contact.openDaily"),
       value: t("contact.workingHours"),
-      href: "#",
     },
   ];
 
@@ -138,10 +138,7 @@ function Footer() {
             <ul className="flex flex-col gap-3">
               {contactInfo.map((item) => (
                 <li key={item.label}>
-                  <a
-                    href={item.href}
-                    className="group flex items-start gap-3 text-sm text-[#c9a79e]/80 transition-all duration-300 hover:text-[#ffccd1]"
-                  >
+                  <div className="group flex items-start gap-3 text-sm text-[#c9a79e]/80">
                     <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-[#df5065]/70 transition-colors duration-300 group-hover:text-[#ff7485]" />
                     <div className="flex flex-col">
                       <span className="text-xs uppercase tracking-[0.08em] text-[#a0786e]/60">
@@ -151,7 +148,7 @@ function Footer() {
                         {item.value}
                       </span>
                     </div>
-                  </a>
+                  </div>
                 </li>
               ))}
             </ul>

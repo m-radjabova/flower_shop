@@ -956,10 +956,10 @@ function DeliveryCheckout() {
                     <span className="relative z-10 flex items-center gap-2">{t("delivery.backToOrder")}</span>
                   </Link>
                 ) : (
-                  <a href="#" onClick={(event) => { event.preventDefault(); goToPreviousStep(); }}
+                  <button type="button" onClick={goToPreviousStep}
                     className="group relative inline-flex h-12 sm:h-14 items-center justify-center overflow-hidden rounded-xl border border-[#7f5a3b]/40 bg-[linear-gradient(135deg,#110608,#1a0b0d)] text-sm sm:text-lg font-semibold uppercase tracking-[0.08em] text-[#f0cfa5] transition-all duration-300 hover:border-[#f0cfa5]/30 hover:shadow-[0_4px_20px_rgba(240,207,165,0.08)] hover:-translate-y-0.5 active:translate-y-0">
                     <span className="relative z-10 flex items-center gap-2">{t("delivery.previousStep")}</span>
-                  </a>
+                  </button>
                 )}
                 {currentStep < 3 ? (
                   <button type="button" onClick={() => void goToNextStep()}

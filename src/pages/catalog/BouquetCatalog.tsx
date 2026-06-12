@@ -19,9 +19,7 @@ import {
   HiFire,
   HiOutlineAdjustmentsHorizontal,
   HiMiniGlobeAlt,
-  HiOutlineRocketLaunch,
   HiOutlineCheckBadge,
-  HiOutlineArrowPath,
   HiMiniGift,
   HiOutlineEye,
 } from "react-icons/hi2";
@@ -34,8 +32,8 @@ import { toggleFavoriteBouquet } from "../../utils/favorites";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 import { BouquetGridSkeleton } from "../../components/PageSkeletons";
 import type { Bouquet } from "../../types/catalog";
+import bouquetsPageBackground from "../../assets/bouquets_page_bg.png";
 
-// ────────────────── Sub‑components ──────────────────
 
 const RatingStars = ({ rating }: { rating: number | string }) => {
   const numericRating = Number(rating) || 0;
@@ -44,9 +42,9 @@ const RatingStars = ({ rating }: { rating: number | string }) => {
       {[...Array(5)].map((_, i) => (
         <HiStar
           key={i}
-          className={`text-[10px] sm:text-xs transition-all duration-300 ${
+          className={`text-xs transition-colors duration-200 ${
             i < Math.floor(numericRating)
-              ? "text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.6)] scale-110"
+              ? "text-amber-400"
               : "text-gray-600"
           }`}
         />
@@ -60,141 +58,115 @@ const DiscountBadge = ({ oldPrice, price }: { oldPrice?: string | null; price: s
   const discountPercent = Math.round((1 - Number(price) / Number(oldPrice)) * 100);
   if (discountPercent <= 0) return null;
   return (
-    <span className="absolute -left-1.5 top-4 z-10 inline-flex items-center gap-1.5 rounded-r-full bg-gradient-to-r from-emerald-500 to-emerald-400 px-2 py-1 sm:px-3 sm:py-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-500/40">
-      <HiOutlineArrowPath size={8} className="animate-spin-slow" />
+    <span className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
       -{discountPercent}%
     </span>
   );
 };
 
-const FloatingPetals = () => {
+const FloatingPetals = () => (
+  <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    {[...Array(8)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute animate-float-petal"
+        style={{
+          left: `${8 + (i * 12) % 88}%`,
+          top: `${-10 + (i * 5) % 20}%`,
+          animationDelay: `${i * 2.2}s`,
+          animationDuration: `${16 + (i % 4) * 5}s`,
+          fontSize: `${0.55 + (i % 3) * 0.25}rem`,
+          transform: `rotate(${i * 45}deg)`,
+          opacity: 0.1 + (i % 3) * 0.07,
+          color: i % 2 === 0 ? "#cb5c57" : "#ff9b88",
+        }}
+      >
+        <FaLeaf />
+      </div>
+    ))}
+  </div>
+);
+
+function resolveCategoryFromParam(
+  value: string | null,
+  categories: { id: string; slug: string; name: string }[],
+) {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return null;
   return (
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      {[...Array(12)].map((_, i) => (
-        <div
-          key={i}
-          className="absolute animate-float-petal"
-          style={{
-            left: `${5 + (i * 8.3) % 95}%`,
-            top: `${-15 + (i * 6) % 25}%`,
-            animationDelay: `${i * 1.8}s`,
-            animationDuration: `${14 + (i % 5) * 4}s`,
-            fontSize: `${0.5 + (i % 4) * 0.3}rem`,
-            transform: `rotate(${i * 37}deg)`,
-            opacity: 0.15 + (i % 3) * 0.12,
-            color: i % 2 === 0 ? "#cb5c57" : "#ff9b88",
-          }}
-        >
-          <FaLeaf />
-        </div>
-      ))}
-    </div>
+    categories.find((category) => {
+      const candidates = [category.id, category.slug, category.name]
+        .filter(Boolean)
+        .map((candidate) => String(candidate).trim().toLowerCase());
+      return candidates.includes(normalized);
+    }) ?? null
   );
-};
-
-// ──────────────────── Main component ────────────────────
-
-const OCCASION_SEARCH_TERMS = {
-  birthday: "birthday",
-  anniversary: "anniversary",
-  wedding: "wedding",
-  newBaby: "new baby",
-  getWell: "get well",
-  romantic: "romantic",
-} as const;
-
-type OccasionKey = keyof typeof OCCASION_SEARCH_TERMS;
-
-function isOccasionKey(value: string | null): value is OccasionKey {
-  return value !== null && value in OCCASION_SEARCH_TERMS;
 }
-
-const CATEGORY_TRANSLATION_KEYS: Record<string, OccasionKey | "roses"> = {
-  anniversary: "anniversary",
-  birthday: "birthday",
-  wedding: "wedding",
-  "new-baby": "newBaby",
-  "new baby": "newBaby",
-  newborn: "newBaby",
-  "get-well": "getWell",
-  "get-well-soon": "getWell",
-  "get well": "getWell",
-  romantic: "romantic",
-  roses: "roses",
-};
 
 function BouquetCatalog() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchFromParams = searchParams.get("search") ?? "";
-  const occasionFromParams = searchParams.get("occasion");
-  const activeOccasion = isOccasionKey(occasionFromParams) ? occasionFromParams : null;
-  const activeOccasionSearch = activeOccasion ? OCCASION_SEARCH_TERMS[activeOccasion] : "";
-  const activeOccasionTitle = activeOccasion ? t(`occasionSection.items.${activeOccasion}.title`) : "";
-  const activeOccasionDescription = activeOccasion ? t(`occasionSection.items.${activeOccasion}.description`) : "";
-  const displaySearchFromParams =
-    activeOccasion && searchFromParams.trim().toLowerCase() === activeOccasionSearch.toLowerCase()
-      ? activeOccasionTitle
-      : searchFromParams;
+  const categoryFromParams = searchParams.get("category");
   const { register, watch, setValue } = useForm<{ search: string }>({
-    defaultValues: { search: displaySearchFromParams },
+    defaultValues: { search: searchFromParams },
   });
   const search = watch("search");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [view, setView] = useState<"grid" | "list">("grid");
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
 
-  const debouncedSearch = useDebounce(search.trim(), 450);
+  const trimmedSearch = search.trim();
+  const debouncedSearch = useDebounce(trimmedSearch, 450);
   const favoriteIds = useFavoriteIds();
-  const searchMatchesActiveOccasion = Boolean(
-    activeOccasion &&
-      [activeOccasionSearch, activeOccasionTitle]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase() === search.trim().toLowerCase()),
-  );
-  const effectiveSearch = searchMatchesActiveOccasion ? activeOccasionSearch : debouncedSearch;
+  const effectiveSearch = trimmedSearch ? debouncedSearch : "";
   const categoriesQuery = useCategories();
+  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
+  const activeCategory = useMemo(
+    () => resolveCategoryFromParam(categoryFromParams, categories),
+    [categoryFromParams, categories],
+  );
   const bouquetsQuery = useInfiniteBouquets({
-    categoryId: selectedCategoryId ?? undefined,
+    categoryId: activeCategory?.id ?? undefined,
     search: effectiveSearch || undefined,
     limit: 9,
   });
-
   const bouquets = useMemo(
     () => bouquetsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [bouquetsQuery.data],
   );
   const total = bouquetsQuery.data?.pages[0]?.total ?? 0;
-  const selectedCategory = categoriesQuery.data?.find(
-    (category) => category.id === selectedCategoryId,
-  );
-  const hasActiveFilters = Boolean(selectedCategoryId || effectiveSearch);
-  const getLocalizedCategoryName = (category?: { name?: string | null; slug?: string | null }) => {
-    if (!category) return "";
-    const candidates = [category.slug, category.name]
-      .filter(Boolean)
-      .map((value) => String(value).trim().toLowerCase());
-    for (const candidate of candidates) {
-      const key = CATEGORY_TRANSLATION_KEYS[candidate];
-      if (!key) continue;
-      if (key === "roses") return t("catalog.categoryLabels.roses");
-      return t(`occasionSection.items.${key}.title`);
-    }
-    return category.name ?? "";
-  };
+  const hasActiveFilters = Boolean(activeCategory || effectiveSearch);
+
+  const getLocalizedCategoryName = (category?: { name?: string | null; slug?: string | null }) =>
+    category?.name ?? "";
 
   useEffect(() => {
-    if (search !== displaySearchFromParams) {
-      setValue("search", displaySearchFromParams);
-    }
-  }, [displaySearchFromParams, search, setValue]);
+    if (categoriesQuery.isLoading || !categoryFromParams || activeCategory) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("category");
+    setSearchParams(next, { replace: true });
+  }, [activeCategory, categoryFromParams, categoriesQuery.isLoading, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    setValue("search", searchFromParams);
+  }, [searchFromParams, setValue]);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     let shouldUpdate = false;
+    if (activeCategory) {
+      if (next.get("category") !== activeCategory.slug) {
+        next.set("category", activeCategory.slug);
+        shouldUpdate = true;
+      }
+    } else if (next.has("category")) {
+      next.delete("category");
+      shouldUpdate = true;
+    }
     if (effectiveSearch) {
       if (next.get("search") !== effectiveSearch) {
         next.set("search", effectiveSearch);
@@ -204,19 +176,11 @@ function BouquetCatalog() {
       next.delete("search");
       shouldUpdate = true;
     }
-    if (!effectiveSearch || (activeOccasion && !searchMatchesActiveOccasion)) {
-      if (next.has("occasion")) {
-        next.delete("occasion");
-        shouldUpdate = true;
-      }
-    }
-    if (shouldUpdate) {
-      setSearchParams(next, { replace: true });
-    }
-  }, [activeOccasion, effectiveSearch, searchMatchesActiveOccasion, searchParams, setSearchParams]);
+    if (shouldUpdate) setSearchParams(next, { replace: true });
+  }, [activeCategory, effectiveSearch, searchParams, setSearchParams]);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 120);
+    const handleScroll = () => setScrolled(window.scrollY > 100);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -226,73 +190,73 @@ function BouquetCatalog() {
     if (!node) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && bouquetsQuery.hasNextPage && !bouquetsQuery.isFetchingNextPage) {
+        if (entry.isIntersecting && bouquetsQuery.hasNextPage && !bouquetsQuery.isFetchingNextPage)
           bouquetsQuery.fetchNextPage();
-        }
       },
-      { rootMargin: "420px" },
+      { rootMargin: "400px" },
     );
     observer.observe(node);
     return () => observer.disconnect();
   }, [bouquetsQuery]);
 
-  // ─── render helpers ──────────────────────────────────
+  // ─── helpers ──────────────────────────────────
+
+  const clearAllFilters = () => {
+    setValue("search", "");
+    setSearchParams((cur) => {
+      const next = new URLSearchParams(cur);
+      next.delete("category");
+      next.delete("search");
+      next.delete("occasion");
+      return next;
+    });
+  };
 
   const renderCategoryChips = () => (
     <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
       <button
         type="button"
-        onClick={() => setSelectedCategoryId(null)}
-        className={`group relative shrink-0 rounded-full border px-3 sm:px-5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
-          selectedCategoryId === null
-            ? "border-transparent bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg shadow-[#cb5c57]/40"
-            : "border-[#5f2825]/60 bg-[#100506]/50 text-[#dfc0b8] hover:border-[#cb5c57]/60 hover:bg-[#cb5c57]/8 hover:text-white"
+        onClick={() =>
+          setSearchParams((cur) => {
+            const next = new URLSearchParams(cur);
+            next.delete("category");
+            return next;
+          })
+        }
+        className={`shrink-0 rounded-full border px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-all duration-200 ${
+          activeCategory === null
+            ? "border-[#cb5c57] bg-[#cb5c57] text-white"
+            : "border-[#5f2825]/50 bg-[#100506]/60 text-[#dfc0b8] hover:border-[#cb5c57]/60 hover:text-white"
         }`}
       >
-        <span className="relative z-10 flex items-center gap-1.5">
-          <HiOutlineSparkles size={12} className={selectedCategoryId === null ? "animate-pulse" : ""} />
+        <span className="flex items-center gap-1.5">
+          <HiOutlineSparkles size={11} />
           {t("catalog.allBouquets")}
         </span>
       </button>
-      {(categoriesQuery.data ?? []).map((category) => (
+      {categories.map((category) => (
         <button
           key={category.id}
           type="button"
-          onClick={() => setSelectedCategoryId(category.id)}
-          className={`group relative shrink-0 rounded-full border px-3 sm:px-5 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
-            selectedCategoryId === category.id
-              ? "border-transparent bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg shadow-[#cb5c57]/40"
-              : "border-[#5f2825]/60 bg-[#100506]/50 text-[#dfc0b8] hover:border-[#cb5c57]/60 hover:bg-[#cb5c57]/8 hover:text-white"
+          onClick={() =>
+            setSearchParams((cur) => {
+              const next = new URLSearchParams(cur);
+              next.set("category", category.slug);
+              return next;
+            })
+          }
+          className={`shrink-0 rounded-full border px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-all duration-200 ${
+            activeCategory?.id === category.id
+              ? "border-[#cb5c57] bg-[#cb5c57] text-white"
+              : "border-[#5f2825]/50 bg-[#100506]/60 text-[#dfc0b8] hover:border-[#cb5c57]/60 hover:text-white"
           }`}
         >
-          <span className="relative z-10 flex items-center gap-1.5">
-            <HiMiniGift size={12} />
+          <span className="flex items-center gap-1.5">
+            <HiMiniGift size={11} />
             {getLocalizedCategoryName(category)}
           </span>
         </button>
       ))}
-    </div>
-  );
-
-  const renderResultCard = () => (
-    <div className="rounded-xl border border-[#5f2825]/40 bg-[#090304]/50 p-3 sm:p-4 backdrop-blur-sm">
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#b88d84]">
-          <FaCheckCircle size={10} className="text-emerald-400" />
-          {t("catalog.results")}
-        </span>
-        <span className="flex items-center gap-1 text-xs sm:text-sm font-bold text-white">
-          <span className="text-[#ff9b88]">{bouquets.length}</span>
-          <span className="text-[#7a5a52]">/</span>
-          <span>{total}</span>
-        </span>
-      </div>
-      {!hasActiveFilters ? (
-        <div className="mt-2 sm:mt-3 flex h-8 sm:h-9 items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#3d1c1b]/50 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-[#6b4b43]">
-          <FaFilter size={8} />
-          {t("catalog.noActiveFilters")}
-        </div>
-      ) : null}
     </div>
   );
 
@@ -320,26 +284,26 @@ function BouquetCatalog() {
         }}
         role="button"
         tabIndex={0}
-        className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-[#5f2825]/30 bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-[#cb5c57]/50 hover:shadow-2xl hover:shadow-[#cb5c57]/15 ${
-          view === "list" ? "lg:grid lg:grid-cols-[300px_1fr]" : ""
-        } animate-fade-in-up`}
-        style={{ animationDelay: `${idx * 60}ms` }}
+        className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-[#3a1214]/60 bg-[#120708] shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-[#cb5c57]/40 hover:shadow-xl hover:shadow-[#cb5c57]/10 animate-fade-in-up ${
+          view === "list" ? "lg:grid lg:grid-cols-[280px_1fr]" : ""
+        }`}
+        style={{ animationDelay: `${idx * 50}ms` }}
       >
-        {/* ── Image Section ── */}
-        <div className={`relative overflow-hidden ${view === "list" ? "lg:h-full" : ""}`}>
-          <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#0f0606] via-transparent to-transparent opacity-70" />
-          <div className="absolute inset-0 z-[1] bg-gradient-to-b from-[#0f0606]/30 via-transparent to-transparent opacity-50" />
+        {/* Image */}
+        <div className={`relative overflow-hidden bg-[#1a0809] ${view === "list" ? "lg:h-full" : ""}`}>
+          <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#120708]/80 via-transparent to-transparent" />
 
-          <div className="absolute left-2 sm:left-3 top-2 sm:top-3 z-10 flex flex-col gap-1">
-            <div className="flex gap-1">
+          {/* Top badges */}
+          <div className="absolute left-2.5 top-2.5 z-10 flex flex-col gap-1.5">
+            <div className="flex flex-wrap gap-1">
               {isNew && (
-                <span className="inline-flex animate-pulse items-center gap-1 rounded-full bg-gradient-to-r from-[#dd3045] to-[#ff5b72] px-2 sm:px-2.5 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-[#ff5b72]/40">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#dd3045] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                   <HiOutlineSparkles size={8} />
                   {t("catalog.new")}
                 </span>
               )}
               {isPopular && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-amber-500/40">
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                   <HiFire size={8} />
                   {t("catalog.popular")}
                 </span>
@@ -350,6 +314,7 @@ function BouquetCatalog() {
 
           <DiscountBadge oldPrice={bouquet.old_price} price={bouquet.price} />
 
+          {/* Favorite button */}
           <button
             type="button"
             onClick={(e) => {
@@ -359,50 +324,51 @@ function BouquetCatalog() {
                 added
                   ? `${bouquet.name} ${t("catalog.addedToFavorites")}`
                   : `${bouquet.name} ${t("catalog.removedFromFavorites")}`,
-                { position: "bottom-right", autoClose: 1800, hideProgressBar: true }
+                { position: "bottom-right", autoClose: 1600, hideProgressBar: true }
               );
             }}
-            className="absolute right-2 sm:right-3 top-2 sm:top-3 z-10 flex h-7 sm:h-9 w-7 sm:w-9 items-center justify-center rounded-full border border-[#8c6158]/50 bg-[#19090a]/60 text-[#f6dacf] shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff5b72] hover:bg-[#ff5b72]/20 hover:shadow-[#ff5b72]/30"
+            className={`absolute left-2.5 bottom-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all duration-200 hover:scale-110 ${
+              isFavorite
+                ? "border-[#ff5b72]/60 bg-[#ff5b72]/20 text-[#ff5b72]"
+                : "border-[#8c6158]/40 bg-[#19090a]/60 text-[#f6dacf] hover:border-[#ff5b72]/60 hover:text-[#ff5b72]"
+            }`}
             aria-label={isFavorite ? t("catalog.removeFromFavorites") : t("catalog.addToFavorites")}
           >
-            {isFavorite ? (
-              <HiHeart size={12} className="animate-pulse text-[#ff5b72]" />
-            ) : (
-              <HiOutlineHeart size={12} />
-            )}
+            {isFavorite ? <HiHeart size={14} /> : <HiOutlineHeart size={14} />}
           </button>
 
-          <div className="overflow-hidden bg-gradient-to-br from-[#2b1012] to-[#1a0809]">
-            <img
-              src={bouquet.image}
-              alt={bouquet.name}
-              loading="lazy"
-              className={`h-[200px] sm:h-[260px] md:h-[300px] w-full object-cover transition-all duration-700 ease-out group-hover:scale-110 ${
-                view === "list" ? "lg:h-full lg:min-h-[300px]" : ""
-              }`}
-            />
-          </div>
+          <img
+            src={bouquet.image}
+            alt={bouquet.name}
+            loading="lazy"
+            className={`w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105 ${
+              view === "list" ? "lg:h-full lg:min-h-[280px] h-[220px]" : "h-[240px] sm:h-[280px]"
+            }`}
+          />
 
+          {/* Preview thumbnails */}
           {previewImages.length > 0 && view === "grid" && (
-            <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 z-10 flex gap-1 sm:gap-1.5">
+            <div className="absolute bottom-2.5 right-2.5 z-10 flex gap-1">
               {previewImages.map((image: string, index: number) => (
                 <div
                   key={image}
-                  className="overflow-hidden rounded-lg border-2 border-white/10 shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff9b88]/80"
+                  className="overflow-hidden rounded-lg border border-white/15 shadow-md transition-transform duration-200 hover:scale-110"
                 >
-                  <img loading="lazy" decoding="async"
+                  <img
+                    loading="lazy"
                     src={image}
-                    alt={`${bouquet.name} preview ${index + 2}`}
-                    className="h-7 w-7 sm:h-10 sm:w-10 object-cover"
+                    alt={`${bouquet.name} ${index + 2}`}
+                    className="h-9 w-9 object-cover"
                   />
                 </div>
               ))}
             </div>
           )}
 
+          {/* Quick view overlay */}
           <div
-            className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[#0f0606]/95 via-[#0f0606]/60 to-transparent p-3 sm:p-4 pt-10 sm:pt-16 transition-all duration-500 ${
-              isHovered ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
+            className={`absolute inset-x-0 bottom-0 z-10 p-3 pt-10 transition-all duration-300 ${
+              isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             }`}
           >
             <button
@@ -410,35 +376,35 @@ function BouquetCatalog() {
                 e.stopPropagation();
                 navigate(`/bouquets/${bouquet.id}`);
               }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#cb5c57] to-[#dd3045] py-2 sm:py-3 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-[#cb5c57]/30 transition-all duration-300 hover:shadow-xl active:scale-[0.97]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#cb5c57]/90 py-2.5 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm transition-colors hover:bg-[#cb5c57]"
             >
-              <HiOutlineEye size={12} />
+              <HiOutlineEye size={13} />
               {t("catalog.quickView")}
             </button>
           </div>
         </div>
 
-        {/* ── Content Section ── */}
-        <div className="flex flex-col p-3 sm:p-5">
-          <div className="flex-1 space-y-2 sm:space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* Content */}
+        <div className="flex flex-col p-4">
+          <div className="flex-1 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               {bouquet.category && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/50 bg-[#210b0d] px-2 sm:px-2.5 py-0.5 text-[8px] sm:text-[10px] font-semibold text-[#f1c5ba]">
-                  <FaTag size={6} />
+                <span className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/40 bg-[#210b0d] px-2 py-0.5 text-[10px] font-medium text-[#f1c5ba]">
+                  <FaTag size={7} />
                   {getLocalizedCategoryName(bouquet.category)}
                 </span>
               )}
-              <div className="flex items-center gap-1 sm:gap-1.5">
+              <div className="flex items-center gap-1.5 ml-auto">
                 <RatingStars rating={bouquet.rating} />
-                <span className="text-[10px] sm:text-xs font-bold text-white">{bouquet.rating}</span>
-                <span className="text-[8px] sm:text-[10px] text-[#8b6b64]">({bouquet.reviews_count})</span>
+                <span className="text-xs font-semibold text-white">{bouquet.rating}</span>
+                <span className="text-[10px] text-[#8b6b64]">({bouquet.reviews_count})</span>
               </div>
             </div>
 
             <Link
               to={`/bouquets/${bouquet.id}`}
               onClick={(e) => e.stopPropagation()}
-              className="block font-cormorant text-lg sm:text-xl md:text-2xl font-bold leading-tight text-[#fff3ee] transition-all duration-300 hover:text-[#ff9b88] hover:drop-shadow-[0_0_8px_rgba(255,155,136,0.3)]"
+              className="block font-great-vibes text-[2rem] sm:text-[2.2rem] leading-tight text-[#fff3ee] transition-colors duration-200 hover:text-[#ff9b88]"
             >
               {bouquet.name}
             </Link>
@@ -446,23 +412,23 @@ function BouquetCatalog() {
             <Link
               to={`/shops/${bouquet.shop.slug}`}
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#bfa09a] transition hover:text-[#ffe1d8]"
+              className="inline-flex items-center gap-1.5 text-xs text-[#bfa09a] transition-colors hover:text-[#ffe1d8]"
             >
-              <HiMiniGlobeAlt size={10} />
+              <HiMiniGlobeAlt size={11} />
               {bouquet.shop.name}
             </Link>
 
             {(shopInstagramUrl || shopTelegramUrl) && (
-              <div className="flex gap-1.5 sm:gap-2 pt-0.5">
+              <div className="flex gap-1.5">
                 {shopInstagramUrl && (
                   <a
                     href={shopInstagramUrl}
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/50 bg-[#120607] px-2 sm:px-2.5 py-0.5 text-[8px] sm:text-[10px] uppercase tracking-wider text-[#efc2b8] transition hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
+                    className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/40 bg-[#120607] px-2.5 py-0.5 text-[10px] uppercase tracking-wide text-[#efc2b8] transition-colors hover:border-[#cb5c57]/60 hover:text-white"
                   >
-                    <FaInstagram size={8} />
+                    <FaInstagram size={9} />
                     IG
                   </a>
                 )}
@@ -472,9 +438,9 @@ function BouquetCatalog() {
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/50 bg-[#120607] px-2 sm:px-2.5 py-0.5 text-[8px] sm:text-[10px] uppercase tracking-wider text-[#efc2b8] transition hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
+                    className="inline-flex items-center gap-1 rounded-full border border-[#5f2825]/40 bg-[#120607] px-2.5 py-0.5 text-[10px] uppercase tracking-wide text-[#efc2b8] transition-colors hover:border-[#cb5c57]/60 hover:text-white"
                   >
-                    <FaTelegramPlane size={8} />
+                    <FaTelegramPlane size={9} />
                     TG
                   </a>
                 )}
@@ -482,31 +448,29 @@ function BouquetCatalog() {
             )}
 
             {view === "list" && bouquet.description && (
-              <p className="mt-2 line-clamp-2 text-xs sm:text-sm leading-relaxed text-[#d4b8b0]">
+              <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-[#d4b8b0]">
                 {bouquet.description}
               </p>
             )}
           </div>
 
-          <div className="mt-3 sm:mt-4 flex items-center justify-between gap-3 border-t border-[#5f2825]/20 pt-3 sm:pt-4">
-            <div className="flex flex-col">
+          {/* Price + Cart */}
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#3a1214]/60 pt-4">
+            <div>
               <div className="flex items-baseline gap-2">
-                <span className="text-lg sm:text-xl md:text-2xl font-bold text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.15)]">
-                  {formatPrice(bouquet.price)}
-                </span>
+                <span className="text-xl font-bold text-white">{formatPrice(bouquet.price)}</span>
                 {bouquet.old_price && (
-                  <span className="text-xs sm:text-sm text-[#8b6b64] line-through">
-                    {formatPrice(bouquet.old_price)}
-                  </span>
+                  <span className="text-sm text-[#7a5a52] line-through">{formatPrice(bouquet.old_price)}</span>
                 )}
               </div>
               {bouquet.old_price && (
-                <span className="mt-0.5 inline-flex items-center gap-1 text-[8px] sm:text-[10px] font-semibold text-emerald-400">
-                  <HiOutlineCheckBadge size={8} />
+                <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400">
+                  <HiOutlineCheckBadge size={9} />
                   {t("catalog.greatDeal")}
                 </span>
               )}
             </div>
+
             <button
               type="button"
               onClick={(e) => {
@@ -514,7 +478,7 @@ function BouquetCatalog() {
                 if (!canAddToCart) {
                   toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`, {
                     position: "bottom-right",
-                    autoClose: 1800,
+                    autoClose: 1600,
                     hideProgressBar: true,
                   });
                   return;
@@ -522,20 +486,19 @@ function BouquetCatalog() {
                 addToCart(bouquet);
                 toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`, {
                   position: "bottom-right",
-                  autoClose: 1800,
+                  autoClose: 1600,
                   hideProgressBar: true,
                 });
               }}
               disabled={!canAddToCart}
-              className={`group/btn relative flex h-8 sm:h-10 items-center justify-center gap-2 overflow-hidden rounded-xl px-2.5 sm:px-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-lg transition-all duration-300 ${
+              className={`flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-[11px] font-bold uppercase tracking-wide transition-all duration-200 ${
                 canAddToCart
-                  ? "bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-white hover:shadow-xl hover:shadow-[#aa1828]/40 active:scale-95"
-                  : "cursor-not-allowed border border-[#5b2b31]/50 bg-[#1a0b0d] text-[#c39b94] opacity-80"
+                  ? "bg-[#aa1828] text-white hover:bg-[#c01f30] active:scale-95"
+                  : "cursor-not-allowed border border-[#5b2b31]/40 bg-[#1a0b0d] text-[#8a6860] opacity-70"
               }`}
             >
-              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-500 group-hover/btn:translate-x-full" />
-              <HiOutlineShoppingBag size={12} className="relative z-10" />
-              <span className="relative z-10">{canAddToCart ? t("catalog.add") : t("availability.outOfStock")}</span>
+              <HiOutlineShoppingBag size={14} />
+              {canAddToCart ? t("catalog.add") : t("availability.outOfStock")}
             </button>
           </div>
         </div>
@@ -544,256 +507,237 @@ function BouquetCatalog() {
   };
 
   const renderEmptyState = () => (
-    <div className="mt-8 sm:mt-12 overflow-hidden rounded-2xl border border-dashed border-[#5f2825]/40 bg-gradient-to-br from-[#130708] to-[#0a0405] px-4 sm:px-6 py-12 sm:py-20 text-center">
-      <div className="relative mx-auto mb-6 sm:mb-8 flex h-20 sm:h-28 w-20 sm:w-28 items-center justify-center">
-        <div className="absolute inset-0 animate-ping rounded-full bg-[#cb5c57]/15" />
-        <div className="relative flex h-16 sm:h-24 w-16 sm:w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#1a0c0c] to-[#2b1012] shadow-inner shadow-[#cb5c57]/20">
-          <HiOutlineMagnifyingGlass className="text-3xl sm:text-4xl text-[#cb5c57]" />
-        </div>
+    <div className="mt-10 rounded-2xl border border-dashed border-[#5f2825]/40 bg-[#0f0506]/60 px-6 py-16 text-center">
+      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#1a0c0c] border border-[#5f2825]/30">
+        <HiOutlineMagnifyingGlass className="text-3xl text-[#cb5c57]" />
       </div>
-      <h2 className="font-cormorant text-3xl sm:text-4xl text-[#fff0ea]">{t("catalog.noBouquetsFound")}</h2>
-      <p className="mx-auto mt-3 max-w-md text-xs sm:text-sm leading-relaxed text-[#c9aba4]">
+      <h2 className="font-great-vibes text-5xl leading-tight text-[#fff0ea]">{t("catalog.noBouquetsFound")}</h2>
+      <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#c9aba4]">
         {t("catalog.noBouquetsDesc")}
       </p>
-      <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3">
+      <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"
-          onClick={() => {
-            setValue("search", "");
-            setSelectedCategoryId(null);
-            setSearchParams({});
-          }}
-          className="group inline-flex items-center gap-2 rounded-full border border-[#cb5c57] bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg shadow-[#cb5c57]/20 transition-all duration-300 hover:shadow-xl active:scale-[0.97]"
+          onClick={clearAllFilters}
+          className="inline-flex items-center gap-2 rounded-full bg-[#cb5c57] px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#bb4a45] active:scale-[0.98]"
         >
           {t("catalog.browseAll")}
-          <HiArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
+          <HiArrowRight size={14} />
         </button>
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="inline-flex items-center gap-2 rounded-full border border-[#5f2825]/50 bg-[#1b0b0c] px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-[#f5ddd6] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white"
+          className="inline-flex items-center gap-2 rounded-full border border-[#5f2825]/50 bg-[#1b0b0c] px-6 py-2.5 text-sm font-medium text-[#f5ddd6] transition-colors hover:border-[#cb5c57]/50 hover:text-white"
         >
-          <HiOutlineAdjustmentsHorizontal size={12} />
+          <HiOutlineAdjustmentsHorizontal size={13} />
           {t("catalog.adjustFilters")}
         </button>
       </div>
     </div>
   );
 
-  const renderLoadingMore = () => (
-    <div className="mt-6 flex justify-center">
-      <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825]/40 bg-[#120607]/80 px-4 sm:px-6 py-2.5 sm:py-3 shadow-lg backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1">
-            <span className="h-2 w-2 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:0ms]" />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:150ms]" />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-[#ff5b72] [animation-delay:300ms]" />
-          </div>
-          <span className="text-xs sm:text-sm font-semibold text-[#f1d0c8]">{t("catalog.loadingMore")}</span>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderEndOfResults = () => (
-    <div className="mt-8 sm:mt-10 flex justify-center">
-      <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825]/30 bg-[#120607]/50 px-4 sm:px-6 py-2.5 sm:py-3 shadow-inner shadow-[#cb5c57]/5 backdrop-blur-sm">
-        <div className="flex h-6 sm:h-8 w-6 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#cb5c57]/20 to-[#ff9b88]/10">
-          <HiMiniGift size={12} className="text-[#ff9b88]" />
-        </div>
-        <div className="text-left">
-          <p className="text-xs sm:text-sm font-bold text-[#f1d0c8]">{t("catalog.seenAll")}</p>
-          <p className="text-[8px] sm:text-[10px] text-[#8b6b64]">{total} {t("catalog.bouquetsLoaded")}</p>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <main className="relative min-h-screen overflow-hidden text-[#fff6f4]">
+    <main className="relative isolate min-h-screen overflow-hidden text-[#fff6f4]">
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 -z-20">
+        <img
+          src={bouquetsPageBackground}
+          alt=""
+          aria-hidden="true"
+          className="h-full w-full object-cover object-center opacity-80"
+        />
+      </div>
+      <div className="pointer-events-none fixed inset-0 -z-15 bg-gradient-to-b from-[#0a0203]/75 via-[#0a0203]/55 to-[#0a0203]/80" />
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute left-1/2 top-0 h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#cb5c57]/8 blur-3xl" />
+        <div className="absolute -right-20 top-48 h-80 w-80 rounded-full bg-[#ff7e8d]/6 blur-3xl" />
+      </div>
       <FloatingPetals />
-      <section className="relative z-10 px-4 pb-20 sm:pb-28 pt-28 sm:pt-32 lg:pt-36 sm:px-6 lg:px-10">
+
+      <section className="relative z-10 px-4 pb-20 pt-28 sm:px-6 sm:pt-32 lg:px-10 lg:pt-36">
         <div className="mx-auto max-w-7xl">
-          {/* ── Hero / Header ── */}
-          <div className="mb-6 sm:mb-10 flex flex-col gap-6 sm:gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="relative">
-              <div className="pointer-events-none absolute -left-20 -top-20 h-48 sm:h-64 w-48 sm:w-64 rounded-full bg-[#cb5c57]/10 blur-[100px]" />
-              
-              {activeOccasion ? (
-                <div className="relative inline-flex items-center gap-2 rounded-full border border-[#cb5c57]/30 bg-[#19080a]/70 px-3 sm:px-4 py-1.5 sm:py-2 text-[0.55rem] sm:text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#f3c9bf] shadow-[0_12px_32px_rgba(90,18,25,0.18)] backdrop-blur-md">
-                  <HiOutlineSparkles className="text-[#ff9b88]" />
-                  {t("catalog.curatedForMoment")}
-                </div>
-              ) : null}
 
-              <div className="relative">
-                <h1 className="mt-4 sm:mt-5 font-great-vibes text-[clamp(2.4rem,7vw,3.6rem)] sm:text-[clamp(3.2rem,7vw,6.4rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]">
-                  {activeOccasion ? activeOccasionTitle : t("catalog.findYour")}
-                  <span className="block bg-gradient-to-r from-[#ff9b88] via-[#dd5c5c] to-[#cb5c57] bg-clip-text text-transparent">
-                    {activeOccasion ? t("catalog.bouquetsCollection") : t("catalog.perfectBouquet")}
-                  </span>
-                </h1>
+          {/* ── Hero ── */}
+          <div className="mb-8 text-center">
+            <h1 className="font-great-vibes text-[clamp(3.2rem,7vw,6rem)] leading-[0.9] text-[#fff6f1] [text-shadow:0_8px_28px_rgba(0,0,0,0.5)]">
+              {activeCategory ? getLocalizedCategoryName(activeCategory) : t("catalog.findYour")}
+              <span className="block text-[#ff9b88]">
+                {activeCategory ? t("catalog.bouquetsCollection") : t("catalog.perfectBouquet")}
+              </span>
+            </h1>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#f0d8d0]/80">
+              {activeCategory
+                ? t("catalog.categoryHeroDescription", { category: getLocalizedCategoryName(activeCategory) })
+                : t("catalog.defaultHeroDescription")}
+            </p>
+
+            {/* Stats row */}
+            <div className="mt-6 inline-flex items-center gap-6 rounded-2xl border border-[#5f2825]/30 bg-[#100506]/70 px-6 py-3 backdrop-blur-sm">
+              <div className="text-center">
+                <p className="text-lg font-bold text-white">{total.toLocaleString()}</p>
+                <p className="text-[10px] uppercase tracking-wider text-[#c9a09a]">{t("catalog.totalBouquets")}</p>
               </div>
-
-              <p className="relative mt-3 sm:mt-4 max-w-2xl text-xs sm:text-sm leading-6 sm:leading-7 text-[#cba8a1]">
-                {activeOccasion
-                  ? t("catalog.occasionHeroDescription", {
-                      occasion: activeOccasionTitle,
-                      description: activeOccasionDescription,
-                    })
-                  : t("catalog.defaultHeroDescription")}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:min-w-[360px]">
-              {[
-                {
-                  label: t("catalog.totalBouquets"),
-                  value: total,
-                  icon: HiMiniGift,
-                  gradient: "from-[#cb5c57]/20 to-[#ff9b88]/10",
-                },
-                {
-                  label: t("catalog.currentlyShowing"),
-                  value: bouquets.length,
-                  icon: HiOutlineRocketLaunch,
-                  gradient: "from-emerald-500/20 to-emerald-400/10",
-                },
-                {
-                  label: selectedCategory ? getLocalizedCategoryName(selectedCategory) : t("catalog.allCategories"),
-                  value: selectedCategory?.name ? t("catalog.active") : t("bouquetSection.all"),
-                  icon: FaFilter,
-                  gradient: "from-amber-500/20 to-amber-400/10",
-                  isActive: !!selectedCategory,
-                },
-              ].map((stat, idx) => {
-                const Icon = stat.icon;
-                return (
-                  <div
-                    key={idx}
-                    className="group relative overflow-hidden rounded-2xl border border-[#5f2825]/30 bg-gradient-to-br from-[#1a0c0c]/70 to-[#0f0606]/70 p-2 sm:p-4 backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57]/40 hover:shadow-xl hover:shadow-[#cb5c57]/5"
-                  >
-                    <div className="absolute -right-3 -top-3 text-2xl sm:text-3xl opacity-[0.06] transition-all duration-500 group-hover:scale-125 group-hover:opacity-[0.12]">
-                      <Icon />
-                    </div>
-                    <p className="relative z-10 text-[0.5rem] sm:text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#b88d84]">
-                      {stat.label}
-                    </p>
-                    <p className={`relative z-10 mt-1 text-base sm:text-xl font-black ${
-                      stat.isActive ? "text-[#ff9b88]" : "text-white"
-                    }`}>
-                      {typeof stat.value === "string" ? stat.value : stat.value.toLocaleString()}
-                    </p>
-                  </div>
-                );
-              })}
+              <div className="h-8 w-px bg-[#5f2825]/40" />
+              <div className="text-center">
+                <p className="text-lg font-bold text-[#ff9b88]">{bouquets.length}</p>
+                <p className="text-[10px] uppercase tracking-wider text-[#c9a09a]">{t("catalog.currentlyShowing")}</p>
+              </div>
+              <div className="h-8 w-px bg-[#5f2825]/40" />
+              <div className="text-center">
+                <p className={`text-lg font-bold ${activeCategory ? "text-amber-400" : "text-white"}`}>
+                  {activeCategory ? getLocalizedCategoryName(activeCategory) : t("bouquetSection.all")}
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-[#c9a09a]">{t("catalog.allCategories")}</p>
+              </div>
             </div>
           </div>
 
           {/* ── Sticky Filters Bar ── */}
           <div
-            className={`sticky top-14 sm:top-16 z-20 rounded-2xl border border-[#5f2825]/40 bg-gradient-to-br from-[#100506]/90 to-[#0a0405]/90 p-3 sm:p-4 shadow-2xl backdrop-blur-xl transition-shadow duration-300 ${
-              scrolled ? "shadow-[#cb5c57]/10" : ""
+            className={`sticky top-14 sm:top-16 z-20 mb-6 rounded-2xl border border-[#3a1214]/60 bg-[#0d0405]/90 p-3 backdrop-blur-xl transition-shadow duration-300 ${
+              scrolled ? "shadow-xl shadow-black/40" : ""
             }`}
           >
             <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Search */}
                 <div className="group relative flex-1">
-                  <HiOutlineMagnifyingGlass className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-base sm:text-lg text-[#c88f88] transition-colors group-focus-within:text-[#ff9b88]" />
+                  <HiOutlineMagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#c88f88] transition-colors group-focus-within:text-[#ff9b88]" />
                   <input
                     {...register("search")}
                     placeholder={t("catalog.searchPlaceholder")}
-                    className="h-10 sm:h-12 w-full rounded-xl border border-[#5f2825]/50 bg-[#090304]/60 pl-9 sm:pl-11 pr-8 sm:pr-10 text-xs sm:text-sm text-[#fff3ee] outline-none transition-all duration-300 placeholder:text-[#8b6b64] focus:border-[#cb5c57] focus:shadow-[0_0_0_3px_rgba(203,92,87,0.15)] focus:bg-[#090304]/80"
+                    className="h-11 w-full rounded-xl border border-[#5f2825]/50 bg-[#090304]/80 pl-10 pr-9 text-sm text-[#fffaf8] outline-none transition-all duration-200 placeholder:text-[#9c7269] focus:border-[#cb5c57]/70 focus:bg-[#090304]"
                   />
                   {search && (
                     <button
                       type="button"
                       onClick={() => {
                         setValue("search", "");
-                        setSearchParams((current) => {
-                          const next = new URLSearchParams(current);
+                        setSearchParams((cur) => {
+                          const next = new URLSearchParams(cur);
                           next.delete("search");
-                          next.delete("occasion");
                           return next;
                         });
                       }}
-                      className="absolute right-2 sm:right-3 top-1/2 flex h-6 sm:h-7 w-6 sm:w-7 -translate-y-1/2 items-center justify-center rounded-full text-[#c9aaa2] transition-all duration-200 hover:bg-[#2b1012] hover:text-white"
+                      className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-[#c9aaa2] transition hover:bg-[#2b1012] hover:text-white"
                     >
-                      <HiXMark className="text-xs sm:text-sm" />
+                      <HiXMark size={13} />
                     </button>
                   )}
                 </div>
 
-                <div className="inline-flex rounded-xl border border-[#5f2825]/50 bg-[#090304]/60 p-1 self-start sm:self-auto">
+                {/* View toggle */}
+                <div className="inline-flex self-start sm:self-auto rounded-xl border border-[#5f2825]/50 bg-[#090304]/80 p-1">
                   <button
                     type="button"
                     onClick={() => setView("grid")}
-                    className={`flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-lg transition-all duration-200 ${
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 ${
                       view === "grid"
-                        ? "bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg"
+                        ? "bg-[#cb5c57] text-white"
                         : "text-[#ad8d85] hover:bg-[#2b1012] hover:text-white"
                     }`}
                     title={t("catalog.gridView")}
                     aria-label={t("catalog.gridView")}
                   >
-                    <HiOutlineSquares2X2 size={16} />
+                    <HiOutlineSquares2X2 size={15} />
                   </button>
                   <button
                     type="button"
                     onClick={() => setView("list")}
-                    className={`flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-lg transition-all duration-200 ${
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150 ${
                       view === "list"
-                        ? "bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] text-white shadow-lg"
+                        ? "bg-[#cb5c57] text-white"
                         : "text-[#ad8d85] hover:bg-[#2b1012] hover:text-white"
                     }`}
                     title={t("catalog.listView")}
                     aria-label={t("catalog.listView")}
                   >
-                    <HiOutlineBars3BottomLeft size={16} />
+                    <HiOutlineBars3BottomLeft size={15} />
                   </button>
                 </div>
 
-                {renderResultCard()}
+                {/* Result count pill */}
+                <div className="inline-flex items-center gap-2 self-start sm:self-auto rounded-xl border border-[#5f2825]/40 bg-[#090304]/80 px-4 py-2.5">
+                  <FaCheckCircle size={10} className="text-emerald-400 shrink-0" />
+                  <span className="text-xs text-[#c9a09a]">{t("catalog.results")}</span>
+                  <span className="text-sm font-bold text-white">
+                    <span className="text-[#ff9b88]">{bouquets.length}</span>
+                    <span className="text-[#5a3a36] mx-1">/</span>
+                    {total}
+                  </span>
+                </div>
               </div>
 
+              {/* Category chips */}
               {renderCategoryChips()}
             </div>
           </div>
 
-          {/* ── Active filter indicators ── */}
+          {/* Active filter chips */}
           {hasActiveFilters && (
-            <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-[#c9aaa2]">
-              <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[#b88d84]">
-                <FaFilter size={8} />
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#b88d84]">
+                <FaFilter size={8} className="inline mr-1" />
                 {t("catalog.activeFilters")}
               </span>
+              {effectiveSearch && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cb5c57]/30 bg-[#cb5c57]/10 px-3 py-1 text-[11px] text-[#ffcfc8]">
+                  "{effectiveSearch}"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue("search", "");
+                      setSearchParams((cur) => {
+                        const next = new URLSearchParams(cur);
+                        next.delete("search");
+                        return next;
+                      });
+                    }}
+                    className="hover:text-white transition-colors"
+                  >
+                    <HiXMark size={11} />
+                  </button>
+                </span>
+              )}
+              {activeCategory && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cb5c57]/30 bg-[#cb5c57]/10 px-3 py-1 text-[11px] text-[#ffcfc8]">
+                  {getLocalizedCategoryName(activeCategory)}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSearchParams((cur) => {
+                        const next = new URLSearchParams(cur);
+                        next.delete("category");
+                        return next;
+                      })
+                    }
+                    className="hover:text-white transition-colors"
+                  >
+                    <HiXMark size={11} />
+                  </button>
+                </span>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  setValue("search", "");
-                  setSelectedCategoryId(null);
-                  setSearchParams({});
-                }}
-                className="inline-flex items-center gap-2 rounded-full border border-[#7a342f]/60 bg-[#160809]/85 px-2 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-[#f3d0c7] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#241012] hover:text-white"
+                onClick={clearAllFilters}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] text-[#c9a09a] transition-colors hover:text-white"
               >
-                <span className="flex h-4 sm:h-5 w-4 sm:w-5 items-center justify-center rounded-full bg-[#cb5c57]/15 text-[#ff9b88]">
-                  <HiXMark size={10} />
-                </span>
+                <HiXMark size={11} />
                 {t("catalog.clearFilters")}
               </button>
             </div>
           )}
 
-          {/* ── Bouquets Grid / List ── */}
+          {/* ── Grid ── */}
           {bouquetsQuery.isLoading ? (
-            <BouquetGridSkeleton 
-              count={6} 
-              className="mt-6 sm:mt-8 grid gap-4 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3" 
-              imageClassName="h-[200px] sm:h-[300px] w-full rounded-t-2xl"
+            <BouquetGridSkeleton
+              count={6}
+              className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
+              imageClassName="h-[240px] w-full rounded-t-2xl"
             />
           ) : bouquets.length ? (
             <div
-              className={`mt-6 sm:mt-8 grid gap-4 sm:gap-6 ${
+              className={`grid gap-5 ${
                 view === "grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
               }`}
             >
@@ -805,38 +749,58 @@ function BouquetCatalog() {
 
           <div ref={loadMoreRef} className="h-4" />
 
-          {bouquetsQuery.isFetchingNextPage && renderLoadingMore()}
-          {!bouquetsQuery.hasNextPage && bouquets.length > 0 && renderEndOfResults()}
+          {/* Loading more */}
+          {bouquetsQuery.isFetchingNextPage && (
+            <div className="mt-6 flex justify-center">
+              <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825]/40 bg-[#0f0506]/80 px-5 py-2.5 backdrop-blur-sm">
+                <div className="flex gap-1">
+                  {[0, 150, 300].map((delay) => (
+                    <span
+                      key={delay}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#ff9b88]"
+                      style={{ animationDelay: `${delay}ms` }}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm text-[#f1d0c8]">{t("catalog.loadingMore")}</span>
+              </div>
+            </div>
+          )}
+
+          {/* End of results */}
+          {!bouquetsQuery.hasNextPage && bouquets.length > 0 && (
+            <div className="mt-8 flex justify-center">
+              <div className="inline-flex items-center gap-3 rounded-full border border-[#5f2825]/30 bg-[#0f0506]/50 px-5 py-2.5 backdrop-blur-sm">
+                <HiMiniGift size={14} className="text-[#ff9b88]" />
+                <span className="text-sm text-[#f1d0c8]">{t("catalog.seenAll")}</span>
+                <span className="text-xs text-[#7a5a52]">
+                  {total} {t("catalog.bouquetsLoaded")}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
       <style>{`
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(24px); }
+          from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin-slow {
-          to { transform: rotate(360deg); }
         }
         @keyframes floatPetals {
           0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
-          10%  { opacity: var(--petal-opacity, 0.6); }
-          90%  { opacity: var(--petal-opacity, 0.6); }
-          100% { transform: translateY(110vh) rotate(var(--petal-rotation, 720deg)); opacity: 0; }
+          8%   { opacity: 0.5; }
+          92%  { opacity: 0.5; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
         }
         .animate-fade-in-up {
-          animation: fadeInUp 0.6s ease-out both;
+          animation: fadeInUp 0.5s ease-out both;
         }
-        .animate-spin-slow {
-          animation: spin-slow 3s linear infinite;
+        .animate-float-petal {
+          animation: floatPetals linear infinite;
         }
-        .scrollbar-none::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-none {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </main>
   );
