@@ -22,7 +22,7 @@ import { ReviewsPanelSkeleton } from "../../components/PageSkeletons";
 import { formatPrice, getBouquetImages } from "../../utils/catalog";
 import { getBouquetAddonOptions, getBouquetImageForSize, getBouquetSizeOptions } from "../../utils/bouquetOptions";
 import { removeFromCart, removeManyFromCart } from "../../utils/cart";
-import { toggleFavoriteBouquet } from "../../utils/favorites";
+import { FAVORITES_AUTH_REQUIRED_MESSAGE, toggleFavoriteBouquet } from "../../utils/favorites";
 
 function Cart() {
   const { t } = useTranslation();
@@ -193,9 +193,13 @@ function Cart() {
                         type="button"
                         onClick={() => {
                           if (!primaryItem) return;
-                          const nextState = toggleFavoriteBouquet(primaryItem.bouquet);
+                          const result = toggleFavoriteBouquet(primaryItem.bouquet);
+                          if (!result.ok) {
+                            toast.info(FAVORITES_AUTH_REQUIRED_MESSAGE);
+                            return;
+                          }
                           toast.info(
-                            nextState
+                            result.added
                               ? `${primaryItem.bouquet.name} favoritesga qo'shildi`
                               : `${primaryItem.bouquet.name} favoritesdan olib tashlandi`,
                           );

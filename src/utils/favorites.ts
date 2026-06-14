@@ -1,14 +1,19 @@
 import type { Bouquet } from "../types/catalog";
-import { CURRENT_USER_ID_KEY } from "../api/authStorage";
+import { CURRENT_USER_ID_KEY, getStoredAccessToken } from "../api/authStorage";
 
 export const FAVORITES_STORAGE_KEY = "flower-shop-favorites-v1";
 export const FAVORITES_UPDATED_EVENT = "favorites:updated";
+export const FAVORITES_AUTH_REQUIRED_MESSAGE = "Favoritesga qo'shish uchun avval tizimga kiring.";
 
 export interface FavoriteBouquetItem {
   id: string;
   bouquet: Bouquet;
   addedAt: string;
 }
+
+export type ToggleFavoriteResult =
+  | { ok: true; added: boolean }
+  | { ok: false; reason: "auth_required" };
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -53,15 +58,20 @@ export function isFavoriteBouquet(bouquetId: string) {
   return getFavoriteIds().has(bouquetId);
 }
 
-export function addFavoriteBouquet(bouquet: Bouquet) {
+export function addFavoriteBouquet(bouquet: Bouquet): ToggleFavoriteResult {
+  if (!getStoredAccessToken()) {
+    return { ok: false, reason: "auth_required" };
+  }
+
   const current = getFavoriteItems();
   if (current.some((item) => item.id === bouquet.id)) {
-    return;
+    return { ok: true, added: true };
   }
   saveFavoriteItems([
     { id: bouquet.id, bouquet, addedAt: new Date().toISOString() },
     ...current,
   ]);
+  return { ok: true, added: true };
 }
 
 export function removeFavoriteBouquet(bouquetId: string) {
@@ -75,11 +85,14 @@ export function clearFavorites() {
   saveFavoriteItems([]);
 }
 
-export function toggleFavoriteBouquet(bouquet: Bouquet) {
+export function toggleFavoriteBouquet(bouquet: Bouquet): ToggleFavoriteResult {
+  if (!getStoredAccessToken()) {
+    return { ok: false, reason: "auth_required" };
+  }
+
   if (isFavoriteBouquet(bouquet.id)) {
     removeFavoriteBouquet(bouquet.id);
-    return false;
+    return { ok: true, added: false };
   }
-  addFavoriteBouquet(bouquet);
-  return true;
+  return addFavoriteBouquet(bouquet);
 }

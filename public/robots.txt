@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /owner
+Disallow: /profile
+Disallow: /cart
+Disallow: /favorites
+Disallow: /shop-application
+
+Sitemap: https://flower-shop-kappa-swart.vercel.app/sitemap.xml

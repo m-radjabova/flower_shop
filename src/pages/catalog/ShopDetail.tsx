@@ -30,7 +30,7 @@ import ShopVerifiedBadge from "../../components/shops/ShopVerifiedBadge";
 import { ShopDetailSkeleton } from "../../components/PageSkeletons";
 import { useBouquets, useShop } from "../../hooks/useCatalog";
 import { formatPrice, isBouquetAvailable } from "../../utils/catalog";
-import { addToCart } from "../../utils/cart";
+import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
 import { formatUzbekPhone } from "../../utils/phone";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 import type { Bouquet } from "../../types/catalog";
@@ -184,7 +184,11 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
                   toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`);
                   return;
                 }
-                addToCart(bouquet);
+                const result = addToCart(bouquet);
+                if (!result.ok) {
+                  toast.info(result.reason === "auth_required" ? CART_AUTH_REQUIRED_MESSAGE : CART_SINGLE_BOUQUET_MESSAGE);
+                  return;
+                }
                 toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`);
               }}
               disabled={!canAddToCart}

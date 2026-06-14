@@ -30,7 +30,7 @@ import {
 import { useMyImportantDates } from "../../hooks/useImportantDates";
 import type { Bouquet, OrderOut } from "../../types/catalog";
 import { formatPrice } from "../../utils/catalog";
-import { addToCart } from "../../utils/cart";
+import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
 import {
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
@@ -539,7 +539,11 @@ function Profile() {
       return;
     }
 
-    addToCart(buildRepeatBouquet(order, firstItem), firstItem.quantity);
+    const result = addToCart(buildRepeatBouquet(order, firstItem), firstItem.quantity);
+    if (!result.ok) {
+      toast.info(result.reason === "auth_required" ? CART_AUTH_REQUIRED_MESSAGE : CART_SINGLE_BOUQUET_MESSAGE);
+      return;
+    }
     if (order.items.length > 1) {
       toast.success(t("profile.repeatOrderMultiple", { name: firstItem.bouquet_name }));
       return;

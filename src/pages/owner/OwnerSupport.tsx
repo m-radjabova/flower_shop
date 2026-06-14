@@ -121,7 +121,7 @@ function OwnerSupport() {
       };
     }
     setAdminTyping(false);
-  }, [messages.length, user?.id]);
+  }, [messages, user?.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

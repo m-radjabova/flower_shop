@@ -488,12 +488,13 @@ function FeaturedSpotlight({ shops }: { shops: Shop[] }) {
 
   if (featured.length < 2) return null;
   const shop = featured[current];
+  const rating = Number(shop.rating || 0).toFixed(1);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#f2c67c]/15 bg-[#160a0b]">
-      <div className="flex flex-col sm:flex-row">
+    <div className="overflow-hidden rounded-[2rem] border border-[#f2c67c]/15 bg-[linear-gradient(135deg,rgba(25,8,10,0.96),rgba(16,5,7,0.98))] shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
+      <div className="flex flex-col lg:flex-row">
         {/* Image panel */}
-        <div className="relative h-44 w-full shrink-0 overflow-hidden sm:h-auto sm:w-64 lg:w-72">
+        <div className="relative h-56 w-full shrink-0 overflow-hidden lg:h-auto lg:w-[26rem]">
           <AnimatePresence mode="wait">
             <motion.img
               key={shop.id}
@@ -504,61 +505,109 @@ function FeaturedSpotlight({ shops }: { shops: Shop[] }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 hover:scale-[1.03]"
             />
           </AnimatePresence>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#160a0b]/70 hidden sm:block" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#160a0b]/70 to-transparent sm:hidden" />
-          <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-[#f2c67c]/25 bg-[#0d0506]/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#f2c67c] backdrop-blur-sm">
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,3,4,0.12),rgba(9,3,4,0.02)_35%,rgba(15,6,8,0.84)_100%)] hidden lg:block" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,3,4,0.04),rgba(15,6,8,0.78)_100%)] lg:hidden" />
+          <div className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-[#f2c67c]/30 bg-[#140809]/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#f2c67c] backdrop-blur-md">
             <HiOutlineStar size={10} />
             {t("shopsPage.featured")}
+          </div>
+          <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-white/10 bg-[#160a0b]/55 p-3 backdrop-blur-md lg:hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.28em] text-[#d7aba2]">{t("shopsPage.topRatedBoutiques")}</p>
+                <h3 className="mt-1 font-cormorant text-3xl leading-none text-white">{shop.name}</h3>
+              </div>
+              <div className="rounded-full border border-[#f2c67c]/25 bg-[#2a1114]/80 px-2.5 py-1 text-xs font-semibold text-[#ffe1a6]">
+                {rating}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Text panel */}
-        <div className="flex flex-1 flex-col justify-center p-5 sm:p-6">
-          <p className="text-[9px] uppercase tracking-[0.3em] text-[#c9a09a]">{t("shopsPage.topRatedBoutiques")}</p>
-          <AnimatePresence mode="wait">
-            <motion.h3
-              key={shop.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25 }}
-              className="mt-1.5 font-cormorant text-3xl leading-tight text-white"
-            >
-              {shop.name}
-            </motion.h3>
-          </AnimatePresence>
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={shop.id + "d"}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, delay: 0.05 }}
-              className="mt-2 line-clamp-2 text-sm leading-6 text-[#c9a09a]"
-            >
-              {shop.description ?? t("shopsPage.noDescription")}
-            </motion.p>
-          </AnimatePresence>
-          <div className="mt-4 flex items-center justify-between gap-4">
-            <div className="flex gap-2">
+        <div className="flex flex-1 flex-col justify-between p-5 sm:p-6 lg:p-8">
+          <div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl">
+                <p className="hidden text-[10px] uppercase tracking-[0.34em] text-[#c9a09a] lg:block">{t("shopsPage.topRatedBoutiques")}</p>
+                <AnimatePresence mode="wait">
+                  <motion.h3
+                    key={shop.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.25 }}
+                    className="hidden font-cormorant text-[3.1rem] leading-[0.95] tracking-tight text-white lg:mt-2 lg:block"
+                  >
+                    {shop.name}
+                  </motion.h3>
+                </AnimatePresence>
+              </div>
+              <div className="hidden lg:flex items-center gap-2 self-start">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#f2c67c]/20 bg-[#211012]/80 px-3 py-1.5 text-sm text-[#ffe1a6]">
+                  <HiOutlineStar className="text-[#f2c67c]" size={15} />
+                  <span className="font-semibold">{rating}</span>
+                </div>
+                {shop.is_verified ? <ShopVerifiedBadge className="h-7 w-7" iconClassName="drop-shadow-[0_0_12px_rgba(77,163,255,0.3)]" /> : null}
+              </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={shop.id + "d"}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, delay: 0.05 }}
+                className="mt-4 max-w-2xl text-sm leading-7 text-[#d3aaa3] lg:mt-5 lg:text-[15px]"
+              >
+                {shop.description ?? t("shopsPage.noDescription")}
+              </motion.p>
+            </AnimatePresence>
+
+            <div className="mt-5 flex flex-wrap gap-2.5 lg:mt-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-[#e5c2ba]">
+                <HiMapPin size={14} className="text-[#ff8ea0]" />
+                <span>{shop.city || t("shopsPage.cityNotSet")}</span>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-[#e5c2ba]">
+                <HiOutlineStar size={14} className="text-[#f2c67c]" />
+                <span>{rating} · {shop.reviews_count} reviews</span>
+              </div>
+              {shop.working_hours ? (
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-[#e5c2ba]">
+                  <HiOutlineClock size={14} className="text-[#ff8ea0]" />
+                  <span className="line-clamp-1">{shop.working_hours}</span>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:mt-8">
+            <div className="flex items-center gap-2.5">
               {featured.map((_, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setCurrent(i)}
-                  className={`h-1 rounded-full transition-all duration-300 ${i === current ? "w-6 bg-[#cb5c57]" : "w-1 bg-[#5a2c31] hover:bg-[#7a4046]"}`}
+                  aria-label={`Go to featured shop ${i + 1}`}
+                  className={`rounded-full transition-all duration-300 ${
+                    i === current
+                      ? "h-2 w-8 bg-gradient-to-r from-[#ff7d8f] to-[#cb5c57] shadow-[0_0_12px_rgba(203,92,87,0.35)]"
+                      : "h-2 w-2 bg-[#6b3940] hover:bg-[#8f4f58]"
+                  }`}
                 />
               ))}
             </div>
             <Link
               to={`/shops/${shop.slug}`}
-              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[#971725] px-4 text-xs font-semibold text-white transition hover:bg-[#b01e2f]"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#971725] to-[#c22d3d] px-5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(151,23,37,0.28)] transition hover:translate-y-[-1px] hover:from-[#ab1f2f] hover:to-[#d73749]"
             >
               {t("shopsPage.openShop")}
-              <HiChevronRight size={13} />
+              <HiChevronRight size={15} />
             </Link>
           </div>
         </div>

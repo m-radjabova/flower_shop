@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FaInstagram, FaTelegramPlane, FaCheckCircle, FaTag, FaFilter, FaLeaf } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { addToCart } from "../../utils/cart";
+import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
 import {
   HiArrowRight,
   HiHeart,
@@ -28,7 +28,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { useFavoriteIds } from "../../hooks/useFavorites";
 import BouquetAvailabilityBadge from "../../components/catalog/BouquetAvailabilityBadge";
 import { formatPrice, getBouquetImages, isBouquetAvailable, isNewBouquet } from "../../utils/catalog";
-import { toggleFavoriteBouquet } from "../../utils/favorites";
+import { FAVORITES_AUTH_REQUIRED_MESSAGE, toggleFavoriteBouquet } from "../../utils/favorites";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 import { BouquetGridSkeleton } from "../../components/PageSkeletons";
 import type { Bouquet } from "../../types/catalog";
@@ -319,9 +319,13 @@ function BouquetCatalog() {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              const added = toggleFavoriteBouquet(bouquet);
+              const result = toggleFavoriteBouquet(bouquet);
+              if (!result.ok) {
+                toast.info(FAVORITES_AUTH_REQUIRED_MESSAGE, { position: "bottom-right", autoClose: 2200, hideProgressBar: true });
+                return;
+              }
               toast.success(
-                added
+                result.added
                   ? `${bouquet.name} ${t("catalog.addedToFavorites")}`
                   : `${bouquet.name} ${t("catalog.removedFromFavorites")}`,
                 { position: "bottom-right", autoClose: 1600, hideProgressBar: true }
@@ -483,7 +487,15 @@ function BouquetCatalog() {
                   });
                   return;
                 }
-                addToCart(bouquet);
+                const result = addToCart(bouquet);
+                if (!result.ok) {
+                  toast.info(result.reason === "auth_required" ? CART_AUTH_REQUIRED_MESSAGE : CART_SINGLE_BOUQUET_MESSAGE, {
+                    position: "bottom-right",
+                    autoClose: 2600,
+                    hideProgressBar: true,
+                  });
+                  return;
+                }
                 toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`, {
                   position: "bottom-right",
                   autoClose: 1600,

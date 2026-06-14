@@ -4,6 +4,8 @@ import IsLoading from "./components/IsLoading";
 import NotFound from "./components/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
+import SeoCanonical from "./components/SeoCanonical";
+import SeoRobots from "./components/SeoRobots";
 import AuthLayout from "./layout/AuthLayout";
 import MainLayout from "./layout/MainLayout";
 import BouquetCatalog from "./pages/catalog/BouquetCatalog";
@@ -60,6 +62,8 @@ function App() {
 
   return (
     <>
+      <SeoCanonical />
+      <SeoRobots />
       <ScrollToTop />
       <Routes>
         <Route element={<MainLayout />}>

@@ -5,7 +5,7 @@ import { HiOutlineHeart, HiOutlineShoppingBag, HiTrash } from "react-icons/hi2";
 import { toast } from "react-toastify";
 import type { Bouquet } from "../../../types/catalog";
 import { formatPrice } from "../../../utils/catalog";
-import { addToCart } from "../../../utils/cart";
+import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../../utils/cart";
 import { removeFavoriteBouquet } from "../../../utils/favorites";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../../utils/social";
 
@@ -108,7 +108,11 @@ function FavoritesTab({ favoriteItems }: FavoritesTabProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    addToCart(item.bouquet);
+                    const result = addToCart(item.bouquet);
+                    if (!result.ok) {
+                      toast.info(result.reason === "auth_required" ? CART_AUTH_REQUIRED_MESSAGE : CART_SINGLE_BOUQUET_MESSAGE);
+                      return;
+                    }
                     toast.success(`${item.bouquet.name} ${t("addedToCart")}`);
                   }}
                   className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-[#2a1b0f] px-3 text-xs font-medium text-[#ffd59a] transition hover:bg-[#352113] sm:h-11 sm:min-w-[160px] sm:px-4 sm:text-sm"

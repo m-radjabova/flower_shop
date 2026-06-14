@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
-import { addToCart } from "../../utils/cart";
+import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
 import { Link, useNavigate } from "react-router-dom";
 import {
   HiArrowRight,
@@ -18,7 +18,7 @@ import type { Bouquet, Category } from "../../types/catalog";
 import { useFavoriteIds } from "../../hooks/useFavorites";
 import BouquetAvailabilityBadge from "../catalog/BouquetAvailabilityBadge";
 import { formatPrice, getBouquetImages, isBouquetAvailable, isNewBouquet } from "../../utils/catalog";
-import { toggleFavoriteBouquet } from "../../utils/favorites";
+import { FAVORITES_AUTH_REQUIRED_MESSAGE, toggleFavoriteBouquet } from "../../utils/favorites";
 import { HomeCategoriesSkeleton } from "../PageSkeletons";
 import { useEffect, useRef, useState } from "react";
 import ShopVerifiedBadge from "../shops/ShopVerifiedBadge";
@@ -135,9 +135,13 @@ function BouquetSection({
 
   const handleFavoriteClick = (event: React.MouseEvent, bouquet: Bouquet) => {
     event.stopPropagation();
-    const added = toggleFavoriteBouquet(bouquet);
+    const result = toggleFavoriteBouquet(bouquet);
+    if (!result.ok) {
+      toast.info(FAVORITES_AUTH_REQUIRED_MESSAGE, { position: "bottom-right", autoClose: 2400, theme: "colored" });
+      return;
+    }
     toast.success(
-      added ? `${bouquet.name} ${t("bouquetSection.addedToFavorites")}` : `${bouquet.name} ${t("bouquetSection.removedFromFavorites")}`,
+      result.added ? `${bouquet.name} ${t("bouquetSection.addedToFavorites")}` : `${bouquet.name} ${t("bouquetSection.removedFromFavorites")}`,
       { position: "bottom-right", autoClose: 2000, theme: "colored" }
     );
   };
@@ -148,7 +152,11 @@ function BouquetSection({
       toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`);
       return;
     }
-    addToCart(bouquet);
+    const result = addToCart(bouquet);
+    if (!result.ok) {
+      toast.info(result.reason === "auth_required" ? CART_AUTH_REQUIRED_MESSAGE : CART_SINGLE_BOUQUET_MESSAGE, { position: "bottom-right", autoClose: 2600, theme: "colored" });
+      return;
+    }
     toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`, { position: "bottom-right", autoClose: 2000, theme: "colored" });
   };
 

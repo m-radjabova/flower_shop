@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FaInstagram, FaTelegramPlane } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { addToCart } from "../../utils/cart";
+import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
 import {
   HiArrowLeft,
   HiOutlineCheckCircle,
@@ -368,7 +368,11 @@ function BouquetDetail() {
                         toast.error(`${bouquet.name} ${t("availability.outOfStockMessage")}`);
                         return;
                       }
-                      addToCart(bouquet);
+                      const result = addToCart(bouquet);
+                      if (!result.ok) {
+                        toast.info(result.reason === "auth_required" ? CART_AUTH_REQUIRED_MESSAGE : CART_SINGLE_BOUQUET_MESSAGE);
+                        return;
+                      }
                       toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`);
                     }}
                     disabled={!canAddToCart}

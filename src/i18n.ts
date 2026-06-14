@@ -25,7 +25,6 @@ i18n.use(initReactI18next).init({
 
 // Debug info to help diagnosing missing translations during development
 if (typeof window !== "undefined") {
-  // eslint-disable-next-line no-console
   console.info("i18n initialized:", { language: i18n.language, resources: Object.keys(i18n.options.resources || {}) });
 }
 

@@ -1,7 +1,11 @@
 import type { Bouquet } from "../types/catalog";
+import { getStoredAccessToken } from "../api/authStorage";
 
 export const CART_STORAGE_KEY = "flower-shop-cart-v1";
 export const CART_UPDATED_EVENT = "cart:updated";
+export const CART_AUTH_REQUIRED_MESSAGE = "Savatga qo'shish uchun avval tizimga kiring.";
+export const CART_SINGLE_BOUQUET_MESSAGE =
+  "Savatda allaqachon bitta bouquet bor. Yangi bouquet qo'shish uchun avval savatdagi bouquetni olib tashlang.";
 
 export interface CartItem {
   id: string;
@@ -9,6 +13,11 @@ export interface CartItem {
   quantity: number;
   addedAt: string;
 }
+
+export type AddToCartResult =
+  | { ok: true; status: "added" | "updated" }
+  | { ok: false; reason: "auth_required" }
+  | { ok: false; reason: "cart_has_other_bouquet"; existingItem: CartItem };
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -39,7 +48,11 @@ function saveCartItems(items: CartItem[]) {
   emitCartUpdated();
 }
 
-export function addToCart(bouquet: Bouquet, quantity = 1) {
+export function addToCart(bouquet: Bouquet, quantity = 1): AddToCartResult {
+  if (!getStoredAccessToken()) {
+    return { ok: false, reason: "auth_required" };
+  }
+
   const current = getCartItems();
   const idx = current.findIndex((item) => item.id === bouquet.id);
 
@@ -50,13 +63,22 @@ export function addToCart(bouquet: Bouquet, quantity = 1) {
       quantity: next[idx].quantity + Math.max(1, quantity),
     };
     saveCartItems(next);
-    return;
+    return { ok: true, status: "updated" };
+  }
+
+  if (current.length > 0) {
+    return {
+      ok: false,
+      reason: "cart_has_other_bouquet",
+      existingItem: current[0],
+    };
   }
 
   saveCartItems([
     { id: bouquet.id, bouquet, quantity: Math.max(1, quantity), addedAt: new Date().toISOString() },
     ...current,
   ]);
+  return { ok: true, status: "added" };
 }
 
 export function updateCartItemQuantity(bouquetId: string, quantity: number) {

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { FaHeart, FaRegHeart, FaShoppingBag, FaStar, FaTrashAlt, FaRegStar, FaSortAmountDown, FaTh, FaList } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { addToCart } from "../../utils/cart";
+import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
 import {
   HiOutlineSparkles,
   HiMiniGift,
@@ -157,7 +157,11 @@ function Favorites() {
   };
 
   const handleAddToCart = (bouquet: FavoriteBouquetItem["bouquet"]) => {
-    addToCart(bouquet);
+    const result = addToCart(bouquet);
+    if (!result.ok) {
+      toast.info(result.reason === "auth_required" ? CART_AUTH_REQUIRED_MESSAGE : CART_SINGLE_BOUQUET_MESSAGE);
+      return;
+    }
     toast.success(`${bouquet.name} ${t("favorites.addedToCart")}`);
   };
 
