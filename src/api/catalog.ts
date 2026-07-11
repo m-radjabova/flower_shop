@@ -1,4 +1,5 @@
 import apiClient from "../apiClient/apiClient";
+import axios from "axios";
 import type {
   Bouquet,
   BouquetPage,
@@ -94,8 +95,21 @@ export async function getBouquetPage(params: BouquetQueryParams = {}) {
 }
 
 export async function getBouquet(bouquetId: string) {
-  const { data } = await apiClient.get<Bouquet>(`/bouquets/${bouquetId}`);
-  return data;
+  try {
+    const { data } = await apiClient.get<Bouquet>(`/bouquets/${bouquetId}`);
+    return data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && [400, 404, 422].includes(error.response?.status ?? 0)) {
+      const bouquets = await getBouquets({ search: bouquetId, limit: 50 });
+      const match = bouquets.find((bouquet) => bouquet.slug === bouquetId || bouquet.id === bouquetId);
+
+      if (match) {
+        return match;
+      }
+    }
+
+    throw error;
+  }
 }
 
 export async function getManagedBouquets(shopId: string) {

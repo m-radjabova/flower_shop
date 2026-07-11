@@ -19,10 +19,11 @@ import { useReviews } from "../../hooks/useCatalog";
 import { useCartItems } from "../../hooks/useCart";
 import { useFavoriteIds } from "../../hooks/useFavorites";
 import { ReviewsPanelSkeleton } from "../../components/PageSkeletons";
-import { formatPrice, getBouquetImages } from "../../utils/catalog";
+import { formatPrice, getBouquetImages, getComputedOldPrice } from "../../utils/catalog";
 import { getBouquetAddonOptions, getBouquetImageForSize, getBouquetSizeOptions } from "../../utils/bouquetOptions";
 import { removeFromCart, removeManyFromCart } from "../../utils/cart";
 import { FAVORITES_AUTH_REQUIRED_MESSAGE, toggleFavoriteBouquet } from "../../utils/favorites";
+import { getBouquetReviewsPath } from "../../utils/routes";
 
 function Cart() {
   const { t } = useTranslation();
@@ -305,9 +306,7 @@ function Cart() {
 
                   <div className="mt-3 sm:mt-4 flex flex-wrap items-end gap-3">
                     <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#ff3f67]">{formatPrice(String(sizePrice))}</p>
-                    {primaryItem.bouquet.old_price ? (
-                      <p className="pb-1 text-base sm:text-lg md:text-xl text-[#a08c89] line-through">{formatPrice(primaryItem.bouquet.old_price)}</p>
-                    ) : null}
+                    <p className="pb-1 text-base sm:text-lg md:text-xl text-[#a08c89] line-through">{formatPrice(getComputedOldPrice(sizePrice))}</p>
                   </div>
 
                   <p className="mt-3 sm:mt-4 text-sm sm:text-base md:text-lg leading-7 sm:leading-8 md:leading-9 text-[#d1b0a8]">
@@ -465,7 +464,7 @@ function Cart() {
                    <p className="font-cormorant text-2xl sm:text-3xl md:text-4xl text-white">{t("cart.whatCustomersSay")}</p>
                   {reviews.length > 3 && (
                     <Link
-                      to={`/bouquets/${primaryItem?.bouquet.id}/reviews`}
+                      to={primaryItem ? getBouquetReviewsPath(primaryItem.bouquet) : "/bouquets"}
                       className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-[#ff8ca0] transition-colors duration-200 hover:text-[#ff6b7f]"
                     >
                       View all ({reviews.length})

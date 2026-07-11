@@ -17,8 +17,16 @@ import { TbRings } from "react-icons/tb";
 import type { Bouquet, Category } from "../../types/catalog";
 import { useFavoriteIds } from "../../hooks/useFavorites";
 import BouquetAvailabilityBadge from "../catalog/BouquetAvailabilityBadge";
-import { formatPrice, getBouquetImages, isBouquetAvailable, isNewBouquet } from "../../utils/catalog";
+import {
+  formatPrice,
+  getBouquetImages,
+  getComputedDiscountPercent,
+  getComputedOldPrice,
+  isBouquetAvailable,
+  isNewBouquet,
+} from "../../utils/catalog";
 import { FAVORITES_AUTH_REQUIRED_MESSAGE, toggleFavoriteBouquet } from "../../utils/favorites";
+import { getBouquetPath } from "../../utils/routes";
 import { HomeCategoriesSkeleton } from "../PageSkeletons";
 import { useEffect, useRef, useState } from "react";
 import ShopVerifiedBadge from "../shops/ShopVerifiedBadge";
@@ -316,6 +324,7 @@ function BouquetSection({
                   const isHovered = hoveredCardId === bouquet.id;
                   const imageReady = imageLoaded[`bouquet-${bouquet.id}`] !== false;
                   const canAddToCart = isBouquetAvailable(bouquet);
+                  const bouquetPath = getBouquetPath(bouquet);
 
                   return (
                     <article
@@ -323,11 +332,11 @@ function BouquetSection({
                       key={bouquet.id}
                       role="button"
                       tabIndex={0}
-                      onClick={() => handleNavigate(`/bouquets/${bouquet.id}`)}
+                      onClick={() => handleNavigate(bouquetPath)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          handleNavigate(`/bouquets/${bouquet.id}`);
+                          handleNavigate(bouquetPath);
                         }
                       }}
                       onMouseEnter={() => setHoveredCardId(bouquet.id)}
@@ -393,7 +402,7 @@ function BouquetSection({
 
                         {/* Main Image */}
                         <div className="overflow-hidden bg-gradient-to-br from-[#2b1012] to-[#1a0809]">
-                          <Link to={`/bouquets/${bouquet.id}`} aria-label={`${bouquet.name} — batafsil`} tabIndex={-1}>
+                          <Link to={bouquetPath} aria-label={`${bouquet.name} — batafsil`} tabIndex={-1}>
                             <img
                               src={bouquet.image}
                               alt={bouquet.name}
@@ -442,7 +451,7 @@ function BouquetSection({
 
                         {/* Bouquet name */}
                         <Link
-                          to={`/bouquets/${bouquet.id}`}
+                          to={bouquetPath}
                           onClick={(event) => event.stopPropagation()}
                           className="mt-1 block sm:mt-1.5 font-cormorant text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold leading-tight text-[#f8ede6] transition-all duration-300 hover:text-[#ff9b88]"
                         >
@@ -486,14 +495,12 @@ function BouquetSection({
                           <p className="flex items-center gap-2 text-xl sm:text-2xl md:text-3xl font-bold text-white">
                             {formatPrice(bouquet.price)}
                           </p>
-                          {bouquet.old_price && (
-                            <p className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-gray-400">
-                              <span className="line-through">{formatPrice(bouquet.old_price)}</span>
-                              <span className="rounded-full bg-[#dd3045]/20 px-2 py-0.5 text-[0.6rem] sm:text-[0.65rem] font-bold text-[#ff5b72]">
-                                -{Math.round((1 - Number(bouquet.price) / Number(bouquet.old_price)) * 100)}%
-                              </span>
-                            </p>
-                          )}
+                          <p className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-gray-400">
+                            <span className="line-through">{formatPrice(getComputedOldPrice(bouquet.price))}</span>
+                            <span className="rounded-full bg-[#dd3045]/20 px-2 py-0.5 text-[0.6rem] sm:text-[0.65rem] font-bold text-[#ff5b72]">
+                              -{getComputedDiscountPercent(bouquet.price)}%
+                            </span>
+                          </p>
                         </div>
 
                         {/* Add to Cart Button */}

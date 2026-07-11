@@ -1,6 +1,7 @@
 import type { Bouquet } from "../types/catalog";
 
 export const LOW_STOCK_THRESHOLD = 3;
+export const OLD_PRICE_MULTIPLIER = 1.25;
 
 export function formatPrice(value: string) {
   return new Intl.NumberFormat("en-US", {
@@ -8,6 +9,19 @@ export function formatPrice(value: string) {
     currency: "USD",
     minimumFractionDigits: 2,
   }).format(Number(value));
+}
+
+export function getComputedOldPrice(price: string | number) {
+  return (Number(price) * OLD_PRICE_MULTIPLIER).toFixed(2);
+}
+
+export function getComputedDiscountPercent(price: string | number) {
+  const referencePrice = Number(getComputedOldPrice(price));
+  const currentPrice = Number(price);
+
+  if (!referencePrice || !currentPrice) return 0;
+
+  return Math.round((1 - currentPrice / referencePrice) * 100);
 }
 
 export function getBouquetImages(bouquet: Bouquet) {

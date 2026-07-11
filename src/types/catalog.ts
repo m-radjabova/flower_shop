@@ -59,7 +59,6 @@ export interface Bouquet {
   description: string | null;
   compound: string | null;
   price: string;
-  old_price: string | null;
   image: string;
   images: string[];
   size: string | null;
@@ -83,7 +82,6 @@ export interface BouquetCreatePayload {
   description?: string;
   compound?: string;
   price: string;
-  old_price?: string | null;
   image?: string;
   images?: string[];
   size?: string;
@@ -100,7 +98,6 @@ export interface BouquetUpdatePayload {
   description?: string;
   compound?: string;
   price?: string;
-  old_price?: string | null;
   image?: string;
   images?: string[];
   size?: string;

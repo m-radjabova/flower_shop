@@ -12,8 +12,9 @@ import {
   HiOutlineRocketLaunch,
 } from "react-icons/hi2";
 import { useFavoriteItems } from "../../hooks/useFavorites";
-import { formatPrice } from "../../utils/catalog";
+import { formatPrice, getComputedDiscountPercent } from "../../utils/catalog";
 import { removeFavoriteBouquet, type FavoriteBouquetItem } from "../../utils/favorites";
+import { getBouquetPath } from "../../utils/routes";
 
 type SortValue = "recent" | "priceAsc" | "priceDesc" | "ratingDesc";
 
@@ -81,9 +82,8 @@ const RatingStars = ({ rating }: { rating: number | string }) => {
 };
 
 /* ─── DiscountBadge ─── */
-const DiscountBadge = ({ oldPrice, price }: { oldPrice?: string | null; price: string }) => {
-  if (!oldPrice) return null;
-  const discountPercent = Math.round((1 - Number(price) / Number(oldPrice)) * 100);
+const DiscountBadge = ({ price }: { price: string }) => {
+  const discountPercent = getComputedDiscountPercent(price);
   if (discountPercent <= 0) return null;
   return (
     <motion.span
@@ -285,8 +285,8 @@ function Favorites() {
                           className="group relative flex flex-col gap-0 overflow-hidden rounded-2xl border border-[#3d1c1b]/50 bg-gradient-to-br from-[#0f0507]/90 via-[#1a090c]/80 to-[#0f0507]/90 transition-all duration-500 hover:border-[#c03b47]/40 hover:shadow-[0_8px_40px_rgba(192,59,71,0.15)] sm:flex-row"
                         >
                           <div className="relative w-full overflow-hidden sm:w-[220px] lg:w-[280px]">
-                            <DiscountBadge oldPrice={bouquet.old_price} price={bouquet.price} />
-                            <Link to={`/bouquets/${bouquet.id}`}>
+                            <DiscountBadge price={bouquet.price} />
+                            <Link to={getBouquetPath(bouquet)}>
                               <motion.img loading="lazy" decoding="async"
                                 whileHover={{ scale: 1.08 }}
                                 transition={{ duration: 0.6 }}
@@ -300,7 +300,7 @@ function Favorites() {
 
                           <div className="flex flex-1 flex-col justify-center px-4 sm:px-6 py-3 sm:py-4">
                             <Link
-                              to={`/bouquets/${bouquet.id}`}
+                              to={getBouquetPath(bouquet)}
                               className="font-cormorant text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-white transition-colors hover:text-[#ff9b88]"
                             >
                               {bouquet.name}
@@ -362,8 +362,8 @@ function Favorites() {
                         className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#3d1c1b]/50 bg-gradient-to-br from-[#0f0507]/90 via-[#1a090c]/80 to-[#0f0507]/90 transition-all duration-500 hover:border-[#c03b47]/40 hover:shadow-[0_8px_40px_rgba(192,59,71,0.15)] hover:-translate-y-1"
                       >
                         <div className="relative overflow-hidden">
-                          <DiscountBadge oldPrice={bouquet.old_price} price={bouquet.price} />
-                          <Link to={`/bouquets/${bouquet.id}`}>
+                          <DiscountBadge price={bouquet.price} />
+                          <Link to={getBouquetPath(bouquet)}>
                             <motion.img loading="lazy" decoding="async"
                               whileHover={{ scale: 1.1 }}
                               transition={{ duration: 0.6 }}
@@ -389,7 +389,7 @@ function Favorites() {
 
                         <div className="flex flex-1 flex-col px-4 sm:px-5 pb-4 sm:pb-5 pt-3 sm:pt-4">
                           <Link
-                            to={`/bouquets/${bouquet.id}`}
+                            to={getBouquetPath(bouquet)}
                             className="font-cormorant text-[1.3rem] sm:text-[1.6rem] font-bold leading-tight text-white transition-colors hover:text-[#ff9b88] line-clamp-2"
                           >
                             {bouquet.name}

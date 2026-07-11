@@ -1,4 +1,6 @@
-import { Link, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   HiArrowLeft,
@@ -12,6 +14,7 @@ import NotFound from "../../components/NotFound";
 import { BouquetReviewsHeroSkeleton } from "../../components/PageSkeletons";
 import ReviewSection from "../../components/catalog/ReviewSection";
 import { useBouquet } from "../../hooks/useCatalog";
+import { getBouquetPath } from "../../utils/routes";
 
 /* ─── Decorative floating particles ─── */
 const FloatingPetals = () => (
@@ -136,7 +139,13 @@ function RatingBadge({ rating, count }: { rating: string; count: number }) {
 
 function BouquetReviews() {
   const { bouquetId } = useParams();
+  const navigate = useNavigate();
   const { data: bouquet, isLoading, isError } = useBouquet(bouquetId);
+
+  useEffect(() => {
+    if (!bouquet || bouquetId === bouquet.slug) return;
+    navigate(`${getBouquetPath(bouquet)}/reviews`, { replace: true });
+  }, [bouquet, bouquetId, navigate]);
 
   if (isLoading) {
     return <BouquetReviewsHeroSkeleton />;
@@ -148,6 +157,15 @@ function BouquetReviews() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-transparent text-[#fff6f4]">
+      <Helmet>
+        <title>{`${bouquet.name} reviews`}</title>
+        <meta
+          name="description"
+          content={`Customer reviews and ratings for ${bouquet.name} from ${bouquet.shop.name}.`}
+        />
+        <meta property="og:title" content={`${bouquet.name} reviews`} />
+        <meta property="og:image" content={bouquet.image} />
+      </Helmet>
       {/* ─── Background decorative gradients ─── */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute -left-40 -top-40 h-[400px] sm:h-[600px] w-[400px] sm:w-[600px] rounded-full bg-[#c03b47]/[0.06] blur-[100px] sm:blur-[140px]" />
@@ -163,7 +181,7 @@ function BouquetReviews() {
             transition={{ duration: 0.4 }}
           >
             <Link
-              to={`/bouquets/${bouquet.id}`}
+              to={getBouquetPath(bouquet)}
               className="group inline-flex items-center gap-2 rounded-full border border-[#6d3430]/50 bg-[#170809]/60 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-[#f5d6cd] backdrop-blur-sm transition-all hover:border-[#bd756c] hover:text-white hover:bg-[#170809]/90 hover:shadow-[0_0_25px_rgba(189,117,108,0.15)]"
             >
               <HiArrowLeft className="transition-transform duration-300 group-hover:-translate-x-1" />

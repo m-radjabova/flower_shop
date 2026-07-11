@@ -82,14 +82,24 @@ async function getBouquetEntries() {
   let hasMore = true;
 
   while (hasMore) {
-    const page = await fetchJson(`/bouquets/page?limit=${limit}&offset=${offset}`);
+    const page = await fetchJson(`/bouquets/page?limit=${limit}&offset=${offset}`).catch(async (error) => {
+      if (offset > 0) {
+        throw error;
+      }
+
+      const bouquets = await fetchJson("/bouquets");
+      return {
+        items: Array.isArray(bouquets) ? bouquets : [],
+        has_more: false,
+      };
+    });
     const items = Array.isArray(page?.items) ? page.items : [];
 
     entries.push(
       ...items
-        .filter((bouquet) => bouquet?.id && bouquet?.status === "active")
+        .filter((bouquet) => (bouquet?.slug || bouquet?.id) && bouquet?.status === "active")
         .map((bouquet) => ({
-          path: `/bouquets/${bouquet.id}`,
+          path: `/bouquets/${encodeURIComponent(bouquet.slug || bouquet.id)}`,
           changefreq: "daily",
           priority: "0.7",
           lastmod: normalizeDate(bouquet.updated_at),

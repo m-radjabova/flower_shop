@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FaInstagram, FaTelegramPlane } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -21,8 +22,9 @@ import { DetailPageSkeleton } from "../../components/PageSkeletons";
 import ReviewSection from "../../components/catalog/ReviewSection";
 import ShopVerifiedBadge from "../../components/shops/ShopVerifiedBadge";
 import { useBouquet } from "../../hooks/useCatalog";
-import { formatPrice, getBouquetAvailability, getBouquetImages, isBouquetAvailable } from "../../utils/catalog";
+import { formatPrice, getBouquetAvailability, getBouquetImages, getComputedOldPrice, isBouquetAvailable } from "../../utils/catalog";
 import { getBouquetAddonOptions, getBouquetImageForSize, getBouquetSizeOptions } from "../../utils/bouquetOptions";
+import { getBouquetPath } from "../../utils/routes";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
 
 // ─── Intersection observer hook ──────────────────────────────────────────────
@@ -110,6 +112,7 @@ function FloatingOrbs() {
 function BouquetDetail() {
   const { t } = useTranslation();
   const { bouquetId } = useParams();
+  const navigate = useNavigate();
   const { data: bouquet, isLoading, isError } = useBouquet(bouquetId);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [selectedSizeKey, setSelectedSizeKey] = useState<string | null>(null);
@@ -121,6 +124,11 @@ function BouquetDetail() {
     setSelectedSizeKey(sizeOptions.find((item) => item.key === "medium")?.key ?? sizeOptions[0]?.key ?? null);
     setActiveImage(null);
   }, [bouquet]);
+
+  useEffect(() => {
+    if (!bouquet || bouquetId === bouquet.slug) return;
+    navigate(getBouquetPath(bouquet), { replace: true });
+  }, [bouquet, bouquetId, navigate]);
 
   if (isLoading) {
     return <DetailPageSkeleton />;
@@ -140,9 +148,18 @@ function BouquetDetail() {
   const isPopular = Number(bouquet.rating) >= 4.5 && bouquet.reviews_count >= 20;
   const availability = getBouquetAvailability(bouquet);
   const canAddToCart = isBouquetAvailable(bouquet);
+  const seoDescription = bouquet.description || bouquet.compound || `${bouquet.name} bouquet from ${bouquet.shop.name}`;
 
   return (
     <main className="relative isolate min-h-screen overflow-hidden text-[#fff6f4]">
+      <Helmet titleTemplate="%s">
+        <title>{bouquet.name}</title>
+        <meta name="description" content={seoDescription} />
+        <meta property="og:title" content={bouquet.name} />
+        <meta property="og:description" content={seoDescription} />
+        <meta property="og:image" content={heroImage} />
+        <meta property="og:type" content="product" />
+      </Helmet>
 
       {/* ── Backgrounds ── */}
       <div className="pointer-events-none fixed inset-0 -z-20 bg-[#0a0203]" />
@@ -265,16 +282,12 @@ function BouquetDetail() {
                     <p className="text-4xl sm:text-5xl font-bold text-white">
                       {formatPrice(selectedSize?.price ?? bouquet.price)}
                     </p>
-                    {bouquet.old_price ? (
-                      <p className="pb-0.5 sm:pb-1 text-lg sm:text-xl font-semibold text-[#8a6a63] line-through">
-                        {formatPrice(bouquet.old_price)}
-                      </p>
-                    ) : null}
-                    {bouquet.old_price && (
-                      <span className="mb-0.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-emerald-400">
-                        Sale
-                      </span>
-                    )}
+                    <p className="pb-0.5 sm:pb-1 text-lg sm:text-xl font-semibold text-[#8a6a63] line-through">
+                      {formatPrice(getComputedOldPrice(selectedSize?.price ?? bouquet.price))}
+                    </p>
+                    <span className="mb-0.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-emerald-400">
+                      Sale
+                    </span>
                   </div>
 
                   {/* Info cards */}

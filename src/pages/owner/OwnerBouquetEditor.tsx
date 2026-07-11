@@ -12,7 +12,6 @@ import {
   HiOutlinePhoto,
   HiOutlineTag,
   HiOutlineDocumentText,
-  HiOutlineCurrencyDollar,
   HiOutlineArchiveBox,
   HiOutlineEye,
   HiOutlinePlusCircle,
@@ -52,7 +51,6 @@ type BouquetFormValues = {
   slug: string;
   description: string;
   compound: string;
-  old_price: string;
   stock: number;
   status: "active" | "inactive" | "sold_out";
   size_fields: Record<BouquetSizeKey, SizeField>;
@@ -82,7 +80,6 @@ const defaultValues: BouquetFormValues = {
   slug: "",
   description: "",
   compound: "",
-  old_price: "",
   stock: 0,
   status: "active",
   size_fields: createSizeFields(),
@@ -138,7 +135,6 @@ function mapBouquetToFormValues(bouquet: Bouquet): BouquetFormValues {
     slug: bouquet.slug,
     description: bouquet.description ?? "",
     compound: bouquet.compound ?? "",
-    old_price: bouquet.old_price ?? "",
     stock: bouquet.stock,
     status: bouquet.status,
     size_fields: sizeFields,
@@ -409,7 +405,6 @@ function OwnerBouquetEditor() {
       description: values.description.trim() || undefined,
       compound: values.compound.trim() || undefined,
       price: defaultSize.price,
-      old_price: values.old_price.trim() || null,
       size: sizeOptions.map((item) => item.label).join(", "),
       size_options: sizeOptions as BouquetSizeOption[],
       addon_options: addonOptions as BouquetAddonOption[],
@@ -430,7 +425,6 @@ function OwnerBouquetEditor() {
             description: payload.description,
             compound: payload.compound,
             price: payload.price,
-            old_price: payload.old_price,
             size: payload.size,
             size_options: payload.size_options,
             addon_options: payload.addon_options,
@@ -712,45 +706,29 @@ function OwnerBouquetEditor() {
                 />
               </div>
 
-              {/* Old Price + Stock */}
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 flex items-center gap-1.5 text-sm font-medium text-[#e8cac4]">
-                    <HiOutlineCurrencyDollar className="text-[#f0bcc1]" />
-                    {t("owner.oldPrice")}
-                  </label>
-                  <input
-                    {...register("old_price")}
-                    inputMode="decimal"
-                    onKeyDown={blockNegativeNumberInput}
-                    onInput={handleNonNegativeInput}
-                    placeholder={t("owner.optional")}
-                    className="h-12 w-full rounded-xl border border-[#4a1d22]/80 bg-[#180709]/90 px-4 text-sm text-white placeholder-[#8f6d71] outline-none transition-all duration-200 focus:border-[#bb2435]/80 focus:bg-[#1f0a0d] focus:ring-2 focus:ring-[#bb2435]/20"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 flex items-center gap-1.5 text-sm font-medium text-[#e8cac4]">
-                    <HiOutlineArchiveBox className="text-[#f0bcc1]" />
-                    {t("owner.stock")}
-                    <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    {...register("stock", {
-                      valueAsNumber: true,
-                      min: 0,
-                      setValueAs: (value) => {
-                        const parsed = Number(value);
-                        if (Number.isNaN(parsed)) return 0;
-                        return Math.max(0, parsed);
-                      },
-                    })}
-                    onKeyDown={blockNegativeNumberInput}
-                    onInput={handleNonNegativeInput}
-                    className="h-12 w-full rounded-xl border border-[#4a1d22]/80 bg-[#180709]/90 px-4 text-sm text-white placeholder-[#8f6d71] outline-none transition-all duration-200 focus:border-[#bb2435]/80 focus:bg-[#1f0a0d] focus:ring-2 focus:ring-[#bb2435]/20"
-                  />
-                </div>
+              {/* Stock */}
+              <div>
+                <label className="mb-2 flex items-center gap-1.5 text-sm font-medium text-[#e8cac4]">
+                  <HiOutlineArchiveBox className="text-[#f0bcc1]" />
+                  {t("owner.stock")}
+                  <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  {...register("stock", {
+                    valueAsNumber: true,
+                    min: 0,
+                    setValueAs: (value) => {
+                      const parsed = Number(value);
+                      if (Number.isNaN(parsed)) return 0;
+                      return Math.max(0, parsed);
+                    },
+                  })}
+                  onKeyDown={blockNegativeNumberInput}
+                  onInput={handleNonNegativeInput}
+                  className="h-12 w-full rounded-xl border border-[#4a1d22]/80 bg-[#180709]/90 px-4 text-sm text-white placeholder-[#8f6d71] outline-none transition-all duration-200 focus:border-[#bb2435]/80 focus:bg-[#1f0a0d] focus:ring-2 focus:ring-[#bb2435]/20"
+                />
               </div>
 
               {/* Status */}

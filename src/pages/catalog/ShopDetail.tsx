@@ -29,10 +29,11 @@ import PremiumBreadcrumb from "../../components/catalog/PremiumBreadcrumb";
 import ShopVerifiedBadge from "../../components/shops/ShopVerifiedBadge";
 import { ShopDetailSkeleton } from "../../components/PageSkeletons";
 import { useBouquets, useShop } from "../../hooks/useCatalog";
-import { formatPrice, isBouquetAvailable } from "../../utils/catalog";
+import { formatPrice, getComputedOldPrice, isBouquetAvailable } from "../../utils/catalog";
 import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
 import { formatUzbekPhone } from "../../utils/phone";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
+import { getBouquetPath } from "../../utils/routes";
 import type { Bouquet } from "../../types/catalog";
 
 // ─── Intersection observer hook ──────────────────────────────────────────────
@@ -134,7 +135,6 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
   const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const isNewBouquet = isNew(bouquet.created_at);
-  const hasDiscount = Boolean(bouquet.old_price);
   const isPopular = Number(bouquet.rating) >= 4.5 && bouquet.reviews_count >= 10;
   const canAddToCart = isBouquetAvailable(bouquet);
 
@@ -145,7 +145,7 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
         onMouseLeave={() => setIsHovered(false)}
         className="group relative overflow-hidden rounded-2xl border border-[#3a1214]/50 bg-[#0d0405]/80 backdrop-blur-sm shadow-lg transition-all duration-400 hover:-translate-y-1.5 hover:border-[#cb5c57]/35 hover:shadow-2xl hover:shadow-black/30"
       >
-        <Link to={`/bouquets/${bouquet.id}`} className="block">
+        <Link to={getBouquetPath(bouquet)} className="block">
           <div className="relative overflow-hidden">
             <img loading="lazy" decoding="async"
               src={bouquet.image}
@@ -167,11 +167,9 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
                   {t("catalog.popular")}
                 </span>
               )}
-              {hasDiscount && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-rose-600/20">
-                  Sale
-                </span>
-              )}
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-lg shadow-rose-600/20">
+                Sale
+              </span>
               <BouquetAvailabilityBadge bouquet={bouquet} compact />
             </div>
 
@@ -212,7 +210,7 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
         <div className="p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <Link to={`/bouquets/${bouquet.id}`}>
+              <Link to={getBouquetPath(bouquet)}>
                 <h3 className="font-cormorant text-lg sm:text-xl md:text-2xl font-semibold leading-tight text-white transition-colors duration-300 hover:text-[#cb5c57]">
                   {bouquet.name}
                 </h3>
@@ -231,11 +229,9 @@ function BouquetCard({ bouquet }: { bouquet: Bouquet }) {
           <div className="mt-3 flex items-end justify-between border-t border-[#3a1214]/30 pt-3">
             <div className="flex items-end gap-2">
               <span className="text-lg sm:text-xl md:text-2xl font-bold text-white">{formatPrice(bouquet.price)}</span>
-              {hasDiscount && (
-                <span className="pb-0.5 text-xs sm:text-sm font-medium text-[#8a6a63] line-through">
-                  {formatPrice(bouquet.old_price!)}
-                </span>
-              )}
+              <span className="pb-0.5 text-xs sm:text-sm font-medium text-[#8a6a63] line-through">
+                {formatPrice(getComputedOldPrice(bouquet.price))}
+              </span>
             </div>
             <BouquetAvailabilityBadge bouquet={bouquet} compact />
           </div>

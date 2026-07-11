@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { useLocation } from "react-router-dom";
 
 const NOINDEX_PREFIXES = ["/admin", "/owner"];
@@ -26,21 +26,13 @@ function getRobotsContent(pathname: string) {
 
 function SeoRobots() {
   const { pathname } = useLocation();
+  const content = getRobotsContent(pathname);
 
-  useEffect(() => {
-    const content = getRobotsContent(pathname);
-    let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
-
-    if (!robots) {
-      robots = document.createElement("meta");
-      robots.name = "robots";
-      document.head.appendChild(robots);
-    }
-
-    robots.content = content;
-  }, [pathname]);
-
-  return null;
+  return (
+    <Helmet>
+      <meta name="robots" content={content} />
+    </Helmet>
+  );
 }
 
 export default SeoRobots;

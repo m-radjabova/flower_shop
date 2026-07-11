@@ -16,6 +16,7 @@ import { getStoredAccessToken } from "../../api/authStorage";
 import { useCreateReview, useReviews, useUploadImage } from "../../hooks/useCatalog";
 import type { Bouquet, Review } from "../../types/catalog";
 import { ReviewsPanelSkeleton } from "../PageSkeletons";
+import { getBouquetPath, getBouquetReviewsPath } from "../../utils/routes";
 
 interface ReviewSectionProps {
   bouquet: Bouquet;
@@ -278,7 +279,7 @@ function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
                 />
               </div>
               <Link
-                to={`/bouquets/${bouquet.id}/reviews`}
+                to={getBouquetReviewsPath(bouquet)}
                 className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#9d5149] bg-[#120607]/70 px-5 py-4 text-sm font-bold text-[#ffe1d8] transition hover:border-[#f0a093] hover:text-white"
               >
                 {t("catalog.viewAll")}
@@ -311,7 +312,7 @@ function ReviewSection({ bouquet, mode = "preview" }: ReviewSectionProps) {
             </div>
           </div>
           <Link
-            to={`/bouquets/${bouquet.id}`}
+            to={getBouquetPath(bouquet)}
             className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#7a3d37] px-5 py-3 text-sm font-bold text-[#ffe1d8] transition hover:border-[#d48479] hover:text-white"
           >
             {t("reviews.beFirst")}

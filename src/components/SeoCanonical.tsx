@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { useLocation } from "react-router-dom";
 
 const DEFAULT_SITE_URL = "https://flower-shop-kappa-swart.vercel.app";
@@ -9,27 +9,15 @@ function getSiteUrl() {
 
 function SeoCanonical() {
   const { pathname } = useLocation();
+  const canonicalPath = pathname === "/" ? "/" : pathname.replace(/\/+$/, "");
+  const canonicalUrl = `${getSiteUrl()}${canonicalPath}`;
 
-  useEffect(() => {
-    const canonicalPath = pathname === "/" ? "/" : pathname.replace(/\/+$/, "");
-    const canonicalUrl = `${getSiteUrl()}${canonicalPath}`;
-    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-
-    canonical.href = canonicalUrl;
-
-    const ogUrl = document.querySelector<HTMLMetaElement>('meta[property="og:url"]');
-    if (ogUrl) {
-      ogUrl.content = canonicalUrl;
-    }
-  }, [pathname]);
-
-  return null;
+  return (
+    <Helmet>
+      <link rel="canonical" href={canonicalUrl} />
+      <meta property="og:url" content={canonicalUrl} />
+    </Helmet>
+  );
 }
 
 export default SeoCanonical;

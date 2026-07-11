@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Navigate, Route, Routes } from "react-router-dom";
 import IsLoading from "./components/IsLoading";
 import NotFound from "./components/NotFound";
@@ -62,6 +63,15 @@ function App() {
 
   return (
     <>
+      <Helmet defaultTitle="Flower Marketplace" titleTemplate="%s | Flower Marketplace">
+        <meta
+          name="description"
+          content="Fresh bouquets, trusted flower shops, delivery, reviews, and floral gifts in one place."
+        />
+        <meta property="og:site_name" content="Flower Marketplace" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="/for-meta-teg.png" />
+      </Helmet>
       <SeoCanonical />
       <SeoRobots />
       <ScrollToTop />

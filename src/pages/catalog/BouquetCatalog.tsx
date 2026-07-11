@@ -27,9 +27,17 @@ import { useCategories, useInfiniteBouquets } from "../../hooks/useCatalog";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useFavoriteIds } from "../../hooks/useFavorites";
 import BouquetAvailabilityBadge from "../../components/catalog/BouquetAvailabilityBadge";
-import { formatPrice, getBouquetImages, isBouquetAvailable, isNewBouquet } from "../../utils/catalog";
+import {
+  formatPrice,
+  getBouquetImages,
+  getComputedDiscountPercent,
+  getComputedOldPrice,
+  isBouquetAvailable,
+  isNewBouquet,
+} from "../../utils/catalog";
 import { FAVORITES_AUTH_REQUIRED_MESSAGE, toggleFavoriteBouquet } from "../../utils/favorites";
 import { normalizeInstagramLink, normalizeTelegramLink } from "../../utils/social";
+import { getBouquetPath } from "../../utils/routes";
 import { BouquetGridSkeleton } from "../../components/PageSkeletons";
 import type { Bouquet } from "../../types/catalog";
 import bouquetsPageBackground from "../../assets/bouquets_page_bg.png";
@@ -53,9 +61,8 @@ const RatingStars = ({ rating }: { rating: number | string }) => {
   );
 };
 
-const DiscountBadge = ({ oldPrice, price }: { oldPrice?: string | null; price: string }) => {
-  if (!oldPrice) return null;
-  const discountPercent = Math.round((1 - Number(price) / Number(oldPrice)) * 100);
+const DiscountBadge = ({ price }: { price: string }) => {
+  const discountPercent = getComputedDiscountPercent(price);
   if (discountPercent <= 0) return null;
   return (
     <span className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
@@ -269,17 +276,18 @@ function BouquetCatalog() {
     const shopTelegramUrl = bouquet.shop.telegram ? normalizeTelegramLink(bouquet.shop.telegram) : "";
     const isHovered = hoveredCard === bouquet.id;
     const canAddToCart = isBouquetAvailable(bouquet);
+    const bouquetPath = getBouquetPath(bouquet);
 
     return (
       <article
         key={bouquet.id}
         onMouseEnter={() => setHoveredCard(bouquet.id)}
         onMouseLeave={() => setHoveredCard(null)}
-        onClick={() => navigate(`/bouquets/${bouquet.id}`)}
+        onClick={() => navigate(bouquetPath)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            navigate(`/bouquets/${bouquet.id}`);
+            navigate(bouquetPath);
           }
         }}
         role="button"
@@ -312,7 +320,7 @@ function BouquetCatalog() {
             <BouquetAvailabilityBadge bouquet={bouquet} compact />
           </div>
 
-          <DiscountBadge oldPrice={bouquet.old_price} price={bouquet.price} />
+          <DiscountBadge price={bouquet.price} />
 
           {/* Favorite button */}
           <button
@@ -378,7 +386,7 @@ function BouquetCatalog() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/bouquets/${bouquet.id}`);
+                navigate(bouquetPath);
               }}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#cb5c57]/90 py-2.5 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm transition-colors hover:bg-[#cb5c57]"
             >
@@ -406,7 +414,7 @@ function BouquetCatalog() {
             </div>
 
             <Link
-              to={`/bouquets/${bouquet.id}`}
+              to={bouquetPath}
               onClick={(e) => e.stopPropagation()}
               className="block font-great-vibes text-[2rem] sm:text-[2.2rem] leading-tight text-[#fff3ee] transition-colors duration-200 hover:text-[#ff9b88]"
             >
@@ -463,16 +471,12 @@ function BouquetCatalog() {
             <div>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-bold text-white">{formatPrice(bouquet.price)}</span>
-                {bouquet.old_price && (
-                  <span className="text-sm text-[#7a5a52] line-through">{formatPrice(bouquet.old_price)}</span>
-                )}
+                <span className="text-sm text-[#7a5a52] line-through">{formatPrice(getComputedOldPrice(bouquet.price))}</span>
               </div>
-              {bouquet.old_price && (
-                <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400">
-                  <HiOutlineCheckBadge size={9} />
-                  {t("catalog.greatDeal")}
-                </span>
-              )}
+              <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400">
+                <HiOutlineCheckBadge size={9} />
+                {t("catalog.greatDeal")}
+              </span>
             </div>
 
             <button

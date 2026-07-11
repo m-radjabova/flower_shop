@@ -31,6 +31,7 @@ import { useMyImportantDates } from "../../hooks/useImportantDates";
 import type { Bouquet, OrderOut } from "../../types/catalog";
 import { formatPrice } from "../../utils/catalog";
 import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
+import { getBouquetPath } from "../../utils/routes";
 import {
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
@@ -146,7 +147,6 @@ function buildRepeatBouquet(order: OrderOut, item: OrderOut["items"][number]): B
     description: order.note ?? "Reordered from your previous purchase.",
     compound: null,
     price: item.price,
-    old_price: null,
     image: item.bouquet_image ?? "/logo2.png",
     images: item.bouquet_image ? [item.bouquet_image] : ["/logo2.png"],
     size: null,
@@ -1414,7 +1414,7 @@ function Profile() {
                       <div className="flex items-center justify-between p-4">
                         <p className="text-xl font-bold text-white">{formatPrice(activeRecommended.price)}</p>
                         <Link
-                          to={`/bouquets/${activeRecommended.id}`}
+                          to={getBouquetPath(activeRecommended)}
                           className="rounded-xl bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10"
                         >
                           View →
