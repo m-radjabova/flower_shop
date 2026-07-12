@@ -3,6 +3,7 @@ import type {
   ImportantDate,
   ImportantDateCreatePayload,
   ImportantDateUpdatePayload,
+  GoogleAuthPayload,
   LoginPayload,
   LoginResponse,
   RegisterPayload,
@@ -24,6 +25,11 @@ export async function loginUser(payload: LoginPayload) {
 
 export async function registerUser(payload: RegisterPayload) {
   const { data } = await apiClient.post<LoginResponse>("/auth/register", payload);
+  return data;
+}
+
+export async function googleAuthUser(payload: GoogleAuthPayload) {
+  const { data } = await apiClient.post<LoginResponse>("/auth/google", payload);
   return data;
 }
 

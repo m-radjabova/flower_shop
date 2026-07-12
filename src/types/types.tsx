@@ -14,6 +14,11 @@ export interface RegisterPayload {
   confirm_password: string;
 }
 
+export interface GoogleAuthPayload {
+  id_token: string;
+  referral_code?: string;
+}
+
 export interface LoginResponse {
   access_token: string;
   refresh_token?: string | null;

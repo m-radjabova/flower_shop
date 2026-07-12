@@ -17,9 +17,11 @@ import {
   HiOutlineGift,
   HiOutlineShieldCheck,
 } from "react-icons/hi2";
+import { FaGoogle } from "react-icons/fa";
 import { toast } from "react-toastify";
 import registerBg from "../../assets/login_bg.png";
-import { clearStoredAuth, getErrorMessage, getMe, persistTokens, registerUser } from "../../api/auth";
+import { clearStoredAuth, getErrorMessage, getMe, googleAuthUser, persistTokens, registerUser } from "../../api/auth";
+import { getFirebaseGoogleIdToken } from "../../api/googleAuth";
 import AuthShell from "../../components/AuthShell";
 import useContextPro from "../../hooks/useContextPro";
 import { formatUzbekPhone, normalizeUzbekPhone, toApiPhone } from "../../utils/phone";
@@ -141,6 +143,33 @@ function Register() {
     onError: (error) => {
       clearStoredAuth();
       toast.error(getErrorMessage(error, t("auth.registerError")));
+    },
+  });
+
+  const googleMutation = useMutation({
+    mutationFn: async () => {
+      const idToken = await getFirebaseGoogleIdToken();
+      const referralCode = watch("referral_code")?.trim();
+      return googleAuthUser({
+        id_token: idToken,
+        referral_code: referralCode || undefined,
+      });
+    },
+    onSuccess: async (tokens) => {
+      try {
+        persistTokens(tokens);
+        const me = await getMe();
+        login(tokens, me);
+        toast.success(t("auth.googleSuccess"));
+        navigate(getPostLoginRoute(me), { replace: true });
+      } catch (error) {
+        clearStoredAuth();
+        toast.error(getErrorMessage(error, t("auth.profileLoadError")));
+      }
+    },
+    onError: (error) => {
+      clearStoredAuth();
+      toast.error(getErrorMessage(error, t("auth.googleError")));
     },
   });
 
@@ -362,6 +391,25 @@ function Register() {
       </div>
 
       <form ref={formRef} className="relative z-10 space-y-3.5" onSubmit={handleSubmit(onSubmit)}>
+        <button
+          type="button"
+          disabled={googleMutation.isPending || registerMutation.isPending || isSubmitting}
+          onClick={() => {
+            clearStoredAuth();
+            googleMutation.mutate();
+          }}
+          className="group inline-flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 text-sm font-semibold text-[#fff7f6] transition-all duration-300 hover:border-white/[0.22] hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <FaGoogle className="text-base text-[#ff8fa0]" />
+          <span>{googleMutation.isPending ? t("auth.googleLoading") : t("auth.continueWithGoogle")}</span>
+        </button>
+
+        <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.16em] text-white/25">
+          <span className="h-px flex-1 bg-white/[0.08]" />
+          <span>{t("auth.or")}</span>
+          <span className="h-px flex-1 bg-white/[0.08]" />
+        </div>
+
         <div className="grid gap-3.5 md:grid-cols-2">
           {/* Full Name Field */}
           <div style={{ animationDelay: "0.05s" }}>
@@ -592,7 +640,7 @@ function Register() {
         >
           <button
             type="submit"
-            disabled={registerMutation.isPending || isSubmitting}
+            disabled={registerMutation.isPending || googleMutation.isPending || isSubmitting}
             className="group relative inline-flex h-14 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-[#ff6b7e] to-[#ff8fa0] text-sm font-bold uppercase tracking-[0.15em] text-white transition-all duration-300 hover:scale-[1.015] hover:shadow-[0_8px_30px_rgba(255,107,126,0.25)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-[#ff6b7e] via-[#ff8fa0] to-[#ff6b7e] bg-[length:200%_100%] opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-hover:animate-gradientShift" />

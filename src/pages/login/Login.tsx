@@ -12,9 +12,11 @@ import {
   HiOutlineLockClosed,
   HiOutlineSparkles,
 } from "react-icons/hi2";
+import { FaGoogle } from "react-icons/fa";
 import { toast } from "react-toastify";
 import loginBg from "../../assets/login_bg.png";
-import { clearStoredAuth, getErrorMessage, getMe, loginUser, persistTokens } from "../../api/auth";
+import { clearStoredAuth, getErrorMessage, getMe, googleAuthUser, loginUser, persistTokens } from "../../api/auth";
+import { getFirebaseGoogleIdToken } from "../../api/googleAuth";
 import AuthShell from "../../components/AuthShell";
 import useContextPro from "../../hooks/useContextPro";
 import { getPostLoginRoute } from "../../utils/roles";
@@ -84,6 +86,29 @@ function Login() {
     onError: (error) => {
       clearStoredAuth();
       toast.error(getErrorMessage(error, t("auth.loginError")));
+    },
+  });
+
+  const googleMutation = useMutation({
+    mutationFn: async () => {
+      const idToken = await getFirebaseGoogleIdToken();
+      return googleAuthUser({ id_token: idToken });
+    },
+    onSuccess: async (tokens) => {
+      try {
+        persistTokens(tokens);
+        const me = await getMe();
+        login(tokens, me);
+        toast.success(t("auth.googleSuccess"));
+        navigate(getPostLoginRoute(me), { replace: true });
+      } catch (error) {
+        clearStoredAuth();
+        toast.error(getErrorMessage(error, t("auth.profileLoadError")));
+      }
+    },
+    onError: (error) => {
+      clearStoredAuth();
+      toast.error(getErrorMessage(error, t("auth.googleError")));
     },
   });
 
@@ -164,6 +189,25 @@ function Login() {
       </div>
 
       <form className="relative z-10 mt-6 space-y-5" onSubmit={handleSubmit(onSubmit)}>
+        <button
+          type="button"
+          disabled={googleMutation.isPending || loginMutation.isPending || isSubmitting}
+          onClick={() => {
+            clearStoredAuth();
+            googleMutation.mutate();
+          }}
+          className="group inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold text-[#fff7f6] transition-all duration-300 hover:border-white/25 hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <FaGoogle className="text-base text-[#ff8fa0]" />
+          <span>{googleMutation.isPending ? t("auth.googleLoading") : t("auth.continueWithGoogle")}</span>
+        </button>
+
+        <div className="flex items-center gap-3 text-xs uppercase tracking-[0.16em] text-white/28">
+          <span className="h-px flex-1 bg-white/10" />
+          <span>{t("auth.or")}</span>
+          <span className="h-px flex-1 bg-white/10" />
+        </div>
+
         {/* Email Field */}
         <div className="group">
           <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
@@ -300,7 +344,7 @@ function Login() {
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={loginMutation.isPending || isSubmitting}
+          disabled={loginMutation.isPending || googleMutation.isPending || isSubmitting}
           className="group relative mt-2 inline-flex h-14 w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-[#ff6b7e] to-[#ff8fa0] text-sm font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-[#ff6b7e]/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
         >
           {/* Shimmer line */}
