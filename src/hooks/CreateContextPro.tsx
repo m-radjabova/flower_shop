@@ -145,7 +145,7 @@ function CreateContextPro({ children }: { children: ReactNode }) {
       clearStoredAuth();
       queryClient.removeQueries({ predicate: ({ queryKey }) => isAuthScopedQuery(queryKey) });
       dispatch({ type: "LOGOUT" });
-      navigate("/login", { replace: true });
+      navigate("/", { replace: true });
     }
   }, [navigate, queryClient]);
 

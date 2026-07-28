@@ -16,7 +16,7 @@ export function getDefaultRouteForRole(user: UserWithRole | null | undefined) {
   if (primaryRole === "owner") return "/owner/dashboard";
   if (primaryRole === "courier") return "/profile";
   if (primaryRole === "customer") return "/profile";
-  return "/login";
+  return "/";
 }
 
 export function getPostLoginRoute(user: UserWithRole | null | undefined) {
