@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { useTranslation } from "react-i18next";
 import {
   HiOutlineArrowRight,
@@ -190,7 +191,16 @@ function AboutUs() {
   ];
 
   return (
-    <main className="relative isolate min-h-screen overflow-hidden text-[#fff6f4]">
+    <>
+      <Helmet>
+        <title>About us</title>
+        <meta
+          name="description"
+          content="Learn about our flower studio, premium quality, same-day delivery, and the care behind every bouquet."
+        />
+      </Helmet>
+
+      <main className="relative isolate min-h-screen overflow-hidden text-[#fff6f4]">
 
       {/* ── Backgrounds ── */}
       <div className="pointer-events-none fixed inset-0 -z-20">
@@ -585,7 +595,8 @@ function AboutUs() {
         .duration-600 { transition-duration: 600ms; }
         .group-hover\\:scale-108:hover { transform: scale(1.08); }
       `}</style>
-    </main>
+      </main>
+    </>
   );
 }
 

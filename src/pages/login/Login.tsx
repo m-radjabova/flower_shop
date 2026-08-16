@@ -28,20 +28,20 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-/* ─── Floating petal/pollen particles ─── */
+/* ─── Floating petal/pollen particles (pure Tailwind animations) ─── */
 const petals = [
-  { left: "8%", top: "10%", size: 10, delay: 0, duration: 6, driftX: 18, driftY: -14 },
-  { left: "85%", top: "6%", size: 14, delay: 1.2, duration: 8, driftX: -20, driftY: 10 },
-  { left: "20%", top: "70%", size: 8, delay: 0.6, duration: 7.2, driftX: 14, driftY: -18 },
-  { left: "75%", top: "76%", size: 12, delay: 2.1, duration: 9, driftX: -12, driftY: 16 },
-  { left: "50%", top: "4%", size: 6, delay: 3.0, duration: 5.8, driftX: 22, driftY: -8 },
-  { left: "92%", top: "44%", size: 9, delay: 1.8, duration: 7.8, driftX: -16, driftY: 12 },
-  { left: "4%", top: "44%", size: 11, delay: 2.5, duration: 6.6, driftX: 20, driftY: -10 },
-  { left: "38%", top: "88%", size: 7, delay: 0.3, duration: 7, driftX: -14, driftY: -16 },
-  { left: "60%", top: "12%", size: 13, delay: 1.5, duration: 8.4, driftX: 16, driftY: 14 },
-  { left: "15%", top: "90%", size: 5, delay: 3.5, duration: 6.2, driftX: -18, driftY: -12 },
-  { left: "70%", top: "58%", size: 8, delay: 0.9, duration: 7.5, driftX: 12, driftY: 20 },
-  { left: "44%", top: "40%", size: 10, delay: 2.8, duration: 8.8, driftX: -22, driftY: -6 },
+  { left: "8%", top: "10%", size: 10, animation: "animate-pulse [animation-duration:6s] [animation-delay:0s]" },
+  { left: "85%", top: "6%", size: 14, animation: "animate-pulse [animation-duration:8s] [animation-delay:1.2s]" },
+  { left: "20%", top: "70%", size: 8, animation: "animate-pulse [animation-duration:7.2s] [animation-delay:0.6s]" },
+  { left: "75%", top: "76%", size: 12, animation: "animate-pulse [animation-duration:9s] [animation-delay:2.1s]" },
+  { left: "50%", top: "4%", size: 6, animation: "animate-pulse [animation-duration:5.8s] [animation-delay:3s]" },
+  { left: "92%", top: "44%", size: 9, animation: "animate-pulse [animation-duration:7.8s] [animation-delay:1.8s]" },
+  { left: "4%", top: "44%", size: 11, animation: "animate-pulse [animation-duration:6.6s] [animation-delay:2.5s]" },
+  { left: "38%", top: "88%", size: 7, animation: "animate-pulse [animation-duration:7s] [animation-delay:0.3s]" },
+  { left: "60%", top: "12%", size: 13, animation: "animate-pulse [animation-duration:8.4s] [animation-delay:1.5s]" },
+  { left: "15%", top: "90%", size: 5, animation: "animate-pulse [animation-duration:6.2s] [animation-delay:3.5s]" },
+  { left: "70%", top: "58%", size: 8, animation: "animate-pulse [animation-duration:7.5s] [animation-delay:0.9s]" },
+  { left: "44%", top: "40%", size: 10, animation: "animate-pulse [animation-duration:8.8s] [animation-delay:2.8s]" },
 ];
 
 function Login() {
@@ -144,17 +144,13 @@ function Login() {
         {petals.map((petal, i) => (
           <span
             key={i}
-            className="absolute rounded-full bg-gradient-to-br from-[#ffb088]/40 via-[#ff8a7a]/30 to-[#ff6b7e]/20 shadow-lg"
+            className={`absolute rounded-full bg-gradient-to-br from-[#ffb088]/40 via-[#ff8a7a]/30 to-[#ff6b7e]/20 shadow-lg ${petal.animation}`}
             style={{
               left: petal.left,
               top: petal.top,
               width: petal.size,
               height: petal.size,
-              animation: `loginFloat ${petal.duration}s ease-in-out ${petal.delay}s infinite`,
-              willChange: "transform",
-              "--drift-x": `${petal.driftX}px`,
-              "--drift-y": `${petal.driftY}px`,
-            } as React.CSSProperties}
+            }}
           />
         ))}
       </div>
@@ -210,42 +206,39 @@ function Login() {
 
         {/* Email Field */}
         <div className="group">
-          <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
+          <label
+            htmlFor="email"
+            className="mb-2 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/55 transition-colors duration-200 group-focus-within:text-[#ff8fa0]"
+          >
             {t("auth.emailAddress")}
           </label>
-          <div
-            className={`relative rounded-2xl transition-all duration-300 ${
-              isFocusedEmail ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
-            }`}
-          >
-            <div
-              className={`absolute inset-0 rounded-2xl bg-gradient-to-r from-[#ff6b7e]/20 to-[#ff8fa0]/20 opacity-0 transition-opacity duration-300 ${
-                isFocusedEmail ? "opacity-100" : ""
-              }`}
-            />
+          <div className="relative">
             <HiOutlineEnvelope
               className={`pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-lg transition-all duration-300 ${
-                isFocusedEmail ? "text-[#ff6b7e] scale-110" : "text-white/40"
+                isFocusedEmail || errors.email ? "text-[#ff6b7e] scale-110" : "text-white/40"
               }`}
             />
             <input
+              id="email"
               {...register("email")}
               type="email"
               autoComplete="email"
               placeholder={t("auth.emailPlaceholder")}
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? "email-error" : undefined}
               onFocus={() => setIsFocusedEmail(true)}
               onBlur={() => setIsFocusedEmail(false)}
-              className={`relative h-14 w-full rounded-2xl border bg-white/8 pl-12 pr-4 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e] ${
+              className={`relative h-14 w-full rounded-2xl border bg-white/[0.06] pl-12 pr-12 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#8a646d] focus:border-[#ff6b7e] focus:bg-white/[0.08] focus:ring-4 focus:ring-[#ff6b7e]/10 ${
                 errors.email
-                  ? "border-red-500/50 focus:border-red-500"
+                  ? "border-red-500/50 focus:border-red-500 focus:ring-red-500/10"
                   : isFocusedEmail
-                    ? "border-[#ff6b7e] bg-white/12"
+                    ? "border-[#ff6b7e]"
                     : "border-white/10 hover:border-white/20"
               }`}
             />
           </div>
           {errors.email && (
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-red-400 animate-fadeIn">
+            <p id="email-error" className="mt-2 flex items-center gap-1.5 text-xs text-red-400">
               <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0">
                 <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 5a1 1 0 012 0v3a1 1 0 01-2 0V5zm1 7a1 1 0 110-2 1 1 0 010 2z" />
               </svg>
@@ -256,49 +249,47 @@ function Login() {
 
         {/* Password Field */}
         <div className="group">
-          <label className="mb-2 block text-sm font-medium text-[#f5dfdd] transition-all duration-300 group-focus-within:text-[#ff6b7e]">
+          <label
+            htmlFor="password"
+            className="mb-2 block text-[11px] font-bold uppercase tracking-[0.16em] text-white/55 transition-colors duration-200 group-focus-within:text-[#ff8fa0]"
+          >
             {t("auth.password")}
           </label>
-          <div
-            className={`relative rounded-2xl transition-all duration-300 ${
-              isFocusedPassword ? "shadow-[0_0_0_4px_rgba(255,107,126,0.1)]" : ""
-            }`}
-          >
-            <div
-              className={`absolute inset-0 rounded-2xl bg-gradient-to-r from-[#ff6b7e]/20 to-[#ff8fa0]/20 opacity-0 transition-opacity duration-300 ${
-                isFocusedPassword ? "opacity-100" : ""
-              }`}
-            />
+          <div className="relative">
             <HiOutlineLockClosed
               className={`pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-lg transition-all duration-300 ${
-                isFocusedPassword ? "text-[#ff6b7e] scale-110" : "text-white/40"
+                isFocusedPassword || errors.password ? "text-[#ff6b7e] scale-110" : "text-white/40"
               }`}
             />
             <input
+              id="password"
               {...register("password")}
               type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               placeholder={t("auth.passwordPlaceholder")}
+              aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? "password-error" : undefined}
               onFocus={() => setIsFocusedPassword(true)}
               onBlur={() => setIsFocusedPassword(false)}
-              className={`relative h-14 w-full rounded-2xl border bg-white/8 pl-12 pr-14 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e] ${
+              className={`relative h-14 w-full rounded-2xl border bg-white/[0.06] pl-12 pr-14 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#8a646d] focus:border-[#ff6b7e] focus:bg-white/[0.08] focus:ring-4 focus:ring-[#ff6b7e]/10 ${
                 errors.password
-                  ? "border-red-500/50 focus:border-red-500"
+                  ? "border-red-500/50 focus:border-red-500 focus:ring-red-500/10"
                   : isFocusedPassword
-                    ? "border-[#ff6b7e] bg-white/12"
+                    ? "border-[#ff6b7e]"
                     : "border-white/10 hover:border-white/20"
               }`}
             />
             <button
               type="button"
               onClick={() => setShowPassword((current) => !current)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 transition-all duration-300 hover:text-[#ff6b7e] hover:scale-110"
+              aria-label={showPassword ? t("auth.hidePassword", "Parolni yashirish") : t("auth.showPassword", "Parolni ko'rsatish")}
+              className="!absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-white/40 transition-all duration-200 hover:bg-white/[0.07] hover:text-[#ff6b7e]"
             >
               {showPassword ? <HiOutlineEyeSlash size={18} /> : <HiOutlineEye size={18} />}
             </button>
           </div>
           {errors.password && (
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-red-400 animate-fadeIn">
+            <p id="password-error" className="mt-2 flex items-center gap-1.5 text-xs text-red-400">
               <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0">
                 <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 5a1 1 0 012 0v3a1 1 0 01-2 0V5zm1 7a1 1 0 110-2 1 1 0 010 2z" />
               </svg>
@@ -332,12 +323,6 @@ function Login() {
                 Remember me
               </span>
             </label>
-            <button
-              type="button"
-              className="text-xs text-[#d8b1ae] underline decoration-1 underline-offset-2 decoration-white/20 transition-all hover:text-[#ff6b7e] hover:decoration-[#ff6b7e]/40"
-            >
-              Forgot password?
-            </button>
           </div>
         </div>
 
@@ -373,26 +358,6 @@ function Login() {
           </span>
         </button>
       </form>
-
-      {/* ─── Inject floating keyframes once ─── */}
-      <style>{`
-        @keyframes loginFloat {
-          0%, 100% {
-            transform: translate3d(0, 0, 0) scale(1);
-            opacity: 0.3;
-          }
-          25% {
-            opacity: 0.7;
-          }
-          50% {
-            transform: translate3d(var(--drift-x), var(--drift-y), 0) scale(1.15);
-            opacity: 0.9;
-          }
-          75% {
-            opacity: 0.5;
-          }
-        }
-      `}</style>
     </AuthShell>
   );
 }

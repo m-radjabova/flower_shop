@@ -164,7 +164,9 @@
     "reviews": "sharh",
     "addedToFavorites": "sevimlilarga qo'shildi",
     "removedFromFavorites": "sevimlilardan olib tashlandi",
-    "addedToCart": "savatga qo'shildi"
+    "addedToCart": "savatga qo'shildi",
+    "eyebrow": "Yangi tanlov",
+    "subtitle": "Sevgi bilan tanlangan gullar — har qadrli daqiqangiz uchun mukammal guldasta."
   },
   "categorySection": {
     "shopByCategory": "Kategoriyalar bo'yicha xarid",
@@ -298,7 +300,24 @@
     "outOfStockMessage": "hozircha qolmagan"
   },
   "favorites": {
-    "removed": "{{name}} sevimlilardan olib tashlandi"
+    "yourCollection": "Sizning tanlovingiz",
+    "my": "Mening",
+    "favorites": "Sevimlilar",
+    "items": "ta mahsulot",
+    "sortRecent": "Yaqinda qo'shilganlar",
+    "sortPriceLow": "Narx: arzondan qimmatga",
+    "sortPriceHigh": "Narx: qimmatdan arzonga",
+    "sortRating": "Eng yuqori baholangan",
+    "gridView": "Katak",
+    "listView": "Ro'yxat",
+    "noFavorites": "Hozircha sevimlilar yo'q",
+    "noFavoritesDesc": "Saralangan kolleksiyamizni tomosha qiling va sizga eng yoqqan guldastalarni sevimlilarga saqlang. Qo'shganlaringiz shu yerda ko'rinadi.",
+    "exploreBouquets": "Guldastalarni ko'rish",
+    "addToCart": "Savatga qo'shish",
+    "remove": "O'chirish",
+    "removeFromFavorites": "Sevimlilardan olib tashlandi",
+    "addedToCart": "savatga qo'shildi",
+    "favorite": "Sevimli"
   },
   "orders": {
     "addressMissing": "Manzil ko'rsatilmagan"
@@ -509,26 +528,6 @@
     "orderWithin": "Buyurtma bering 2 soat 15 daqiqa ichida",
     "totalLabel": "Jami",
     "mapPreviewTitle": "Yetkazib berish xaritasi"
-  },
-  "favorites": {
-    "yourCollection": "Sizning tanlovingiz",
-    "my": "Mening",
-    "favorites": "Sevimlilar",
-    "items": "ta mahsulot",
-    "sortRecent": "Yaqinda qo'shilganlar",
-    "sortPriceLow": "Narx: arzondan qimmatga",
-    "sortPriceHigh": "Narx: qimmatdan arzonga",
-    "sortRating": "Eng yuqori baholangan",
-    "gridView": "Katak",
-    "listView": "Ro'yxat",
-    "noFavorites": "Hozircha sevimlilar yo'q",
-    "noFavoritesDesc": "Saralangan kolleksiyamizni tomosha qiling va sizga eng yoqqan guldastalarni sevimlilarga saqlang. Qo'shganlaringiz shu yerda ko'rinadi.",
-    "exploreBouquets": "Guldastalarni ko'rish",
-    "addToCart": "Savatga qo'shish",
-    "remove": "O'chirish",
-    "removeFromFavorites": "Sevimlilardan olib tashlandi",
-    "addedToCart": "savatga qo'shildi",
-    "favorite": "Sevimli"
   },
   "shopDetail": {
     "backToShops": "Do'konlarga qaytish",
@@ -1005,7 +1004,6 @@
     "favoritesCount": "ta saqlangan guldasta bor",
     "noFavorites": "Hozircha sevimlilar yo'q.",
     "addToCart": "Savatga qo'shish",
-    "remove": "O'chirish",
     "addedToCart": "savatga qo'shildi",
     "removedFromFavorites": "favoritesdan olib tashlandi",
     "signature": "Imzo guldasta",
@@ -1147,7 +1145,7 @@
     "completeProfile": "Profilni to'ldirish",
     "forYou": "Siz uchun",
     "showBouquet": "{{name}} ni ko'rsatish",
-    "signatureStorefront": "Imzo vitrini",
+    "signatureStorefront": "Do'kon vitrinasi",
     "profileHealth": "Profil holati",
     "tapMapHint": "Do'kon manzilini tanlash uchun xaritani bosing.",
     "addressResolveError": "Manzilni aniqlab bo'lmadi",
@@ -1175,7 +1173,7 @@
     "examplePrice15": "Masalan: 15.00",
     "examplePrice4": "Masalan: 4.00",
     "deleteBouquetTitle": "Guldasta o'chirilsinmi?",
-    "from": "dan",
+    "from": "Dan",
     "ordersControl": "Buyurtmalar boshqaruvi",
     "noShops": "Sizda hali do'kon yo'q.",
     "shopLabel": "Do'kon",
@@ -1203,8 +1201,6 @@
     "applicationFeedback": "Ariza fikr-mulohazasi",
     "application": "Ariza",
     "decision": "Qaror",
-    "signatureStorefront": "Do'kon vitrinasi",
-    "profileHealth": "Profil holati",
     "strong": "Kuchli",
     "address": "Manzil",
     "phone": "Telefon",
@@ -1242,7 +1238,6 @@
     "advancedFilters": "Kengaytirilgan filtrlar",
     "sortBy": "Saralash",
     "byDate": "Sana bo'yicha",
-    "from": "Dan",
     "to": "Gacha",
     "paymentMethod": "To'lov usuli",
     "deliveryMethod": "Yetkazish usuli",
@@ -1318,7 +1313,6 @@
     "resetFormDesc": "Saqlanmagan barcha guldasta o'zgarishlari tozalanadi va forma oxirgi saqlangan holatga qaytadi.",
     "yesReset": "Ha, qayta tiklash",
     "formResetSuccess": "Forma qayta tiklandi",
-    "mapLoadError": "Xaritani yuklab bo'lmadi",
     "searchLocationError": "Joylashuv qidirib bo'lmadi",
     "currentLocationError": "Hozirgi joylashuvni olib bo'lmadi",
     "currentLocationPermissionDenied": "Joylashuv uchun ruxsat berilmagan. Brauzer sozlamalaridan ruxsat bering.",
@@ -1407,7 +1401,6 @@
     "bouquetDeleteError": "Guldastani o'chirib bo'lmadi",
     "bouquetNotFound": "Guldasta topilmadi yoki mavjud emas.",
     "imageUploadSuccess": "Rasm yuklandi",
-    "imageUploadError": "Rasmni yuklab bo'lmadi",
     "shopRequired": "Do'kon topilmadi",
     "noBouquetAccess": "Guldastalar boshqaruvi uchun avval do'kon bo'lishi kerak.",
     "managerShopRequired": "Do'kon topilmadi.",
@@ -1457,10 +1450,7 @@
     "itemCountSuffix": "ta",
     "noOrdersFound": "Mos buyurtmalar topilmadi",
     "adjustFilters": "Filtrlarni yoki qidiruv so'rovini o'zgartirib ko'ring.",
-    "clearFilters": "Filtrlarni tozalash",
-    "sizeSmall": "Kichik",
-    "sizeMedium": "O'rta",
-    "sizeLarge": "Katta"
+    "clearFilters": "Filtrlarni tozalash"
   },
   "admin": {
     "adminDashboard": "Admin boshqaruvi",
@@ -1615,7 +1605,6 @@
     "completed": "Bajarildi",
     "noEta": "ETA yo'q",
     "minutesAgoSuffix": "daqiqa oldin",
-    "activeStatus": "Faol",
     "inactiveStatus": "Faol emas",
     "soldOutStatus": "Sotilgan",
     "filterStatus": "Holat: {{value}}",

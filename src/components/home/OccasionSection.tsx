@@ -246,10 +246,10 @@ function OccasionSection({ categories, isLoading, selectedCategoryId, onSelectCa
       {/* ── Premium background decoration ── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {/* Large ambient glows - reduced size on mobile */}
-        <div className="absolute -top-48 -right-48 h-[300px] w-[300px] sm:h-[500px] sm:w-[500px] rounded-full bg-gradient-to-br from-[#cb5c57]/8 to-transparent blur-3xl" />
+        {/* <div className="absolute -top-48 -right-48 h-[300px] w-[300px] sm:h-[500px] sm:w-[500px] rounded-full bg-gradient-to-br from-[#cb5c57]/8 to-transparent blur-3xl" />
         <div className="absolute -bottom-48 -left-48 h-[300px] w-[300px] sm:h-[500px] sm:w-[500px] rounded-full bg-gradient-to-tr from-[#ff9b88]/5 to-transparent blur-3xl" />
         <div className="absolute top-1/4 left-1/3 h-48 w-48 sm:h-72 sm:w-72 rounded-full bg-gradient-to-br from-rose-800/5 to-transparent blur-3xl" />
-        
+         */}
         {/* Grid overlay */}
         <div
           className="absolute inset-0 opacity-[0.012]"

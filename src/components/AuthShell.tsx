@@ -32,11 +32,11 @@ function AuthShell({
         : "justify-center";
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,139,160,0.14),transparent_40%),linear-gradient(180deg,rgba(12,4,6,0.3),rgba(12,4,6,0.62))]" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-visible px-4 py-12">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(255,139,160,0.16),transparent_42%),linear-gradient(180deg,rgba(12,4,6,0.25),rgba(12,4,6,0.66))]" />
       {backgroundAsCss ? (
         <div
-          className="absolute inset-0 bg-cover bg-[72%_center] bg-no-repeat lg:bg-right"
+          className="absolute inset-0 bg-cover bg-[70%_center] bg-no-repeat lg:bg-right"
           style={{ backgroundImage: `url(${backgroundImage})` }}
           aria-hidden="true"
         />
@@ -46,25 +46,41 @@ function AuthShell({
           alt=""
           priority="high"
           wrapperClassName="absolute inset-0"
-          className="h-full w-full object-cover object-[72%_center] lg:object-right"
+          className="h-full w-full object-cover object-[70%_center] lg:object-right"
         />
       )}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,4,6,0.18),rgba(12,4,6,0.52))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,3,7,0.28),rgba(9,3,7,0.62))]" />
 
       <div className={`relative z-10 mx-auto flex w-full max-w-7xl ${alignmentClass} lg:px-8`}>
-        <div className={`relative w-full max-w-[470px] rounded-[2rem] border border-[#703038]/70 bg-[linear-gradient(180deg,rgba(25,8,10,0.96),rgba(17,5,7,0.98))] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-md sm:p-8 ${panelClassName ?? ""}`}>
-          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#ff8ea0]/40 to-transparent" />
+        <div
+          className={`relative z-40 w-full max-w-[470px] rounded-[2rem] border border-white/[0.08] bg-[#14060b]/85 p-7 shadow-[0_40px_120px_rgba(0,0,0,0.6)] backdrop-blur-2xl pointer-events-auto sm:p-9 ${panelClassName ?? ""}`}
+          style={{ isolation: "isolate" }}
+        >
+          {/* Gradient top hairline */}
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px rounded-full bg-gradient-to-r from-transparent via-[#ff8ea0]/60 to-transparent" />
 
-          <div className="mt-8 text-center">
-            <h1 className="font-cormorant text-[2.75rem] font-semibold leading-none tracking-tight text-white sm:text-5xl">
+          {/* Ambient glows */}
+          <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-[#ff6b7e]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 -left-20 h-44 w-44 rounded-full bg-[#ff8fa0]/[0.08] blur-3xl" />
+
+          <header className="mt-10 text-center">
+            <h1 className="font-display bg-gradient-to-r from-[#fff] via-[#ffd7dc] to-[#ff9aa8] bg-clip-text text-[2.5rem] font-semibold leading-[1.05] tracking-tight text-transparent sm:text-[2.85rem]">
               {t(title) || title}
             </h1>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-[#d8b1ae]">{t(subtitle) || subtitle}</p>
-          </div>
+            <div className="mt-4 flex items-center justify-center gap-2" aria-hidden="true">
+              <span className="h-px w-8 bg-gradient-to-r from-transparent to-[#ff6b7e]/50" />
+              <span className="h-1.5 w-1.5 rotate-45 bg-gradient-to-br from-[#ff6b7e] to-[#ff8fa0]" />
+              <span className="h-px w-8 bg-gradient-to-l from-transparent to-[#ff6b7e]/50" />
+            </div>
+            <p className="mx-auto mt-4 max-w-sm text-sm leading-7 text-[#d8b1ae]">{t(subtitle) || subtitle}</p>
+          </header>
 
-          <div className="mt-8">{children}</div>
+          <div className="relative z-30 mt-9">{children}</div>
 
-          <div className="mt-8 text-center text-sm text-[#d8b1ae]">{footer}</div>
+          <footer className="relative z-30 mt-9 text-center text-sm text-[#d8b1ae]">
+            <span className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            <span className="mt-5 block">{footer}</span>
+          </footer>
         </div>
       </div>
     </div>

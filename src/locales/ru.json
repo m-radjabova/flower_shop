@@ -164,7 +164,9 @@
     "reviews": "отзывов",
     "addedToFavorites": "добавлен в избранное",
     "removedFromFavorites": "удален из избранного",
-    "addedToCart": "добавлен в корзину"
+    "addedToCart": "добавлен в корзину",
+    "eyebrow": "Свежий выбор",
+    "subtitle": "Цветы, подобранные и собранные с любовью — идеальный букет для самых важных моментов."
   },
   "categorySection": {
     "shopByCategory": "Покупки по категориям",
@@ -298,7 +300,24 @@
     "outOfStockMessage": "сейчас нет в наличии"
   },
   "favorites": {
-    "removed": "{{name}} удалён из избранного"
+    "yourCollection": "Ваша подборка",
+    "my": "Мои",
+    "favorites": "Избранное",
+    "items": "товаров",
+    "sortRecent": "Недавно добавленные",
+    "sortPriceLow": "Цена: по возрастанию",
+    "sortPriceHigh": "Цена: по убыванию",
+    "sortRating": "С высоким рейтингом",
+    "gridView": "Сетка",
+    "listView": "Список",
+    "noFavorites": "В избранном пока пусто",
+    "noFavoritesDesc": "Откройте для себя нашу изысканную коллекцию и сохраняйте букеты, которые вам особенно понравились. Все выбранные позиции появятся здесь.",
+    "exploreBouquets": "Посмотреть букеты",
+    "addToCart": "В корзину",
+    "remove": "Удалить",
+    "removeFromFavorites": "Удалено из избранного",
+    "addedToCart": "добавлен в корзину",
+    "favorite": "Избранный"
   },
   "orders": {
     "addressMissing": "Адрес не указан"
@@ -509,26 +528,6 @@
     "orderWithin": "Закажите в течение 2ч 15мин",
     "totalLabel": "Итого",
     "mapPreviewTitle": "Предпросмотр карты доставки"
-  },
-  "favorites": {
-    "yourCollection": "Ваша подборка",
-    "my": "Мои",
-    "favorites": "Избранное",
-    "items": "товаров",
-    "sortRecent": "Недавно добавленные",
-    "sortPriceLow": "Цена: по возрастанию",
-    "sortPriceHigh": "Цена: по убыванию",
-    "sortRating": "С высоким рейтингом",
-    "gridView": "Сетка",
-    "listView": "Список",
-    "noFavorites": "В избранном пока пусто",
-    "noFavoritesDesc": "Откройте для себя нашу изысканную коллекцию и сохраняйте букеты, которые вам особенно понравились. Все выбранные позиции появятся здесь.",
-    "exploreBouquets": "Посмотреть букеты",
-    "addToCart": "В корзину",
-    "remove": "Удалить",
-    "removeFromFavorites": "Удалено из избранного",
-    "addedToCart": "добавлен в корзину",
-    "favorite": "Избранный"
   },
   "shopDetail": {
     "backToShops": "Назад к магазинам",
@@ -1005,7 +1004,6 @@
     "favoritesCount": "сохраненных букетов",
     "noFavorites": "Пока нет избранного.",
     "addToCart": "В корзину",
-    "remove": "Удалить",
     "addedToCart": "добавлен в корзину",
     "removedFromFavorites": "удален из избранного",
     "signature": "Фирменный букет",
@@ -1147,7 +1145,7 @@
     "completeProfile": "Заполнить профиль",
     "forYou": "Для вас",
     "showBouquet": "Показать {{name}}",
-    "signatureStorefront": "Фирменная витрина",
+    "signatureStorefront": "Витрина магазина",
     "profileHealth": "Состояние профиля",
     "tapMapHint": "Нажмите на карту, чтобы выбрать адрес магазина.",
     "addressResolveError": "Не удалось определить адрес",
@@ -1175,7 +1173,7 @@
     "examplePrice15": "Напр.: 15.00",
     "examplePrice4": "Напр.: 4.00",
     "deleteBouquetTitle": "Удалить букет?",
-    "from": "от",
+    "from": "От",
     "ordersControl": "Управление заказами",
     "noShops": "У вас пока нет магазинов.",
     "shopLabel": "Магазин",
@@ -1203,8 +1201,6 @@
     "applicationFeedback": "Обратная связь по заявке",
     "application": "Заявка",
     "decision": "Решение",
-    "signatureStorefront": "Витрина магазина",
-    "profileHealth": "Состояние профиля",
     "strong": "Отличное",
     "address": "Адрес",
     "phone": "Телефон",
@@ -1242,7 +1238,6 @@
     "advancedFilters": "Расширенные фильтры",
     "sortBy": "Сортировка",
     "byDate": "По дате",
-    "from": "От",
     "to": "До",
     "paymentMethod": "Способ оплаты",
     "deliveryMethod": "Способ доставки",
@@ -1318,7 +1313,6 @@
     "resetFormDesc": "Все несохраненные изменения букета будут очищены, а форма вернется к последнему сохраненному состоянию.",
     "yesReset": "Да, сбросить",
     "formResetSuccess": "Форма сброшена",
-    "mapLoadError": "Не удалось загрузить карту",
     "searchLocationError": "Не удалось найти местоположение",
     "currentLocationError": "Не удалось определить текущее местоположение",
     "currentLocationPermissionDenied": "Доступ к геолокации запрещен. Разрешите доступ к местоположению в браузере.",
@@ -1407,7 +1401,6 @@
     "bouquetDeleteError": "Не удалось удалить букет",
     "bouquetNotFound": "Букет не найден или недоступен.",
     "imageUploadSuccess": "Изображение загружено",
-    "imageUploadError": "Не удалось загрузить изображение",
     "shopRequired": "Магазин не найден",
     "noBouquetAccess": "Для управления букетами нужен магазин.",
     "managerShopRequired": "Магазин не найден.",
@@ -1457,10 +1450,7 @@
     "itemCountSuffix": "тов.",
     "noOrdersFound": "Подходящие заказы не найдены",
     "adjustFilters": "Попробуйте изменить фильтры или поисковый запрос.",
-    "clearFilters": "Очистить фильтры",
-    "sizeSmall": "Маленький",
-    "sizeMedium": "Средний",
-    "sizeLarge": "Большой"
+    "clearFilters": "Очистить фильтры"
   },
   "admin": {
     "adminDashboard": "Панель администратора",
@@ -1615,7 +1605,6 @@
     "completed": "Завершено",
     "noEta": "Без ETA",
     "minutesAgoSuffix": "мин назад",
-    "activeStatus": "Активный",
     "inactiveStatus": "Неактивный",
     "soldOutStatus": "Распродано",
     "filterStatus": "Статус: {{value}}",

@@ -19,14 +19,14 @@ import flowerIcon from "../../assets/flower_icon.png";
 import flowerIcon2 from "../../assets/flower_icon2.png";
 import useIsMobile from "../../hooks/useIsMobile";
 
-const PARTICLES = Array.from({ length: 22 }, (_, i) => ({
+const PARTICLES = Array.from({ length: 14 }, (_, i) => ({
   id: i,
   x: Math.random() * 100,
   y: Math.random() * 100,
-  size: 4 + Math.random() * 12,
-  duration: 12 + Math.random() * 20,
+  size: 4 + Math.random() * 10,
+  duration: 16 + Math.random() * 22,
   delay: Math.random() * 10,
-  opacity: 0.15 + Math.random() * 0.3,
+  opacity: 0.12 + Math.random() * 0.22,
   rotate: Math.random() * 360,
 }));
 
@@ -54,7 +54,7 @@ function Hero() {
   const textY = useTransform(smoothProgress, [0, 1], [0, 80]);
   const opacity = useTransform(smoothProgress, [0, 0.65], [1, 0]);
 
-  // ── Falling petals ──
+  // ── Falling petals — the section's one signature motion ──
   useEffect(() => {
     if (!enableHeavyEffects) {
       setPetals([]);
@@ -71,9 +71,9 @@ function Hero() {
           size: 14 + Math.random() * 18,
         };
 
-        return [...prev, nextPetal].slice(-10);
+        return [...prev, nextPetal].slice(-8);
       });
-    }, 1800);
+    }, 2200);
 
     return () => clearInterval(interval);
   }, [enableHeavyEffects]);
@@ -99,9 +99,10 @@ function Hero() {
   return (
     <section
       ref={sectionRef}
-      className="relative  isolate min-h-screen overflow-hidden"
+      className="relative isolate min-h-screen overflow-hidden"
     >
       <div
+        aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-[0.015]"
         style={{
           backgroundImage:
@@ -109,9 +110,23 @@ function Hero() {
           backgroundSize: "80px 80px",
         }}
       />
-      {/* ── Hero decorations only ── */}
-      <div className="pointer-events-none absolute inset-x-0 top-24 bottom-0 z-0 overflow-hidden sm:top-28 lg:top-32">
-        {/* ── Floating particles ── */}
+
+      {/* Soft radial glow behind the heading, for depth — static, no cost */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-[38%] z-0 h-[520px] w-[820px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-3xl"
+        style={{
+          background:
+            "radial-gradient(closest-side, rgba(216,38,63,0.14), rgba(233,185,138,0.06), transparent)",
+        }}
+      />
+
+      {/* ── Hero decorations ── */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-24 bottom-0 z-0 overflow-hidden sm:top-28 lg:top-32"
+      >
+        {/* ── Floating particles — ambient, unobtrusive ── */}
         {enableHeavyEffects
           ? PARTICLES.map((p) => (
               <motion.div
@@ -124,20 +139,16 @@ function Hero() {
                   height: p.size,
                   background:
                     p.id % 3 === 0
-                      ? "radial-gradient(circle, rgba(217,181,111,0.4), transparent)"
+                      ? "radial-gradient(circle, rgba(233,185,138,0.4), transparent)"
                       : p.id % 3 === 1
                         ? "radial-gradient(circle, rgba(216,38,63,0.3), transparent)"
-                        : "radial-gradient(circle, rgba(255,200,220,0.25), transparent)",
-                  boxShadow:
-                    p.id % 2 === 0
-                      ? "0 0 20px rgba(217,181,111,0.08)"
-                      : "0 0 20px rgba(216,38,63,0.06)",
+                        : "radial-gradient(circle, rgba(255,200,220,0.22), transparent)",
                 }}
                 animate={{
-                  y: [0, -30, 0],
-                  x: [0, p.id % 2 === 0 ? 15 : -15, 0],
-                  scale: [1, 1.15, 1],
-                  opacity: [p.opacity, p.opacity * 1.6, p.opacity],
+                  y: [0, -26, 0],
+                  x: [0, p.id % 2 === 0 ? 12 : -12, 0],
+                  scale: [1, 1.12, 1],
+                  opacity: [p.opacity, p.opacity * 1.5, p.opacity],
                   rotate: [p.rotate, p.rotate + 180, p.rotate + 360],
                 }}
                 transition={{
@@ -150,7 +161,7 @@ function Hero() {
             ))
           : null}
 
-        {/* ── Falling petals ── */}
+        {/* ── Falling petals — the signature moment ── */}
         {enableHeavyEffects ? (
           <AnimatePresence>
             {petals.map((petal) => (
@@ -172,11 +183,13 @@ function Hero() {
                 }}
                 exit={{ opacity: 0 }}
                 transition={{
-                  duration: 8 + Math.random() * 5,
+                  duration: 9 + Math.random() * 5,
                   ease: "easeInOut",
                 }}
               >
-                <img loading="lazy" decoding="async"
+                <img
+                  loading="lazy"
+                  decoding="async"
                   src={petal.icon}
                   alt=""
                   className="block h-auto w-auto select-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.25)]"
@@ -188,15 +201,16 @@ function Hero() {
         ) : null}
 
         {/* ── Decorative corner lines ── */}
-        <div className="pointer-events-none absolute left-8 top-8 z-10 h-16 w-[1px] bg-gradient-to-b from-[#d9b56f]/40 to-transparent sm:left-12 sm:top-12" />
-        <div className="pointer-events-none absolute left-8 top-8 z-10 h-[1px] w-16 bg-gradient-to-r from-[#d9b56f]/40 to-transparent sm:left-12 sm:top-12" />
-        <div className="pointer-events-none absolute right-8 top-8 z-10 h-16 w-[1px] bg-gradient-to-b from-[#d9b56f]/40 to-transparent sm:right-12 sm:top-12" />
-        <div className="pointer-events-none absolute right-8 top-8 z-10 h-[1px] w-16 bg-gradient-to-l from-[#d9b56f]/40 to-transparent sm:right-12 sm:top-12" />
-        <div className="pointer-events-none absolute bottom-8 left-8 z-10 h-16 w-[1px] bg-gradient-to-t from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:left-12" />
-        <div className="pointer-events-none absolute bottom-8 left-8 z-10 h-[1px] w-16 bg-gradient-to-r from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:left-12" />
-        <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-16 w-[1px] bg-gradient-to-t from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:right-12" />
-        <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-[1px] w-16 bg-gradient-to-l from-[#d9b56f]/40 to-transparent sm:bottom-12 sm:right-12" />
+        <div className="pointer-events-none absolute left-8 top-8 z-10 h-16 w-[1px] bg-gradient-to-b from-[#e9b98a]/40 to-transparent sm:left-12 sm:top-12" />
+        <div className="pointer-events-none absolute left-8 top-8 z-10 h-[1px] w-16 bg-gradient-to-r from-[#e9b98a]/40 to-transparent sm:left-12 sm:top-12" />
+        <div className="pointer-events-none absolute right-8 top-8 z-10 h-16 w-[1px] bg-gradient-to-b from-[#e9b98a]/40 to-transparent sm:right-12 sm:top-12" />
+        <div className="pointer-events-none absolute right-8 top-8 z-10 h-[1px] w-16 bg-gradient-to-l from-[#e9b98a]/40 to-transparent sm:right-12 sm:top-12" />
+        <div className="pointer-events-none absolute bottom-8 left-8 z-10 h-16 w-[1px] bg-gradient-to-t from-[#e9b98a]/40 to-transparent sm:bottom-12 sm:left-12" />
+        <div className="pointer-events-none absolute bottom-8 left-8 z-10 h-[1px] w-16 bg-gradient-to-r from-[#e9b98a]/40 to-transparent sm:bottom-12 sm:left-12" />
+        <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-16 w-[1px] bg-gradient-to-t from-[#e9b98a]/40 to-transparent sm:bottom-12 sm:right-12" />
+        <div className="pointer-events-none absolute bottom-8 right-8 z-10 h-[1px] w-16 bg-gradient-to-l from-[#e9b98a]/40 to-transparent sm:bottom-12 sm:right-12" />
       </div>
+
       {/* ── Main content ── */}
       <motion.div
         style={{ y: textY, opacity }}
@@ -214,52 +228,39 @@ function Hero() {
             className="mb-6 inline-flex items-center justify-center"
           >
             <motion.div
-              className="group relative inline-flex items-center gap-2.5 rounded-full border border-[#d9b56f]/30 bg-[#2a0d10]/60 px-5 py-2.5 backdrop-blur-md"
-              whileHover={{ scale: 1.03, borderColor: "rgba(217,181,111,0.5)" }}
+              className="group relative inline-flex items-center gap-2.5 rounded-full border border-[#e9b98a]/30 bg-[#2a0d10]/60 px-5 py-2.5 backdrop-blur-md"
+              whileHover={{ scale: 1.03, borderColor: "rgba(233,185,138,0.55)" }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              {/* Glow ring */}
-              <motion.span
-                className="absolute inset-0 rounded-full opacity-0 blur-sm"
-                animate={
-                  enableHeavyEffects ? { opacity: [0, 0.4, 0] } : undefined
-                }
-                transition={
-                  enableHeavyEffects
-                    ? { duration: 2.5, repeat: Infinity }
-                    : undefined
-                }
+              {/* Soft static glow — brightens only on hover */}
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full opacity-20 blur-sm transition-opacity duration-500 group-hover:opacity-45"
                 style={{
                   background:
-                    "linear-gradient(135deg, rgba(217,181,111,0.2), rgba(216,38,63,0.1))",
+                    "linear-gradient(135deg, rgba(233,185,138,0.25), rgba(216,38,63,0.12))",
                 }}
               />
-              <HiSparkles className="relative text-[#e8c987] text-lg" />
-              <span className="font-great-vibes relative text-xl tracking-[0.06em] text-[#e8c987] sm:text-2xl">
+              <HiSparkles className="relative text-[#e9b98a] text-lg" />
+              <span className="font-great-vibes relative text-xl tracking-[0.06em] text-[#e9b98a] sm:text-2xl">
                 {t("hero.freshFlowers")}
               </span>
-              <HiSparkles className="relative text-[#e8c987] text-lg" />
+              <HiSparkles className="relative text-[#e9b98a] text-lg" />
             </motion.div>
           </motion.div>
 
           {/* ── Heading ── */}
           <motion.div variants={itemVariants} className="relative">
-            {/* Decorative swoosh behind heading */}
+            {/* Decorative swoosh — fades in once, then stays still */}
             <motion.svg
-              className="pointer-events-none absolute -left-12 -top-8 h-32 w-40 opacity-20 sm:-left-16 sm:-top-12 sm:h-44 sm:w-56"
+              className="pointer-events-none absolute -left-12 -top-8 h-32 w-40 opacity-0 sm:-left-16 sm:-top-12 sm:h-44 sm:w-56"
               viewBox="0 0 200 160"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              animate={
-                enableHeavyEffects
-                  ? { rotate: [0, 3, 0, -3, 0], scale: [1, 1.02, 1] }
-                  : undefined
-              }
-              transition={
-                enableHeavyEffects
-                  ? { duration: 8, repeat: Infinity, ease: "easeInOut" }
-                  : undefined
-              }
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.2 }}
+              transition={{ duration: 1.4, delay: 0.6 }}
+              aria-hidden="true"
             >
               <path
                 d="M10 140 C40 100, 60 40, 100 30 C140 20, 160 50, 190 20"
@@ -271,12 +272,13 @@ function Hero() {
               />
               <defs>
                 <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#d9b56f" stopOpacity="0" />
-                  <stop offset="50%" stopColor="#d9b56f" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#d9b56f" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#e9b98a" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#e9b98a" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#e9b98a" stopOpacity="0" />
                 </linearGradient>
               </defs>
             </motion.svg>
+
             <motion.h1
               className="font-great-vibes relative mt-5 text-[4.4rem] font-normal leading-[0.88] text-[#d8263f] drop-shadow-[0_16px_48px_rgba(0,0,0,0.5)] sm:text-[6.4rem] lg:text-[7.6rem]"
               whileHover={enableHeavyEffects ? { scale: 1.008 } : undefined}
@@ -288,7 +290,7 @@ function Hero() {
             >
               {enableHeavyEffects ? (
                 <>
-                  <motion.span
+                  <span
                     className="inline-block"
                     style={{ textShadow: "0 4px 30px rgba(216,38,63,0.15)" }}
                   >
@@ -305,18 +307,13 @@ function Hero() {
                             duration: 0.6,
                             ease: [0.16, 1, 0.3, 1] as const,
                           }}
-                          whileHover={{
-                            color: "#e84860",
-                            textShadow: "0 0 40px rgba(216,38,63,0.4)",
-                            transition: { duration: 0.2 },
-                          }}
                         >
                           {char === " " ? "\u00A0" : char}
                         </motion.span>
                       ))}
-                  </motion.span>
+                  </span>
                   <br />
-                  <motion.span
+                  <span
                     className="inline-block"
                     style={{ textShadow: "0 4px 30px rgba(216,38,63,0.15)" }}
                   >
@@ -333,16 +330,11 @@ function Hero() {
                             duration: 0.6,
                             ease: [0.16, 1, 0.3, 1] as const,
                           }}
-                          whileHover={{
-                            color: "#e84860",
-                            textShadow: "0 0 40px rgba(216,38,63,0.4)",
-                            transition: { duration: 0.2 },
-                          }}
                         >
                           {char === " " ? "\u00A0" : char}
                         </motion.span>
                       ))}
-                  </motion.span>
+                  </span>
                 </>
               ) : (
                 <motion.span
@@ -359,27 +351,16 @@ function Hero() {
               )}
             </motion.h1>
 
-            {/* Decorative swoosh behind heading – right */}
+            {/* Decorative swoosh – right, fades in once */}
             <motion.svg
-              className="pointer-events-none absolute -bottom-6 -right-10 h-28 w-36 opacity-20 sm:-bottom-8 sm:-right-14 sm:h-40 sm:w-48"
+              className="pointer-events-none absolute -bottom-6 -right-10 h-28 w-36 opacity-0 sm:-bottom-8 sm:-right-14 sm:h-40 sm:w-48"
               viewBox="0 0 200 160"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              animate={
-                enableHeavyEffects
-                  ? { rotate: [0, -3, 0, 3, 0], scale: [1, 1.02, 1] }
-                  : undefined
-              }
-              transition={
-                enableHeavyEffects
-                  ? {
-                      duration: 8,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: 4,
-                    }
-                  : undefined
-              }
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.2 }}
+              transition={{ duration: 1.4, delay: 0.9 }}
+              aria-hidden="true"
             >
               <path
                 d="M10 20 C40 60, 60 120, 100 130 C140 140, 160 110, 190 140"
@@ -391,43 +372,44 @@ function Hero() {
               />
               <defs>
                 <linearGradient id="goldGrad2" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#d9b56f" stopOpacity="0" />
-                  <stop offset="50%" stopColor="#d9b56f" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#d9b56f" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#e9b98a" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#e9b98a" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#e9b98a" stopOpacity="0" />
                 </linearGradient>
               </defs>
             </motion.svg>
           </motion.div>
+
           {/* ── CTA Buttons ── */}
           <motion.div
             variants={itemVariants}
             className="mt-12 flex flex-col justify-center gap-5 sm:flex-row"
           >
-            {/* Primary CTA */}
+            {/* Primary CTA — carries the one ongoing microinteraction */}
             <motion.div
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               className="relative"
             >
-              {/* Glow behind button */}
               <motion.div
+                aria-hidden="true"
                 className="pointer-events-none absolute -inset-2 rounded-2xl opacity-0 blur-xl"
                 animate={
-                  enableHeavyEffects ? { opacity: [0, 0.3, 0] } : undefined
+                  enableHeavyEffects ? { opacity: [0, 0.22, 0] } : undefined
                 }
                 transition={
                   enableHeavyEffects
-                    ? { duration: 2, repeat: Infinity }
+                    ? { duration: 3, repeat: Infinity }
                     : undefined
                 }
                 style={{
                   background:
-                    "linear-gradient(135deg, rgba(217,181,111,0.15), rgba(216,38,63,0.1))",
+                    "linear-gradient(135deg, rgba(233,185,138,0.15), rgba(216,38,63,0.1))",
                 }}
               />
               <Link
                 to="/bouquets"
-                className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#ffc677]/25 bg-[linear-gradient(135deg,#8f111d,#c5243a_48%,#dc4156)] px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#fff8ef] shadow-[0_18px_42px_rgba(159,21,35,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(159,21,35,0.5)] active:translate-y-0"
+                className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#ffc677]/25 bg-[linear-gradient(135deg,#8f111d,#c5243a_48%,#ff7d8e)] px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#fff8ef] shadow-[0_18px_42px_rgba(159,21,35,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_50px_rgba(159,21,35,0.5)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff8fa0]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#170708]"
               >
                 <span className="absolute inset-0 -translate-x-[120%] skew-x-[-12deg] bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.2),transparent)] transition-transform duration-700 group-hover:translate-x-[120%]" />
                 <HiShoppingBag className="relative z-10 text-base" />
@@ -437,7 +419,7 @@ function Hero() {
                   animate={enableHeavyEffects ? { x: [0, 3, 0] } : undefined}
                   transition={
                     enableHeavyEffects
-                      ? { duration: 1.5, repeat: Infinity }
+                      ? { duration: 1.6, repeat: Infinity }
                       : undefined
                   }
                 >
@@ -446,44 +428,18 @@ function Hero() {
               </Link>
             </motion.div>
 
-            {/* Secondary CTA */}
+            {/* Secondary CTA — quiet by default, animates only on interaction */}
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Link
                 to="/shops"
-                className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#dab56f]/30 bg-[#0c0304]/60 px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#ead6c7] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#efc77e]/60 hover:bg-[#270a0c]/70 hover:shadow-[0_18px_34px_rgba(217,181,111,0.12)] active:translate-y-0"
+                className="group relative inline-flex h-15 items-center justify-center gap-3 overflow-hidden rounded-2xl border border-[#e9b98a]/30 bg-[#0c0304]/60 px-8 text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[#ead6c7] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#e9b98a]/60 hover:bg-[#270a0c]/70 hover:shadow-[0_18px_34px_rgba(233,185,138,0.14)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff8fa0]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#170708]"
               >
-                <motion.span
-                  className="absolute inset-0"
-                  animate={
-                    enableHeavyEffects
-                      ? {
-                          background: [
-                            "linear-gradient(110deg, transparent, rgba(217,181,111,0.03), transparent)",
-                            "linear-gradient(110deg, transparent, rgba(217,181,111,0.07), transparent)",
-                            "linear-gradient(110deg, transparent, rgba(217,181,111,0.03), transparent)",
-                          ],
-                        }
-                      : undefined
-                  }
-                  transition={
-                    enableHeavyEffects
-                      ? { duration: 3, repeat: Infinity }
-                      : undefined
-                  }
-                />
+                <span className="absolute inset-0 -translate-x-[120%] skew-x-[-12deg] bg-[linear-gradient(110deg,transparent,rgba(233,185,138,0.14),transparent)] transition-transform duration-700 group-hover:translate-x-[120%]" />
                 <HiOutlineBuildingStorefront className="relative z-10 text-base" />
                 <span className="relative z-10">{t("hero.exploreShops")}</span>
-                <motion.span
-                  className="relative z-10 opacity-0 transition-all duration-300 group-hover:opacity-100"
-                  animate={enableHeavyEffects ? { x: [0, 4, 0] } : undefined}
-                  transition={
-                    enableHeavyEffects
-                      ? { duration: 1.8, repeat: Infinity, delay: 0.5 }
-                      : undefined
-                  }
-                >
+                <span className="relative z-10 -translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100">
                   <HiArrowRight />
-                </motion.span>
+                </span>
               </Link>
             </motion.div>
           </motion.div>
@@ -500,7 +456,7 @@ function Hero() {
               Scroll
             </span>
             <motion.div
-              className="h-8 w-[1px] bg-gradient-to-b from-[#d9b56f]/30 to-transparent"
+              className="h-8 w-[1px] bg-gradient-to-b from-[#e9b98a]/30 to-transparent"
               animate={
                 enableHeavyEffects
                   ? { height: [8, 24, 8], opacity: [0.3, 0.6, 0.3] }

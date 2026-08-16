@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -6,16 +6,17 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";
 import {
+  HiOutlineCheckCircle,
   HiOutlineDevicePhoneMobile,
   HiOutlineEnvelope,
+  HiOutlineExclamationCircle,
   HiOutlineEye,
   HiOutlineEyeSlash,
-  HiOutlineLockClosed,
-  HiOutlineUser,
-  HiOutlineSparkles,
-  HiOutlineCheckCircle,
   HiOutlineGift,
+  HiOutlineLockClosed,
   HiOutlineShieldCheck,
+  HiOutlineSparkles,
+  HiOutlineUser,
 } from "react-icons/hi2";
 import { FaGoogle } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -48,21 +49,113 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-/* ─── Floating petal/pollen particles ─── */
+type FieldName = "full_name" | "email" | "phone_number" | "password" | "confirm_password";
+
+/* ─── Floating petal/pollen particles (pure Tailwind animations) ─── */
 const petals = [
-  { left: "6%", top: "8%", size: 10, delay: 0, duration: 6.5, driftX: 20, driftY: -15 },
-  { left: "88%", top: "5%", size: 13, delay: 1.4, duration: 8.2, driftX: -22, driftY: 12 },
-  { left: "15%", top: "74%", size: 8, delay: 0.8, duration: 7.5, driftX: 16, driftY: -20 },
-  { left: "78%", top: "80%", size: 11, delay: 2.3, duration: 9.5, driftX: -14, driftY: 18 },
-  { left: "45%", top: "3%", size: 7, delay: 3.2, duration: 6.2, driftX: 24, driftY: -10 },
-  { left: "94%", top: "48%", size: 9, delay: 2.0, duration: 8.0, driftX: -18, driftY: 14 },
-  { left: "3%", top: "46%", size: 12, delay: 2.7, duration: 7.0, driftX: 22, driftY: -12 },
-  { left: "35%", top: "90%", size: 6, delay: 0.5, duration: 7.4, driftX: -16, driftY: -18 },
-  { left: "62%", top: "14%", size: 14, delay: 1.8, duration: 8.8, driftX: 18, driftY: 16 },
-  { left: "12%", top: "92%", size: 5, delay: 3.8, duration: 6.6, driftX: -20, driftY: -14 },
-  { left: "72%", top: "60%", size: 8, delay: 1.1, duration: 7.8, driftX: 14, driftY: 22 },
-  { left: "50%", top: "42%", size: 10, delay: 3.0, duration: 9.0, driftX: -24, driftY: -8 },
+  { left: "6%", top: "8%", size: 10, animation: "animate-pulse [animation-duration:6.5s] [animation-delay:0s]" },
+  { left: "88%", top: "5%", size: 13, animation: "animate-pulse [animation-duration:8.2s] [animation-delay:1.4s]" },
+  { left: "15%", top: "74%", size: 8, animation: "animate-pulse [animation-duration:7.5s] [animation-delay:0.8s]" },
+  { left: "78%", top: "80%", size: 11, animation: "animate-pulse [animation-duration:9.5s] [animation-delay:2.3s]" },
+  { left: "45%", top: "3%", size: 7, animation: "animate-pulse [animation-duration:6.2s] [animation-delay:3.2s]" },
+  { left: "94%", top: "48%", size: 9, animation: "animate-pulse [animation-duration:8s] [animation-delay:2s]" },
+  { left: "3%", top: "46%", size: 12, animation: "animate-pulse [animation-duration:7s] [animation-delay:2.7s]" },
+  { left: "35%", top: "90%", size: 6, animation: "animate-pulse [animation-duration:7.4s] [animation-delay:0.5s]" },
+  { left: "62%", top: "14%", size: 14, animation: "animate-pulse [animation-duration:8.8s] [animation-delay:1.8s]" },
+  { left: "12%", top: "92%", size: 5, animation: "animate-pulse [animation-duration:6.6s] [animation-delay:3.8s]" },
 ];
+
+/**
+ * NOTE: this component lives OUTSIDE `Register`.
+ *
+ * The previous version declared `InputWrapper` *inside* the `Register`
+ * function body. That meant a brand-new component function was created on
+ * every single render. React treats "a new function identity" as "a
+ * different component type", so on every keystroke it unmounted the old
+ * <input> DOM node and mounted a fresh one — the input (and its focus)
+ * was destroyed and recreated after each character, which looked like
+ * "can't type in the input". Declaring it here, once, fixes that.
+ */
+function InputField({
+  id,
+  label,
+  icon: Icon,
+  error,
+  isFocused,
+  hasValue,
+  onFocus,
+  onBlur,
+  children,
+  withEye = false,
+}: {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  error?: string;
+  isFocused: boolean;
+  hasValue: boolean;
+  onFocus: () => void;
+  onBlur: () => void;
+  children: (props: {
+    id: string;
+    onFocus: () => void;
+    onBlur: () => void;
+    className: string;
+    "aria-invalid": boolean;
+    "aria-describedby": string | undefined;
+  }) => React.ReactNode;
+  withEye?: boolean;
+}) {
+  const errorId = `${id}-error`;
+  const inputClass = [
+    "h-14 w-full rounded-2xl border bg-white/[0.05] pl-12 pr-11 text-[15px] font-medium text-[#fff7f6]",
+    "caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#8a646d]",
+    error
+      ? "border-red-400/60 focus:border-red-400 focus:ring-4 focus:ring-red-500/10"
+      : isFocused
+        ? "border-[#ff7a8d] bg-white/[0.08]"
+        : "border-white/[0.1] hover:border-white/[0.2]",
+  ].join(" ");
+
+  return (
+    <div className="group">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-[11px] font-bold uppercase leading-relaxed tracking-[0.16em] text-white/55 transition-colors duration-200 group-focus-within:text-[#ff8fa0]"
+      >
+        {label}
+      </label>
+      <div className="relative">
+        <Icon
+          className={`pointer-events-none absolute left-[14px] top-1/2 -translate-y-1/2 text-lg transition-colors duration-200 ${
+            error ? "text-red-400" : isFocused ? "text-[#ff6b7e]" : "text-white/40"
+          }`}
+        />
+        {children({
+          id,
+          onFocus,
+          onBlur,
+          className: inputClass,
+          "aria-invalid": !!error,
+          "aria-describedby": error ? errorId : undefined,
+        })}
+        {hasValue && !error && !withEye && (
+          <HiOutlineCheckCircle className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-base text-emerald-400" />
+        )}
+      </div>
+      {/* Reserve a fixed line of space so the error appearing/disappearing
+          never pushes the rest of the form up or down. */}
+      <div className="min-h-[18px] pt-1">
+        {error && (
+          <p id={errorId} role="alert" className="flex items-center gap-1 text-xs text-red-400">
+            <HiOutlineExclamationCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>{error}</span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Register() {
   const { t } = useTranslation();
@@ -78,16 +171,7 @@ function Register() {
   const [phoneValue, setPhoneValue] = useState("+998 ");
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Focus states
-  const [focusedFields, setFocusedFields] = useState({
-    full_name: false,
-    email: false,
-    phone_number: false,
-    password: false,
-    confirm_password: false,
-  });
-
-  // Password strength
+  const [focusedField, setFocusedField] = useState<FieldName | null>(null);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const referralCodeFromUrl = searchParams.get("ref")?.trim().toUpperCase() ?? "";
 
@@ -99,6 +183,7 @@ function Register() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
+    mode: "onTouched",
     defaultValues: {
       full_name: "",
       email: "",
@@ -115,7 +200,6 @@ function Register() {
   const watchedEmail = watch("email");
   const watchedPhone = watch("phone_number");
 
-  // Check password strength
   const checkPasswordStrength = (password: string) => {
     let strength = 0;
     if (password.length >= 6) strength++;
@@ -182,14 +266,6 @@ function Register() {
     });
   };
 
-  const handleFocus = (field: keyof typeof focusedFields) => {
-    setFocusedFields((prev) => ({ ...prev, [field]: true }));
-  };
-
-  const handleBlur = (field: keyof typeof focusedFields) => {
-    setFocusedFields((prev) => ({ ...prev, [field]: false }));
-  };
-
   if (user) {
     return <Navigate to={getPostLoginRoute(user)} replace />;
   }
@@ -201,9 +277,8 @@ function Register() {
     return t("auth.veryStrong");
   };
 
-  const passwordsMismatch = watchedConfirmPassword && watchedPassword !== watchedConfirmPassword;
+  const passwordsMismatch = Boolean(watchedConfirmPassword) && watchedPassword !== watchedConfirmPassword;
 
-  // Calculate form progress
   const formProgress = [
     watchedFullName.length > 0,
     watchedEmail.length > 0 && /@/.test(watchedEmail),
@@ -212,91 +287,10 @@ function Register() {
     watchedConfirmPassword.length >= 6 && watchedPassword === watchedConfirmPassword,
   ].filter(Boolean).length;
 
-  const strengthSegments = [
-    { label: "", filled: passwordStrength >= 1, color: "bg-red-400" },
-    { label: "", filled: passwordStrength >= 2, color: "bg-orange-400" },
-    { label: "", filled: passwordStrength >= 3, color: "bg-yellow-400" },
-    { label: "", filled: passwordStrength >= 4, color: "bg-blue-400" },
-    { label: "", filled: passwordStrength >= 5, color: "bg-green-400" },
-  ];
+  const strengthColors = ["bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-blue-400", "bg-emerald-400"];
+  const strengthTextColors = ["text-red-400", "text-orange-400", "text-yellow-400", "text-blue-400", "text-emerald-400"];
 
-  const inputBaseClass =
-    "relative h-14 w-full rounded-xl border bg-white/[0.04] pl-12 pr-10 text-[15px] font-medium text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:text-[#b99896] focus:border-[#ff6b7e]";
-
-  // Reusable input wrapper
-  const InputWrapper = ({
-    field,
-    icon: Icon,
-    children,
-    error,
-  }: {
-    field: keyof typeof focusedFields;
-    icon: React.ElementType;
-    children: React.ReactNode;
-    error?: string;
-  }) => {
-    const isFocused = focusedFields[field];
-    const hasValue =
-      field === "full_name"
-        ? !!watchedFullName
-        : field === "email"
-          ? !!watchedEmail
-          : field === "phone_number"
-            ? !!watchedPhone
-            : field === "password"
-              ? !!watchedPassword
-              : field === "confirm_password"
-                ? !!watchedConfirmPassword
-                : false;
-
-    return (
-      <div
-        className="group animate-fadeIn"
-        style={{ animationFillMode: "backwards" } as React.CSSProperties}
-      >
-        <div className="relative">
-          <div
-            className={`relative rounded-xl transition-all duration-300 ${
-              isFocused
-                ? "shadow-[0_0_0_3px_rgba(255,107,126,0.08)]"
-                : ""
-            }`}
-          >
-            <div
-              className={`relative rounded-xl transition-all duration-300 ${
-                isFocused ? "bg-white/[0.06]" : ""
-              }`}
-            >
-              <Icon
-                className={`pointer-events-none absolute left-[14px] top-1/2 z-10 -translate-y-1/2 text-lg transition-all duration-300 ${
-                  isFocused
-                    ? "text-[#ff6b7e]"
-                    : "text-white/35 group-hover:text-white/50"
-                }`}
-              />
-
-              {children}
-
-              {hasValue && !error && (
-                <HiOutlineCheckCircle className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-base text-green-400" />
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="mt-1.5 overflow-hidden">
-              <p className="flex animate-slideDown items-center gap-1.5 text-xs text-red-400/90">
-                <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0">
-                  <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 5a1 1 0 012 0v3a1 1 0 01-2 0V5zm1 7a1 1 0 110-2 1 1 0 010 2z" />
-                </svg>
-                <span>{error}</span>
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const isBusy = registerMutation.isPending || googleMutation.isPending || isSubmitting;
 
   return (
     <AuthShell
@@ -311,39 +305,35 @@ function Register() {
           {t("auth.alreadyHaveAccount")}{" "}
           <Link
             to="/login"
-            className="font-semibold text-[#ff6b7e] transition-all duration-300 hover:text-[#ff8fa0] hover:underline decoration-1 underline-offset-2"
+            className="font-semibold text-[#ff6b7e] underline-offset-2 transition-colors duration-200 hover:text-[#ff8fa0] hover:underline"
           >
             {t("auth.loginLink")}
           </Link>
         </>
       }
     >
-      {/* ─── Floating Particles ─── */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[2rem]">
+      {/* ─── Floating particles (decorative only) ─── */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[2rem] motion-reduce:hidden">
         {petals.map((petal, i) => (
           <span
             key={i}
-            className="absolute rounded-full bg-gradient-to-br from-[#ffb088]/40 via-[#ff8a7a]/30 to-[#ff6b7e]/20 shadow-lg"
+            className={`absolute rounded-full bg-gradient-to-br from-[#ffb088]/40 via-[#ff8a7a]/30 to-[#ff6b7e]/20 ${petal.animation}`}
             style={{
               left: petal.left,
               top: petal.top,
               width: petal.size,
               height: petal.size,
-              animation: `registerFloat ${petal.duration}s ease-in-out ${petal.delay}s infinite`,
-              willChange: "transform",
-              "--drift-x": `${petal.driftX}px`,
-              "--drift-y": `${petal.driftY}px`,
-            } as React.CSSProperties}
+            }}
           />
         ))}
       </div>
 
-      {/* ─── Brand signature ─── */}
-      <div className="relative z-10 mb-1 text-center">
-        <div className="relative mx-auto mb-2 flex h-[60px] w-[60px] items-center justify-center">
-          <div className="absolute inset-0 animate-softPing rounded-full bg-[#ff6b7e]/20" />
-          <div className="relative flex h-[60px] w-[60px] items-center justify-center rounded-full bg-gradient-to-br from-[#ff6b7e]/20 to-[#ff8fa0]/5 ring-1 ring-[#ff6b7e]/15 backdrop-blur-sm">
-            <svg viewBox="0 0 40 40" fill="none" className="h-[30px] w-[30px]" aria-hidden="true">
+      {/* ─── Brand mark ─── */}
+      <div className="relative z-10 mb-2 text-center">
+        <div className="relative mx-auto mb-2 flex h-14 w-14 items-center justify-center">
+          <div className="absolute inset-0 animate-ping rounded-full bg-[#ff6b7e]/20 [animation-duration:2.4s] motion-reduce:hidden" />
+          <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#ff6b7e]/20 to-[#ff8fa0]/5 ring-1 ring-[#ff6b7e]/15 backdrop-blur-sm">
+            <svg viewBox="0 0 40 40" fill="none" className="h-7 w-7" aria-hidden="true">
               <circle cx="20" cy="20" r="18" stroke="url(#flower-grad)" strokeWidth="1.2" />
               <path
                 d="M20 8C16 13 12 16 12 20C12 24.4 16.8 29.6 20 32C23.2 29.6 28 24.4 28 20C28 16 24 13 20 8Z"
@@ -362,43 +352,41 @@ function Register() {
         </div>
       </div>
 
-      {/* ─── Form Progress Bar ─── */}
-      <div className="relative z-10 mb-4 animate-fadeIn">
+      {/* ─── Progress ─── */}
+      <div className="relative z-10 mb-5" aria-hidden="true">
         <div className="mb-1.5 flex items-center gap-1.5">
           {[1, 2, 3, 4, 5].map((step) => (
             <div
               key={step}
-              className={`h-1 flex-1 rounded-full transition-all duration-700 ease-out ${
-                formProgress >= step
-                  ? "bg-gradient-to-r from-[#ff6b7e] to-[#ff8fa0] shadow-[0_0_6px_rgba(255,107,126,0.3)]"
-                  : "bg-white/[0.07]"
-              } ${formProgress === step ? "animate-progressPulse" : ""}`}
+              className={`h-1 flex-1 rounded-full transition-all duration-500 ease-out ${
+                formProgress >= step ? "bg-gradient-to-r from-[#ff6b7e] to-[#ff8fa0]" : "bg-white/[0.08]"
+              }`}
             />
           ))}
         </div>
-        <p className="text-center text-[10px] uppercase tracking-[0.15em] text-white/25">
+        <p className="text-center text-[10px] uppercase tracking-[0.15em] text-white/30">
           {formProgress === 5 ? (
-            <span className="bg-gradient-to-r from-[#ff6b7e] to-[#ff8fa0] bg-clip-text text-transparent font-semibold">
-              Ready to bloom! ✦
+            <span className="bg-gradient-to-r from-[#ff6b7e] to-[#ff8fa0] bg-clip-text font-semibold text-transparent">
+              {t("auth.readyToSubmit", "Barcha maydonlar to'ldirildi")}
             </span>
           ) : (
             <span>
-              <span className="text-white/40 font-medium">{formProgress}</span>
-              <span className="text-white/20"> / 5 completed</span>
+              <span className="font-medium text-white/45">{formProgress}</span>
+              <span className="text-white/25"> / 5</span>
             </span>
           )}
         </p>
       </div>
 
-      <form ref={formRef} className="relative z-10 space-y-3.5" onSubmit={handleSubmit(onSubmit)}>
+      <form ref={formRef} className="relative z-10 space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         <button
           type="button"
-          disabled={googleMutation.isPending || registerMutation.isPending || isSubmitting}
+          disabled={isBusy}
           onClick={() => {
             clearStoredAuth();
             googleMutation.mutate();
           }}
-          className="group inline-flex h-14 w-full items-center justify-center gap-3 rounded-xl border border-white/[0.1] bg-white/[0.05] px-4 text-sm font-semibold text-[#fff7f6] transition-all duration-300 hover:border-white/[0.22] hover:bg-white/[0.09] disabled:cursor-not-allowed disabled:opacity-50"
+          className="group inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-white/12 bg-white/[0.06] px-4 text-sm font-semibold text-[#fff7f6] transition-all duration-300 hover:border-white/25 hover:bg-white/[0.1] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <FaGoogle className="text-base text-[#ff8fa0]" />
           <span>{googleMutation.isPending ? t("auth.googleLoading") : t("auth.continueWithGoogle")}</span>
@@ -410,65 +398,63 @@ function Register() {
           <span className="h-px flex-1 bg-white/[0.08]" />
         </div>
 
-        <div className="grid gap-3.5 md:grid-cols-2">
-          {/* Full Name Field */}
-          <div style={{ animationDelay: "0.05s" }}>
-            <InputWrapper
-              field="full_name"
-              icon={HiOutlineUser}
-              error={errors.full_name?.message}
-            >
+        <div className="grid gap-4 md:grid-cols-2">
+          <InputField
+            id="full_name"
+            label={t("auth.fullNamePlaceholder")}
+            icon={HiOutlineUser}
+            error={errors.full_name?.message}
+            isFocused={focusedField === "full_name"}
+            hasValue={!!watchedFullName}
+            onFocus={() => setFocusedField("full_name")}
+            onBlur={() => setFocusedField(null)}
+          >
+            {(inputProps) => (
               <input
                 {...register("full_name")}
+                {...inputProps}
                 placeholder={t("auth.fullNamePlaceholder")}
-                onFocus={() => handleFocus("full_name")}
-                onBlur={() => handleBlur("full_name")}
-                className={`${inputBaseClass} ${
-                  errors.full_name
-                    ? "border-red-500/40 focus:border-red-500"
-                    : focusedFields.full_name
-                      ? "border-[#ff6b7e]/70 bg-white/[0.08]"
-                      : "border-white/[0.08] hover:border-white/[0.18]"
-                }`}
               />
-            </InputWrapper>
-          </div>
+            )}
+          </InputField>
 
-          {/* Email Field */}
-          <div style={{ animationDelay: "0.1s" }}>
-            <InputWrapper
-              field="email"
-              icon={HiOutlineEnvelope}
-              error={errors.email?.message}
-            >
+          <InputField
+            id="email"
+            label={t("auth.emailPlaceholder")}
+            icon={HiOutlineEnvelope}
+            error={errors.email?.message}
+            isFocused={focusedField === "email"}
+            hasValue={!!watchedEmail}
+            onFocus={() => setFocusedField("email")}
+            onBlur={() => setFocusedField(null)}
+          >
+            {(inputProps) => (
               <input
                 {...register("email")}
+                {...inputProps}
                 type="email"
                 autoComplete="email"
                 placeholder={t("auth.emailPlaceholder")}
-                onFocus={() => handleFocus("email")}
-                onBlur={() => handleBlur("email")}
-                className={`${inputBaseClass} ${
-                  errors.email
-                    ? "border-red-500/40 focus:border-red-500"
-                    : focusedFields.email
-                      ? "border-[#ff6b7e]/70 bg-white/[0.08]"
-                      : "border-white/[0.08] hover:border-white/[0.18]"
-                }`}
               />
-            </InputWrapper>
-          </div>
+            )}
+          </InputField>
 
-          {/* Phone Field */}
-          <div style={{ animationDelay: "0.15s" }}>
-            <InputWrapper
-              field="phone_number"
-              icon={HiOutlineDevicePhoneMobile}
-              error={errors.phone_number?.message}
-            >
+          <InputField
+            id="phone_number"
+            label={t("auth.phonePlaceholder")}
+            icon={HiOutlineDevicePhoneMobile}
+            error={errors.phone_number?.message}
+            isFocused={focusedField === "phone_number"}
+            hasValue={!!watchedPhone}
+            onFocus={() => setFocusedField("phone_number")}
+            onBlur={() => setFocusedField(null)}
+          >
+            {(inputProps) => (
               <input
                 {...register("phone_number")}
+                {...inputProps}
                 type="tel"
+                inputMode="numeric"
                 value={phoneValue}
                 onChange={(event) => {
                   const formatted = formatUzbekPhone(event.target.value);
@@ -479,187 +465,147 @@ function Register() {
                   });
                 }}
                 placeholder={t("auth.phonePlaceholder")}
-                onFocus={() => handleFocus("phone_number")}
-                onBlur={() => handleBlur("phone_number")}
-                className={`${inputBaseClass} ${
-                  errors.phone_number
-                    ? "border-red-500/40 focus:border-red-500"
-                    : focusedFields.phone_number
-                      ? "border-[#ff6b7e]/70 bg-white/[0.08]"
-                      : "border-white/[0.08] hover:border-white/[0.18]"
-                }`}
               />
-            </InputWrapper>
-          </div>
+            )}
+          </InputField>
 
-          {/* Referral Code Field */}
-          <div style={{ animationDelay: "0.2s" }}>
-            <div className="group animate-fadeIn" style={{ animationFillMode: "backwards" }}>
-              <div className="relative">
-                <div className="relative rounded-xl">
-                  <div className="pointer-events-none absolute left-[14px] top-1/2 z-20 -translate-y-1/2">
-                    <HiOutlineGift className="text-lg text-white/35 group-hover:text-white/50 transition-colors duration-300" />
-                  </div>
-                  <input
-                    {...register("referral_code")}
-                    placeholder={t("auth.referralCodePlaceholder")}
-                    className="relative h-14 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-12 pr-4 text-[15px] font-medium uppercase tracking-wider text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:normal-case placeholder:tracking-normal placeholder:text-[#b99896] hover:border-white/[0.18] focus:border-[#ff6b7e]/70 focus:bg-white/[0.08] focus:shadow-[0_0_0_3px_rgba(255,107,126,0.08)]"
-                  />
-                </div>
-              </div>
-              <div className="mt-1.5 flex items-center gap-1.5 text-xs text-white/30">
-                <HiOutlineShieldCheck className="shrink-0" />
-                <span>{t("auth.referralCodeHint")}</span>
-              </div>
-              {errors.referral_code && (
-                <div className="mt-1.5 overflow-hidden">
-                  <p className="flex animate-slideDown items-center gap-1.5 text-xs text-red-400/90">
-                    <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0">
-                      <path d="M8 1a7 7 0 100 14A7 7 0 008 1zM7 5a1 1 0 012 0v3a1 1 0 01-2 0V5zm1 7a1 1 0 110-2 1 1 0 010 2z" />
-                    </svg>
-                    <span>{errors.referral_code.message}</span>
-                  </p>
-                </div>
+          <div className="group">
+            <label
+              htmlFor="referral_code"
+              className="mb-2 block text-[11px] font-bold uppercase leading-relaxed tracking-[0.16em] text-white/55 transition-colors duration-200 group-focus-within:text-[#ff8fa0]"
+            >
+              {t("auth.referralCode")}
+            </label>
+            <div className="relative">
+              <HiOutlineGift className="pointer-events-none absolute left-[14px] top-1/2 -translate-y-1/2 text-lg text-white/40 transition-colors duration-200 group-focus-within:text-[#ff6b7e]" />
+              <input
+                id="referral_code"
+                {...register("referral_code")}
+                placeholder={t("auth.referralCodePlaceholder")}
+                aria-invalid={!!errors.referral_code}
+                className="h-14 w-full rounded-2xl border border-white/[0.1] bg-white/[0.05] pl-12 pr-4 text-[15px] font-medium uppercase tracking-wider text-[#fff7f6] caret-[#ff8ea0] outline-none transition-all duration-300 placeholder:normal-case placeholder:tracking-normal placeholder:text-[#8a646d] hover:border-white/[0.2] focus:border-[#ff7a8d] focus:bg-white/[0.08] focus:ring-4 focus:ring-[#ff6b7e]/10"
+              />
+            </div>
+            <div className="min-h-[18px] pt-1">
+              {errors.referral_code ? (
+                <p role="alert" className="flex items-center gap-1 text-xs text-red-400">
+                  <HiOutlineExclamationCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>{errors.referral_code.message}</span>
+                </p>
+              ) : (
+                <p className="flex items-center gap-1.5 text-xs text-white/30">
+                  <HiOutlineShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                  <span>{t("auth.referralCodeHint")}</span>
+                </p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Password Field */}
-        <div style={{ animationDelay: "0.25s" }}>
-          <InputWrapper
-            field="password"
+        <div>
+          <InputField
+            id="password"
+            label={t("auth.createStrongPassword")}
             icon={HiOutlineLockClosed}
             error={errors.password?.message}
+            isFocused={focusedField === "password"}
+            hasValue={!!watchedPassword}
+            onFocus={() => setFocusedField("password")}
+            onBlur={() => setFocusedField(null)}
+            withEye
           >
-            <input
-              {...register("password")}
-              type={showPassword ? "text" : "password"}
-              autoComplete="new-password"
-              placeholder={t("auth.createStrongPassword")}
-              onFocus={() => handleFocus("password")}
-              onBlur={() => {
-                handleBlur("password");
-                checkPasswordStrength(watchedPassword || "");
-              }}
-              onChange={(e) => {
-                register("password").onChange(e);
-                checkPasswordStrength(e.target.value);
-              }}
-              className={`${inputBaseClass} pr-14 ${
-                errors.password
-                  ? "border-red-500/40 focus:border-red-500"
-                  : focusedFields.password
-                    ? "border-[#ff6b7e]/70 bg-white/[0.08]"
-                    : "border-white/[0.08] hover:border-white/[0.18]"
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((current) => !current)}
-              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 flex h-[30px] w-[30px] items-center justify-center rounded-lg text-white/30 transition-all duration-300 hover:bg-white/[0.06] hover:text-[#ff6b7e] active:scale-90"
-            >
-              {showPassword ? <HiOutlineEyeSlash size={16} /> : <HiOutlineEye size={16} />}
-            </button>
-          </InputWrapper>
-
-          {/* Password Strength Indicator */}
-          {watchedPassword && watchedPassword.length > 0 && (
-            <div className="mt-1.5 animate-fadeIn">
-              <div className="flex items-center gap-2">
-                <div className="flex flex-1 gap-[3px]">
-                  {strengthSegments.map((seg, i) => (
-                    <div
-                      key={i}
-                      className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                        seg.filled
-                          ? `${seg.color} shadow-[0_0_4px_rgba(255,107,126,0.15)]`
-                          : "bg-white/[0.06]"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span
-                  className={`text-[10px] font-medium uppercase tracking-wider transition-all duration-300 ${
-                    passwordStrength <= 2
-                      ? "text-red-400"
-                      : passwordStrength <= 3
-                        ? "text-yellow-400"
-                        : passwordStrength <= 4
-                          ? "text-blue-400"
-                          : "text-green-400"
-                  }`}
+            {(inputProps) => (
+              <div className="relative">
+                <input
+                  {...register("password")}
+                  {...inputProps}
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  placeholder={t("auth.createStrongPassword")}
+                  className={`${inputProps.className} pr-14`}
+                  onChange={(e) => {
+                    register("password").onChange(e);
+                    checkPasswordStrength(e.target.value);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? t("auth.hidePassword", "Parolni yashirish") : t("auth.showPassword", "Parolni ko'rsatish")}
+                  className="!absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-white/35 transition-colors duration-200 hover:bg-white/[0.08] hover:text-[#ff6b7e]"
                 >
-                  {getStrengthText()}
-                </span>
+                  {showPassword ? <HiOutlineEyeSlash size={18} /> : <HiOutlineEye size={18} />}
+                </button>
               </div>
+            )}
+          </InputField>
+
+          {watchedPassword.length > 0 && (
+            <div className="-mt-2 flex items-center gap-2">
+              <div className="flex flex-1 gap-1">
+                {strengthColors.map((color, i) => (
+                  <div
+                    key={color}
+                    className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                      passwordStrength >= i + 1 ? color : "bg-white/[0.08]"
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className={`shrink-0 text-[10px] font-medium uppercase tracking-wider ${strengthTextColors[Math.min(passwordStrength, 5) - 1] ?? "text-white/30"}`}>
+                {getStrengthText()}
+              </span>
             </div>
           )}
         </div>
 
-        <div style={{ animationDelay: "0.3s" }}>
-          <InputWrapper
-            field="confirm_password"
-            icon={HiOutlineLockClosed}
-            error={
-              passwordsMismatch
-                ? "Parollar mos emas"
-                : errors.confirm_password?.message
-            }
-          >
-            <input
-              {...register("confirm_password")}
-              type={showConfirmPassword ? "text" : "password"}
-              autoComplete="new-password"
-              placeholder={t("auth.confirmPassword")}
-              onFocus={() => handleFocus("confirm_password")}
-              onBlur={() => handleBlur("confirm_password")}
-              className={`${inputBaseClass} pr-14 ${
-                passwordsMismatch
-                  ? "border-red-500/40 focus:border-red-500"
-                  : errors.confirm_password
-                    ? "border-red-500/40 focus:border-red-500"
-                    : focusedFields.confirm_password
-                      ? "border-[#ff6b7e]/70 bg-white/[0.08]"
-                      : "border-white/[0.08] hover:border-white/[0.18]"
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword((current) => !current)}
-              className="absolute right-3 top-1/2 z-20 -translate-y-1/2 flex h-[30px] w-[30px] items-center justify-center rounded-lg text-white/30 transition-all duration-300 hover:bg-white/[0.06] hover:text-[#ff6b7e] active:scale-90"
-            >
-              {showConfirmPassword ? <HiOutlineEyeSlash size={16} /> : <HiOutlineEye size={16} />}
-            </button>
-          </InputWrapper>
-        </div>
-
-        <div
-          className="animate-fadeIn pt-1"
-          style={{ animationDelay: "0.35s", animationFillMode: "backwards" }}
+        <InputField
+          id="confirm_password"
+          label={t("auth.confirmPassword")}
+          icon={HiOutlineLockClosed}
+          error={passwordsMismatch ? "Parollar mos emas" : errors.confirm_password?.message}
+          isFocused={focusedField === "confirm_password"}
+          hasValue={!!watchedConfirmPassword}
+          onFocus={() => setFocusedField("confirm_password")}
+          onBlur={() => setFocusedField(null)}
+          withEye
         >
+          {(inputProps) => (
+            <div className="relative">
+              <input
+                {...register("confirm_password")}
+                {...inputProps}
+                type={showConfirmPassword ? "text" : "password"}
+                autoComplete="new-password"
+                placeholder={t("auth.confirmPassword")}
+                className={`${inputProps.className} pr-14`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((current) => !current)}
+                aria-label={
+                  showConfirmPassword ? t("auth.hidePassword", "Parolni yashirish") : t("auth.showPassword", "Parolni ko'rsatish")
+                }
+                className="!absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-white/35 transition-colors duration-200 hover:bg-white/[0.08] hover:text-[#ff6b7e]"
+              >
+                {showConfirmPassword ? <HiOutlineEyeSlash size={18} /> : <HiOutlineEye size={18} />}
+              </button>
+            </div>
+          )}
+        </InputField>
+
+        <div className="pt-1">
           <button
             type="submit"
-            disabled={registerMutation.isPending || googleMutation.isPending || isSubmitting}
-            className="group relative inline-flex h-14 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-[#ff6b7e] to-[#ff8fa0] text-sm font-bold uppercase tracking-[0.15em] text-white transition-all duration-300 hover:scale-[1.015] hover:shadow-[0_8px_30px_rgba(255,107,126,0.25)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
+            disabled={isBusy}
+            className="group relative inline-flex h-14 w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-[#ff6b7e] to-[#ff8fa0] text-sm font-bold uppercase tracking-[0.15em] text-white transition-transform duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-[#ff6b7e] via-[#ff8fa0] to-[#ff6b7e] bg-[length:200%_100%] opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-hover:animate-gradientShift" />
-            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/[0.18] to-transparent transition-transform duration-500 group-hover:translate-x-full" />
-            <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-
+            <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/[0.18] to-transparent transition-transform duration-500 group-hover:translate-x-full" />
             <span className="relative flex items-center gap-2.5">
               {registerMutation.isPending || isSubmitting ? (
                 <>
-                  <svg className="h-[18px] w-[18px] animate-spin" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
+                  <svg className="h-[18px] w-[18px] animate-spin" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path
                       className="opacity-75"
                       fill="currentColor"
@@ -670,101 +616,14 @@ function Register() {
                 </>
               ) : (
                 <>
-                  <HiOutlineSparkles className="text-base transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+                  <HiOutlineSparkles className="text-base transition-transform duration-200 group-hover:rotate-12" />
                   <span>{t("auth.signUpButton")}</span>
                 </>
               )}
             </span>
           </button>
         </div>
-
-        {/* Terms and Conditions */}
-        <p className="pt-0.5 text-center text-[11px] leading-relaxed text-white/35">
-          {t("auth.termsAgree")}{" "}
-          <Link
-            to="/terms"
-            className="font-medium text-[#ff6b7e] transition-all duration-200 hover:text-[#ff8fa0] hover:underline decoration-1 underline-offset-2"
-          >
-            {t("auth.termsOfService")}
-          </Link>{" "}
-          {t("auth.and")}{" "}
-          <Link
-            to="/privacy"
-            className="font-medium text-[#ff6b7e] transition-all duration-200 hover:text-[#ff8fa0] hover:underline decoration-1 underline-offset-2"
-          >
-            {t("auth.privacyPolicy")}
-          </Link>
-        </p>
       </form>
-
-      {/* ─── Inject keyframes once ─── */}
-      <style>{`
-        @keyframes registerFloat {
-          0%, 100% {
-            transform: translate3d(0, 0, 0) scale(1);
-            opacity: 0.3;
-          }
-          25% {
-            opacity: 0.65;
-          }
-          50% {
-            transform: translate3d(var(--drift-x), var(--drift-y), 0) scale(1.12);
-            opacity: 0.85;
-          }
-          75% {
-            opacity: 0.45;
-          }
-        }
-        @keyframes spin-slow {
-          to {
-            --angle: 360deg;
-          }
-        }
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-4px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes softPing {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 0.3;
-          }
-          50% {
-            transform: scale(1.4);
-            opacity: 0;
-          }
-        }
-        @keyframes progressPulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.6;
-          }
-        }
-        @property --angle {
-          syntax: "<angle>";
-          initial-value: 0deg;
-          inherits: false;
-        }
-        @keyframes gradientShift {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-      `}</style>
     </AuthShell>
   );
 }

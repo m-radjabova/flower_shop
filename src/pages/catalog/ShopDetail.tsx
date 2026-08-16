@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link, useParams } from "react-router-dom";
 import {
   FaInstagram,
@@ -403,8 +404,19 @@ function ShopDetail() {
     setActiveSection(sectionId);
   };
 
+  const seoDescription = shop.description || `${shop.name} offers premium flowers, same-day delivery, and fresh arrangements.`;
+
   return (
-    <main className="relative isolate min-h-screen overflow-hidden text-[#fff6f4]">
+    <>
+      <Helmet>
+        <title>{shop.name}</title>
+        <meta name="description" content={seoDescription} />
+        <meta property="og:title" content={shop.name} />
+        <meta property="og:description" content={seoDescription} />
+        <meta property="og:image" content={shop.banner ?? shop.logo ?? "https://images.unsplash.com/photo-1519378058457-4c29a0a2efac?auto=format&fit=crop&w=1400&q=80"} />
+      </Helmet>
+
+      <main className="relative isolate min-h-screen overflow-hidden text-[#fff6f4]">
 
       {/* ── Backgrounds ── */}
       <div className="pointer-events-none fixed inset-0 -z-20 bg-[#0a0203]" />
@@ -772,7 +784,8 @@ function ShopDetail() {
         .duration-600 { transition-duration: 600ms; }
         .group-hover\\:scale-108:hover { transform: scale(1.08); }
       `}</style>
-    </main>
+      </main>
+    </>
   );
 }
 

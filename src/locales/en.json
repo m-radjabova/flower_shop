@@ -164,7 +164,9 @@
     "reviews": "reviews",
     "addedToFavorites": "added to favorites",
     "removedFromFavorites": "removed from favorites",
-    "addedToCart": "added to cart"
+    "addedToCart": "added to cart",
+    "eyebrow": "A fresh pick",
+    "subtitle": "Handpicked blooms tied with love — find the perfect bouquet for every precious moment."
   },
   "categorySection": {
     "shopByCategory": "Shop by Category",
@@ -222,7 +224,24 @@
     "outOfStockMessage": "is currently out of stock"
   },
   "favorites": {
-    "removed": "{{name}} removed from favorites"
+    "yourCollection": "Your Collection",
+    "my": "My",
+    "favorites": "Favorites",
+    "items": "items",
+    "sortRecent": "Recently Added",
+    "sortPriceLow": "Price: Low to High",
+    "sortPriceHigh": "Price: High to Low",
+    "sortRating": "Top Rated",
+    "gridView": "Grid",
+    "listView": "List",
+    "noFavorites": "No favorites yet",
+    "noFavoritesDesc": "Start exploring our curated collection and save the bouquets you love most. They will appear here as soon as you add them.",
+    "exploreBouquets": "Explore Bouquets",
+    "addToCart": "Add to cart",
+    "remove": "Remove",
+    "removeFromFavorites": "Removed from favorites",
+    "addedToCart": "added to cart",
+    "favorite": "Favorite"
   },
   "orders": {
     "addressMissing": "Address not provided"
@@ -509,26 +528,6 @@
     "orderWithin": "Order within 2h 15m",
     "totalLabel": "Total",
     "mapPreviewTitle": "Delivery map preview"
-  },
-  "favorites": {
-    "yourCollection": "Your Collection",
-    "my": "My",
-    "favorites": "Favorites",
-    "items": "items",
-    "sortRecent": "Recently Added",
-    "sortPriceLow": "Price: Low to High",
-    "sortPriceHigh": "Price: High to Low",
-    "sortRating": "Top Rated",
-    "gridView": "Grid",
-    "listView": "List",
-    "noFavorites": "No favorites yet",
-    "noFavoritesDesc": "Start exploring our curated collection and save the bouquets you love most. They will appear here as soon as you add them.",
-    "exploreBouquets": "Explore Bouquets",
-    "addToCart": "Add to cart",
-    "remove": "Remove",
-    "removeFromFavorites": "Removed from favorites",
-    "addedToCart": "added to cart",
-    "favorite": "Favorite"
   },
   "shopDetail": {
     "backToShops": "Back to Shops",
@@ -1005,7 +1004,6 @@
     "favoritesCount": "saved bouquets",
     "noFavorites": "No favorites yet.",
     "addToCart": "Add to cart",
-    "remove": "Remove",
     "addedToCart": "added to cart",
     "removedFromFavorites": "removed from favorites",
     "signature": "Signature bouquet",
@@ -1175,7 +1173,7 @@
     "examplePrice15": "Example: 15.00",
     "examplePrice4": "Example: 4.00",
     "deleteBouquetTitle": "Delete bouquet?",
-    "from": "from",
+    "from": "From",
     "ordersControl": "Order Management",
     "noShops": "You don't have any shops yet.",
     "shopLabel": "Shop",
@@ -1203,8 +1201,6 @@
     "applicationFeedback": "Application Feedback",
     "application": "Application",
     "decision": "Decision",
-    "signatureStorefront": "Signature Storefront",
-    "profileHealth": "Profile Health",
     "strong": "Strong",
     "address": "Address",
     "phone": "Phone",
@@ -1242,7 +1238,6 @@
     "advancedFilters": "Advanced filters",
     "sortBy": "Sort by",
     "byDate": "By date",
-    "from": "From",
     "to": "To",
     "paymentMethod": "Payment method",
     "deliveryMethod": "Delivery method",
@@ -1318,7 +1313,6 @@
     "resetFormDesc": "All unsaved bouquet changes will be cleared and the form will return to its last saved state.",
     "yesReset": "Yes, reset",
     "formResetSuccess": "Form reset",
-    "mapLoadError": "Could not load map",
     "searchLocationError": "Could not search location",
     "currentLocationError": "Could not get current location",
     "currentLocationPermissionDenied": "Location access was denied. Please allow location permission in your browser.",
@@ -1407,7 +1401,6 @@
     "bouquetDeleteError": "Could not delete bouquet",
     "bouquetNotFound": "Bouquet not found or unavailable.",
     "imageUploadSuccess": "Image uploaded",
-    "imageUploadError": "Could not upload image",
     "shopRequired": "Shop not found",
     "noBouquetAccess": "You need a shop to manage bouquets.",
     "managerShopRequired": "Shop not found.",
@@ -1457,10 +1450,7 @@
     "itemCountSuffix": "items",
     "noOrdersFound": "No matching orders found",
     "adjustFilters": "Try adjusting the filters or changing your search query.",
-    "clearFilters": "Clear filters",
-    "sizeSmall": "Small",
-    "sizeMedium": "Medium",
-    "sizeLarge": "Large"
+    "clearFilters": "Clear filters"
   },
   "admin": {
     "adminDashboard": "Admin Dashboard",
@@ -1615,7 +1605,6 @@
     "completed": "Completed",
     "noEta": "No ETA",
     "minutesAgoSuffix": "min ago",
-    "activeStatus": "Active",
     "inactiveStatus": "Inactive",
     "soldOutStatus": "Sold Out",
     "filterStatus": "Status: {{value}}",

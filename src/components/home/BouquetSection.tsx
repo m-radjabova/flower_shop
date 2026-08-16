@@ -1,87 +1,40 @@
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
-import { CART_AUTH_REQUIRED_MESSAGE, CART_SINGLE_BOUQUET_MESSAGE, addToCart } from "../../utils/cart";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   HiArrowRight,
-  HiHeart,
-  HiOutlineGift,
-  HiOutlineHeart,
-  HiOutlineSparkles,
-  HiOutlineShoppingBag,
-  HiStar,
   HiEye,
+  HiHeart,
+  HiOutlineHeart,
+  HiOutlineShoppingBag,
+  HiOutlineSparkles,
+  HiStar,
 } from "react-icons/hi2";
-import { LuCakeSlice, LuFlower2 } from "react-icons/lu";
-import { TbRings } from "react-icons/tb";
+import { LuFlower2 } from "react-icons/lu";
 import type { Bouquet, Category } from "../../types/catalog";
 import { useFavoriteIds } from "../../hooks/useFavorites";
 import BouquetAvailabilityBadge from "../catalog/BouquetAvailabilityBadge";
 import {
+  CART_AUTH_REQUIRED_MESSAGE,
+  CART_SINGLE_BOUQUET_MESSAGE,
+  addToCart,
+} from "../../utils/cart";
+import {
   formatPrice,
-  getBouquetImages,
   getComputedDiscountPercent,
   getComputedOldPrice,
   isBouquetAvailable,
   isNewBouquet,
 } from "../../utils/catalog";
-import { FAVORITES_AUTH_REQUIRED_MESSAGE, toggleFavoriteBouquet } from "../../utils/favorites";
+import {
+  FAVORITES_AUTH_REQUIRED_MESSAGE,
+  toggleFavoriteBouquet,
+} from "../../utils/favorites";
 import { getBouquetPath } from "../../utils/routes";
-import { HomeCategoriesSkeleton } from "../PageSkeletons";
-import { useEffect, useRef, useState } from "react";
+import { BouquetGridSkeleton } from "../PageSkeletons";
 import ShopVerifiedBadge from "../shops/ShopVerifiedBadge";
-
-const categoryIcons = {
-  roses: LuFlower2,
-  birthday: LuCakeSlice,
-  anniversary: HiHeart,
-  wedding: TbRings,
-  "new-baby": HiOutlineSparkles,
-  "get-well-soon": HiOutlineHeart,
-};
-
-const categoryGradients = {
-  roses: "from-rose-500/20 to-rose-900/20",
-  birthday: "from-amber-500/20 to-orange-900/20",
-  anniversary: "from-pink-500/20 to-red-900/20",
-  wedding: "from-purple-500/20 to-indigo-900/20",
-  "new-baby": "from-sky-500/20 to-blue-900/20",
-  "get-well-soon": "from-emerald-500/20 to-teal-900/20",
-};
-
-const categoryBorderColors = {
-  roses: "group-hover:border-rose-500",
-  birthday: "group-hover:border-amber-500",
-  anniversary: "group-hover:border-pink-500",
-  wedding: "group-hover:border-purple-500",
-  "new-baby": "group-hover:border-sky-500",
-  "get-well-soon": "group-hover:border-emerald-500",
-};
-
-const categoryTextColors = {
-  roses: "group-hover:text-rose-300",
-  birthday: "group-hover:text-amber-300",
-  anniversary: "group-hover:text-pink-300",
-  wedding: "group-hover:text-purple-300",
-  "new-baby": "group-hover:text-sky-300",
-  "get-well-soon": "group-hover:text-emerald-300",
-};
-
-function getCategoryIcon(slug: string) {
-  return categoryIcons[slug as keyof typeof categoryIcons] ?? HiOutlineGift;
-}
-
-function getCategoryGradient(slug: string) {
-  return categoryGradients[slug as keyof typeof categoryGradients] ?? "from-gray-500/20 to-gray-900/20";
-}
-
-function getCategoryBorder(slug: string) {
-  return categoryBorderColors[slug as keyof typeof categoryBorderColors] ?? "group-hover:border-gray-400";
-}
-
-function getCategoryText(slug: string) {
-  return categoryTextColors[slug as keyof typeof categoryTextColors] ?? "group-hover:text-gray-300";
-}
 
 interface BouquetSectionProps {
   bouquets: Bouquet[];
@@ -91,65 +44,41 @@ interface BouquetSectionProps {
   onSelectCategory: (categoryId: string | null) => void;
 }
 
-function BouquetSection({
-  bouquets,
-  categories,
-  isLoading,
-  selectedCategoryId,
-  onSelectCategory,
-}: BouquetSectionProps) {
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+function getStaggerOffset(index: number) {
+  const column = index % 3;
+  if (column === 1) return "sm:mt-8 lg:mt-16 xl:mt-20";
+  if (column === 2) return "lg:mt-4 xl:mt-8";
+  return "";
+}
+
+function BouquetSection({ bouquets, isLoading }: BouquetSectionProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const favoriteIds = useFavoriteIds();
-  const sectionRef = useRef<HTMLElement>(null);
-  const [visibleCards, setVisibleCards] = useState<Set<string>>(new Set());
-  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const shouldReduceMotion = useReducedMotion();
   const [imageLoaded, setImageLoaded] = useState<Record<string, boolean>>({});
 
-  // Intersection Observer for scroll animations
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisibleCards((prev) => new Set(prev).add(entry.target.id));
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "50px" }
-    );
-
-    const cards = document.querySelectorAll(".bouquet-card");
-    cards.forEach((card) => observer.observe(card));
-    const revealFallback = window.setTimeout(() => {
-      setVisibleCards((prev) => {
-        const next = new Set(prev);
-        cards.forEach((card) => next.add(card.id));
-        return next;
-      });
-    }, 300);
-
-    return () => {
-      window.clearTimeout(revealFallback);
-      observer.disconnect();
-    };
-  }, [bouquets]);
-
-  // Reset visibility when bouquets change
-  useEffect(() => {
-    setVisibleCards(new Set());
-    setImageLoaded({});
-  }, [bouquets, selectedCategoryId]);
+  const reveal = shouldReduceMotion
+    ? { duration: 0.2 }
+    : { duration: 0.8, ease: EASE };
 
   const handleFavoriteClick = (event: React.MouseEvent, bouquet: Bouquet) => {
     event.stopPropagation();
     const result = toggleFavoriteBouquet(bouquet);
     if (!result.ok) {
-      toast.info(FAVORITES_AUTH_REQUIRED_MESSAGE, { position: "bottom-right", autoClose: 2400, theme: "colored" });
+      toast.info(FAVORITES_AUTH_REQUIRED_MESSAGE, {
+        position: "bottom-right",
+        autoClose: 2400,
+        theme: "colored",
+      });
       return;
     }
     toast.success(
-      result.added ? `${bouquet.name} ${t("bouquetSection.addedToFavorites")}` : `${bouquet.name} ${t("bouquetSection.removedFromFavorites")}`,
+      result.added
+        ? `${bouquet.name} ${t("bouquetSection.addedToFavorites")}`
+        : `${bouquet.name} ${t("bouquetSection.removedFromFavorites")}`,
       { position: "bottom-right", autoClose: 2000, theme: "colored" }
     );
   };
@@ -162,464 +91,342 @@ function BouquetSection({
     }
     const result = addToCart(bouquet);
     if (!result.ok) {
-      toast.info(result.reason === "auth_required" ? CART_AUTH_REQUIRED_MESSAGE : CART_SINGLE_BOUQUET_MESSAGE, { position: "bottom-right", autoClose: 2600, theme: "colored" });
+      toast.info(
+        result.reason === "auth_required"
+          ? CART_AUTH_REQUIRED_MESSAGE
+          : CART_SINGLE_BOUQUET_MESSAGE,
+        { position: "bottom-right", autoClose: 2600, theme: "colored" }
+      );
       return;
     }
-    toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`, { position: "bottom-right", autoClose: 2000, theme: "colored" });
+    toast.success(`${bouquet.name} ${t("catalog.addedToCart")}`, {
+      position: "bottom-right",
+      autoClose: 2000,
+      theme: "colored",
+    });
   };
 
   const handleNavigate = (path: string) => {
     navigate(path);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({
+      top: 0,
+      behavior: shouldReduceMotion ? "auto" : "smooth",
+    });
   };
 
   return (
     <section
-      ref={sectionRef}
-      className="relative mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-10 sm:pb-32"
+      id="bouquets"
+      className="relative mx-auto max-w-7xl scroll-mt-28 px-4 pb-24 pt-4 sm:px-6 sm:pb-32 lg:px-10"
     >
-      {/* Background decoration */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-gradient-to-br from-[#cb5c57]/10 to-transparent blur-3xl" />
-        <div className="absolute -bottom-20 -left-40 h-96 w-96 rounded-full bg-gradient-to-tr from-[#ff9b88]/5 to-transparent blur-3xl" />
-        <div className="absolute top-1/3 left-1/4 h-64 w-64 rounded-full bg-gradient-to-br from-rose-800/5 to-transparent blur-3xl" />
-      </div>
+      {/* ── Ambient glow field ── */}
+      {/* <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -right-32 -top-20 h-96 w-96 rounded-full bg-[#cb5c57]/10 blur-[120px]" />
+        <div className="absolute -left-44 top-1/3 h-[28rem] w-[28rem] rounded-full bg-[#7a1e33]/10 blur-[140px]" />
+        <div className="absolute bottom-0 right-1/3 h-64 w-64 rounded-full bg-[#ff9b88]/5 blur-[100px]" />
+      </div> */}
 
-      <div id="categories" className="scroll-mt-28">
-        {/* ─── Header Section ─── */}
-        <div className="relative mb-8 sm:mb-12">
-          {/* Desktop Header */}
-          <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-8 md:grid">
-            <div className="h-px bg-gradient-to-r from-transparent via-[#5b2524] to-transparent" />
-            <div className="relative">
-              <div className="absolute inset-0 blur-2xl bg-gradient-to-r from-[#cb5c57]/20 to-[#ff9b88]/20 rounded-full" />
-              <div className="absolute inset-0 blur-[60px] bg-gradient-to-b from-[#cb5c57]/10 to-transparent rounded-full" />
-              <h2 className="mt-5 font-great-vibes text-[clamp(3.2rem,7vw,6.4rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]">
-                {t("bouquetSection.newFlowers")}
-              </h2>
-              <div className="relative mx-auto mt-2 h-1 w-24 rounded-full bg-gradient-to-r from-[#cb5c57] via-[#ff9b88] to-[#cb5c57] opacity-40" />
-            </div>
-            <div className="flex items-center justify-between gap-6">
-              <div className="h-px flex-1 bg-gradient-to-r from-[#5b2524] to-transparent" />
-              <Link
-                to="/bouquets"
-                className="group inline-flex shrink-0 items-center gap-2 rounded-full border border-[#cb5c57]/30 bg-[#1a0c0c]/50 px-6 py-2.5 text-sm font-semibold text-[#f1d5cb] backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/15 hover:text-white hover:shadow-lg hover:shadow-[#cb5c57]/20"
-              >
-                {t("bouquetSection.all")}
-                <HiArrowRight className="text-[#cb5c57] transition-all duration-300 group-hover:translate-x-1 group-hover:text-white" />
-              </Link>
-            </div>
+      <div className="relative">
+        {/* ── Editorial header ── */}
+        <motion.header
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 32 }}
+          whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={reveal}
+          className="relative mb-14 text-center sm:mb-20"
+        >
+          
+
+          <motion.span
+            initial={shouldReduceMotion ? false : { opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: EASE, delay: 0.1 }}
+            className="relative inline-flex items-center gap-2 rounded-full border border-[#ff8fa0]/20 bg-white/[0.04] px-4 py-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.32em] text-[#ffb3a3] backdrop-blur-md"
+          >
+            <HiOutlineSparkles className="text-[#ff8fa0]" size={13} />
+            {t("bouquetSection.eyebrow")}
+            <HiOutlineSparkles className="text-[#ff8fa0]" size={13} />
+          </motion.span>
+
+          <h2 className="relative mt-4 font-great-vibes text-[clamp(3rem,7vw,5.5rem)] leading-none text-[#fdf1e9] [text-shadow:0_8px_30px_rgba(0,0,0,0.35),0_0_60px_rgba(203,92,87,0.18)]">
+            {t("bouquetSection.newFlowers")}
+          </h2>
+
+          <p className="relative mx-auto mt-3 max-w-xl px-2 text-sm leading-relaxed text-[#c9aaa1] sm:text-base">
+            {t("bouquetSection.subtitle")}
+          </p>
+
+          <div className="relative mt-6 flex items-center justify-center gap-3" aria-hidden="true">
+            <span className="h-px w-16 bg-gradient-to-r from-transparent to-[#ff8fa0]/60 sm:w-24" />
+            <span className="flex h-8 w-8 rotate-45 items-center justify-center rounded-[0.7rem] border border-[#ff8fa0]/25 bg-[#1a0a10]/60">
+              <LuFlower2 className="-rotate-45 text-[#ff9b88]" size={14} />
+            </span>
+            <span className="h-px w-16 bg-gradient-to-l from-transparent to-[#ff8fa0]/60 sm:w-24" />
           </div>
+        </motion.header>
 
-          {/* Mobile Header */}
-          <div className="md:hidden">
-            <div className="relative">
-              <div className="absolute inset-0 blur-2xl bg-gradient-to-r from-[#cb5c57]/20 to-[#ff9b88]/20 rounded-full" />
-              <div className="relative">
-                <h2 className="mt-5 font-great-vibes text-[clamp(2.4rem,7vw,3.2rem)] leading-[0.95] font-normal text-[#f8ece4] [text-shadow:0_10px_30px_rgba(0,0,0,0.35),0_0_45px_rgba(125,13,36,0.14)]">
-                  {t("bouquetSection.newFlowers")}
-                </h2>
-                <div className="mx-auto mt-2 h-0.5 w-12 rounded-full bg-gradient-to-r from-[#cb5c57] to-[#ff9b88] opacity-40 sm:w-16" />
-              </div>
-            </div>
-          </div>
-        </div>
-
+        {/* ── Bouquet grid ── */}
         {isLoading ? (
-          <HomeCategoriesSkeleton />
-        ) : (
-          <>
-            {/* ─── Categories Section ─── */}
-            <div className="relative mt-6 sm:mt-8">
-              {/* Categories scroll */}
-              <div className="flex overflow-x-auto pb-3 scrollbar-none md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-                <div className="flex gap-3 md:gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 min-w-max md:min-w-full mx-auto">
-                  {categories.map((category, idx) => {
-                    const Icon = getCategoryIcon(category.slug);
-                    const active = selectedCategoryId === category.id;
-                    const gradient = getCategoryGradient(category.slug);
-                    const borderHover = getCategoryBorder(category.slug);
-                    const textHover = getCategoryText(category.slug);
+          <BouquetGridSkeleton
+            count={9}
+            className="grid items-start gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:gap-x-8 xl:gap-y-14"
+            imageClassName="h-[300px] w-full sm:h-[380px] lg:h-[420px]"
+          />
+        ) : bouquets.length ? (
+          <div className="grid items-start gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:gap-x-8 xl:gap-y-14">
+            {bouquets.map((bouquet, idx) => {
+              const bouquetPath = getBouquetPath(bouquet);
+              const isFavorite = favoriteIds.has(bouquet.id);
+              const showNewBadge = isNewBouquet(bouquet.created_at);
+              const canAddToCart = isBouquetAvailable(bouquet);
+              const imageReady = imageLoaded[`bouquet-${bouquet.id}`] !== false;
+              const discountPercent = getComputedDiscountPercent(bouquet.price);
 
-                    return (
-                      <button
-                        key={category.id}
-                        type="button"
-                        onClick={() => onSelectCategory(active ? null : category.id)}
-                        className={`group relative flex flex-col items-center text-center transition-all duration-500`}
-                        style={{
-                          animationDelay: `${idx * 50}ms`,
-                        }}
-                      >
-                        {/* Category icon container */}
-                        <div
-                          className={`relative inline-flex h-[4.2rem] w-[4.2rem] sm:h-[5.5rem] sm:w-[5.5rem] md:h-[6.5rem] md:w-[6.5rem] items-center justify-center rounded-[4rem] border-2 transition-all duration-300 ${
-                            active
-                              ? `border-[#cb5c57] bg-gradient-to-br ${gradient} shadow-2xl shadow-[#cb5c57]/10`
-                              : `border-[#3a1a1a] bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] shadow-lg ${borderHover} hover:shadow-xl`
-                          }`}
-                        >
-                          <Icon
-                            size={24}
-                            className={`relative z-10 transition-all duration-300 sm:size-[28] md:size-[36] ${
-                              active
-                                ? "text-[#ff9b88] drop-shadow-lg scale-110"
-                                : "text-[#b87a6a] group-hover:text-[#ff9b88] group-hover:scale-110"
-                            }`}
-                          />
-                        </div>
-                        
-                        {/* Category name */}
-                        <p
-                          className={`mt-2 sm:mt-3 text-[0.65rem] sm:text-sm font-semibold leading-snug transition-all duration-300 ${
-                            active
-                              ? "bg-gradient-to-r from-[#ff9b88] to-[#f1ddd3] bg-clip-text text-transparent"
-                              : `text-[#b99a92] ${textHover}`
-                          }`}
-                        >
-                          {category.name}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Mobile scroll indicator */}
-              <div className="mt-3 flex justify-center gap-1.5 md:hidden">
-                {categories.map((_, i) => (
+              return (
+                <motion.article
+                  id={`bouquet-${bouquet.id}`}
+                  key={bouquet.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleNavigate(bouquetPath)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleNavigate(bouquetPath);
+                    }
+                  }}
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 64, scale: 0.95 }}
+                  whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  transition={{ delay: (idx % 3) * 0.12, duration: 0.85, ease: EASE }}
+                  whileHover={shouldReduceMotion ? undefined : { y: -12 }}
+                  className={`bouquet-card group relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff8fa0] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0e0507] ${getStaggerOffset(idx)}`}
+                >
+                  {/* hover glow */}
                   <div
-                    key={i}
-                    className={`h-1 rounded-full transition-all duration-300 ${
-                      i === 0 ? "w-5 bg-[#cb5c57] sm:w-6" : "w-1.5 bg-[#3a1a1a]"
-                    }`}
+                    className="pointer-events-none absolute -inset-1 rounded-[2.6rem] bg-gradient-to-br from-[#cb5c57]/30 via-transparent to-[#ff8fa0]/15 opacity-0 blur-2xl transition-opacity duration-700 group-hover:opacity-100"
+                    aria-hidden="true"
                   />
-                ))}
-              </div>
-            </div>
 
-            {/* Mobile View All Button */}
-            <div className="mt-4 flex justify-center md:hidden">
-              <Link
-                to="/bouquets"
-                className="group inline-flex items-center gap-2 rounded-full border border-[#cb5c57]/30 bg-[#1a0c0c]/50 px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-[#f1d5cb] backdrop-blur-sm transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/15 hover:text-white hover:shadow-lg"
-              >
-                {t("bouquetSection.all")}
-                <HiArrowRight className="text-[#cb5c57] transition-all duration-300 group-hover:translate-x-1" />
-              </Link>
-            </div>
+                  <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.07] bg-[linear-gradient(180deg,#221017_0%,#170a0e_55%,#0f0608_100%)] shadow-[0_24px_50px_-18px_rgba(0,0,0,0.75)] transition-[border-color,box-shadow] duration-500 group-hover:border-[#ff8fa0]/35 group-hover:shadow-[0_36px_90px_-24px_rgba(255,84,110,0.25)]">
+                    {/* ── Arch image ── */}
+                    <div className="relative mx-1 mt-1 overflow-hidden rounded-t-[999px] rounded-b-[1.4rem] sm:mx-2 sm:mt-2">
+                      {!imageReady && (
+                        <div className="absolute inset-0 z-10 animate-pulse bg-[linear-gradient(180deg,#3a1220_0%,#240b12_60%,#17070b_100%)]" />
+                      )}
 
-            <div id="bouquets" className="scroll-mt-28" />
-
-            {/* ─── Bouquets Grid ─── */}
-            {bouquets.length ? (
-              <div className="mt-8 sm:mt-12 grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {bouquets.map((bouquet, idx) => {
-                  const bouquetImages = getBouquetImages(bouquet);
-                  const previewImages = bouquetImages.slice(1, 4);
-                  const isFavorite = favoriteIds.has(bouquet.id);
-                  const showNewBadge = isNewBouquet(bouquet.created_at);
-                  const isPopular = Number(bouquet.rating) >= 4.5 && bouquet.reviews_count >= 20;
-                  const isVisible = visibleCards.has(`bouquet-${bouquet.id}`);
-                  const isHovered = hoveredCardId === bouquet.id;
-                  const imageReady = imageLoaded[`bouquet-${bouquet.id}`] !== false;
-                  const canAddToCart = isBouquetAvailable(bouquet);
-                  const bouquetPath = getBouquetPath(bouquet);
-
-                  return (
-                    <article
-                      id={`bouquet-${bouquet.id}`}
-                      key={bouquet.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleNavigate(bouquetPath)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          handleNavigate(bouquetPath);
-                        }
-                      }}
-                      onMouseEnter={() => setHoveredCardId(bouquet.id)}
-                      onMouseLeave={() => setHoveredCardId(null)}
-                      className={`bouquet-card group relative transform overflow-hidden rounded-2xl border border-[#3a1a1a] bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] shadow-xl transition-all duration-500 hover:-translate-y-2 hover:border-[#cb5c57]/50 hover:shadow-2xl hover:shadow-[#cb5c57]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb5c57] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0606] ${
-                        isVisible ? "opacity-100" : "opacity-0 translate-y-8"
-                      }`}
-                      style={{
-                        animationDelay: `${idx * 100}ms`,
-                        transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-                      }}
-                    >
-                      {/* ── Image Section ── */}
-                      <div className="relative overflow-hidden">
-                        {/* Gradient overlay on hover */}
-                        <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#0f0606] via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                        
-                        {/* Image loading skeleton */}
-                        {!imageReady && (
-                          <div className="absolute inset-0 z-10 bg-gradient-to-br from-[#2b1012] to-[#1a0809] animate-pulse" />
+                      {/* ── Badges ── */}
+                      <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-1">
+                        {showNewBadge && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#d32945] to-[#ff5f78] px-3 py-1 text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-white shadow-lg shadow-[#ff5f78]/25">
+                            <HiOutlineSparkles className="animate-pulse" size={10} />
+                            {t("bouquetSection.new")}
+                          </span>
                         )}
-
-                        {/* Badges */}
-                        <div className="absolute left-3 sm:left-4 top-3 sm:top-4 z-20 flex flex-wrap gap-1.5 sm:gap-2">
-                          {showNewBadge && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#dd3045] to-[#ff5b72] px-2 sm:px-3 py-1 text-[0.6rem] sm:text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-red-500/20">
-                              <HiOutlineSparkles className="animate-pulse" size={10} />
-                               {t("bouquetSection.new")}
-                            </span>
-                          )}
-                          {isPopular && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-2 sm:px-3 py-1 text-[0.6rem] sm:text-[0.68rem] font-extrabold uppercase tracking-[0.16em] text-white shadow-lg shadow-amber-500/20">
-                              <HiStar className="animate-pulse" size={10} />
-                               {t("bouquetSection.popular")}
-                            </span>
-                          )}
-                          <BouquetAvailabilityBadge bouquet={bouquet} />
-                        </div>
-
-                        {/* Favorite Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleFavoriteClick(e, bouquet)}
-                          aria-label={isFavorite ? t("bouquetSection.removeFromFavorites") : t("bouquetSection.addToFavorites")}
-                          className="absolute right-3 sm:right-4 top-3 sm:top-4 z-20 inline-flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-full border border-[#8c6158] bg-[#19090a]/80 text-[#f6dacf] backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:border-[#ff5b72] hover:bg-[#ff5b72]/20 hover:shadow-lg active:scale-90"
-                        >
-                          {isFavorite ? (
-                            <HiHeart size={16} className="animate-heart-beat text-[#ff5b72]" />
-                          ) : (
-                            <HiOutlineHeart size={16} />
-                          )}
-                        </button>
-
-                        {/* Quick view button on hover */}
-                        <div className={`absolute inset-0 z-20 flex items-center justify-center transition-all duration-500 ${
-                          isHovered ? "opacity-100" : "opacity-0"
-                        }`}>
-                          <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 sm:px-4 py-1.5 sm:py-2 backdrop-blur-sm border border-white/10">
-                            <HiEye className="text-white" size={14} />
-                            <span className="text-xs sm:text-sm font-medium text-white">{t("bouquetSection.view")}</span>
-                          </div>
-                        </div>
-
-                        {/* Main Image */}
-                        <div className="overflow-hidden bg-gradient-to-br from-[#2b1012] to-[#1a0809]">
-                          <Link to={bouquetPath} aria-label={`${bouquet.name} — batafsil`} tabIndex={-1}>
-                            <img
-                              src={bouquet.image}
-                              alt={bouquet.name}
-                              loading="lazy"
-                              onLoad={() => setImageLoaded(prev => ({ ...prev, [`bouquet-${bouquet.id}`]: true }))}
-                              className={`h-[220px] sm:h-[280px] md:h-[320px] lg:h-[380px] w-full object-cover transition-all duration-700 ease-out group-hover:scale-110 ${
-                                imageReady ? "opacity-100" : "opacity-0"
-                              }`}
-                            />
-                          </Link>
-                        </div>
-
-                        {/* Preview Images */}
-                        {previewImages.length > 0 && (
-                          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 flex gap-1.5 sm:gap-2">
-                            {previewImages.map((image, index) => (
-                              <div
-                                key={image}
-                                className="overflow-hidden rounded-lg sm:rounded-xl border-2 border-white/30 shadow-lg transition-all duration-300 hover:scale-110 hover:border-white/60 hover:shadow-xl"
-                              >
-                                <img
-                                  src={image}
-                                  alt={`${bouquet.name} — ko'rinish ${index + 2}`}
-                                  loading="lazy"
-                                  className="h-8 w-8 sm:h-12 sm:w-12 object-cover"
-                                />
-                              </div>
-                            ))}
-                          </div>
+                        {discountPercent > 0 && (
+                          <span className="rounded-full bg-black/55 px-3 py-1 text-[0.62rem] font-extrabold text-[#ffd9c7] ring-1 ring-white/15 backdrop-blur-md">
+                            -{discountPercent}%
+                          </span>
                         )}
                       </div>
 
-                      {/* ── Content Section ── */}
-                      <div className="relative p-4 sm:p-5">
-                        {/* Shop link */}
-                        <Link
-                          to={`/shops/${bouquet.shop?.slug ?? "#"}`}
-                          onClick={(event) => event.stopPropagation()}
-                          className="inline-flex items-center gap-1 text-[0.65rem] sm:text-xs font-semibold uppercase tracking-wider text-[#cb5c57] transition-all duration-300 hover:text-[#ff9b88]"
-                        >
-                          <span>{bouquet.shop?.name ?? "-"}</span>
-                          {bouquet.shop?.is_verified ? (
-                            <ShopVerifiedBadge className="h-3 w-3 sm:h-3.5 sm:w-3.5" iconClassName="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                          ) : null}
-                        </Link>
+                      {/* ── Availability Badge ── */}
+                      <div className="absolute bottom-2 left-2 z-20 sm:bottom-3 sm:left-3">
+                        <BouquetAvailabilityBadge bouquet={bouquet} compact />
+                      </div>
 
-                        {/* Bouquet name */}
-                        <Link
-                          to={bouquetPath}
-                          onClick={(event) => event.stopPropagation()}
-                          className="mt-1 block sm:mt-1.5 font-cormorant text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold leading-tight text-[#f8ede6] transition-all duration-300 hover:text-[#ff9b88]"
-                        >
-                          {bouquet.name.length > 22
-                            ? `${bouquet.name.substring(0, 22)}...`
-                            : bouquet.name}
-                        </Link>
-
-                        {/* Rating */}
-                        <div className="mt-2 sm:mt-3 flex items-center gap-1.5 sm:gap-2">
-                          <div className="flex items-center gap-0.5" aria-label={`Reyting: ${bouquet.rating}`}>
-                            {[...Array(5)].map((_, i) => {
-                              const starValue = Number(bouquet.rating) || 0;
-                              const filled = i < Math.floor(starValue);
-                              const halfFilled = !filled && i < Math.ceil(starValue) && starValue % 1 >= 0.3;
-
-                              return (
-                                <HiStar
-                                  key={i}
-                                  className={`text-xs sm:text-sm transition-all duration-200 ${
-                                    filled
-                                      ? "text-amber-400 drop-shadow-sm"
-                                      : halfFilled
-                                      ? "text-amber-400/60"
-                                      : "text-gray-600"
-                                  }`}
-                                />
-                              );
-                            })}
-                          </div>
-                          <span className="text-xs sm:text-sm font-semibold text-white">
-                            {Number(bouquet.rating).toFixed(1)}
-                          </span>
-                          <span className="text-[0.65rem] sm:text-xs text-[#b08d86]">
-                            ({bouquet.reviews_count} {t("bouquetSection.reviews")})
-                          </span>
-                        </div>
-
-                        {/* Price */}
-                        <div className="mt-3 sm:mt-4">
-                          <p className="flex items-center gap-2 text-xl sm:text-2xl md:text-3xl font-bold text-white">
-                            {formatPrice(bouquet.price)}
-                          </p>
-                          <p className="mt-1 flex items-center gap-2 text-xs sm:text-sm text-gray-400">
-                            <span className="line-through">{formatPrice(getComputedOldPrice(bouquet.price))}</span>
-                            <span className="rounded-full bg-[#dd3045]/20 px-2 py-0.5 text-[0.6rem] sm:text-[0.65rem] font-bold text-[#ff5b72]">
-                              -{getComputedDiscountPercent(bouquet.price)}%
-                            </span>
-                          </p>
-                        </div>
-
-                        {/* Add to Cart Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleAddToCart(e, bouquet)}
-                          disabled={!canAddToCart}
-                          className={`group/btn mt-3 sm:mt-5 inline-flex h-11 sm:h-12 w-full items-center justify-center gap-2 rounded-xl text-xs sm:text-sm font-bold uppercase tracking-wider shadow-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb5c57] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a0c0c] ${
-                            canAddToCart
-                              ? "bg-gradient-to-r from-[#8f1220] via-[#aa1828] to-[#bb2435] text-white shadow-[#8f1220]/20 hover:from-[#aa1828] hover:via-[#bb2435] hover:to-[#dd3045] hover:shadow-xl hover:shadow-[#bb2435]/30 active:scale-[0.97]"
-                              : "cursor-not-allowed border border-[#5b2b31] bg-[#1a0b0d] text-[#c39b94] opacity-80"
+                      {/* ── Image ── */}
+                      <Link to={bouquetPath} tabIndex={-1} onClick={(event) => event.stopPropagation()} aria-label={bouquet.name}>
+                        <img
+                          src={bouquet.image}
+                          alt={bouquet.name}
+                          loading="lazy"
+                          onLoad={() =>
+                            setImageLoaded((prev) => ({ ...prev, [`bouquet-${bouquet.id}`]: true }))
+                          }
+                          className={`h-[300px] w-full object-cover object-top transition-transform duration-[1100ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110 sm:h-[380px] lg:h-[420px] ${
+                            imageReady ? "opacity-100" : "opacity-0"
                           }`}
-                        >
-                          <HiOutlineShoppingBag className="text-sm sm:text-base transition-all duration-300 group-hover/btn:-translate-x-1 group-hover/btn:scale-110" />
-                           <span>{canAddToCart ? t("bouquetSection.addToCart") : t("availability.outOfStock")}</span>
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              // ── Empty State ──
-              <div className="mt-8 sm:mt-12 rounded-2xl border border-dashed border-[#623535] bg-gradient-to-br from-[#150809] to-[#0a0405] px-4 sm:px-8 py-12 sm:py-20 text-center">
-                <div className="mx-auto mb-4 sm:mb-6 flex h-16 sm:h-20 w-16 sm:w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#1a0c0c] to-[#0f0606] ring-1 ring-[#623535]/50">
-                  <HiOutlineHeart className="text-3xl sm:text-4xl text-[#cb5c57]" />
-                </div>
-                 <h3 className="font-cormorant text-3xl sm:text-4xl font-semibold text-[#fff0ea]">
-                   {t("bouquetSection.noFlowersTitle")}
-                 </h3>
-                 <p className="mt-3 max-w-md mx-auto text-xs sm:text-sm text-[#caaba5] leading-relaxed">
-                   {t("bouquetSection.noFlowersDesc")}
-                 </p>
-                 <Link
-                   to="/bouquets"
-                   className="group mt-6 sm:mt-8 inline-flex items-center gap-2 rounded-full border border-[#764342] bg-[#1b0b0c] px-5 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-[#f5ddd6] transition-all duration-300 hover:border-[#cb5c57] hover:bg-[#cb5c57]/10 hover:text-white hover:shadow-lg hover:shadow-[#cb5c57]/10"
-                 >
-                   {t("bouquetSection.browseAllFlowers")}
-                  <HiArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
-                </Link>
-              </div>
-            )}
-          </>
-        )}
+                        />
+                      </Link>
 
-        {/* ─── Bottom View All Button ─── */}
-        {bouquets.length > 0 && (
-          <div className="relative mt-10 sm:mt-16 flex justify-center">
-            <div className="absolute inset-x-0 -top-6 sm:-top-8 h-px bg-gradient-to-r from-transparent via-[#5b2524] to-transparent" />
+                      {/* ── Image overlay ── */}
+                      <div
+                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#120709]/70 via-transparent to-transparent opacity-60 transition-opacity duration-500 group-hover:opacity-30"
+                        aria-hidden="true"
+                      />
+
+                      {/* ── Favorite Button ── */}
+                      <motion.button
+                        type="button"
+                        whileTap={shouldReduceMotion ? undefined : { scale: 0.8 }}
+                        onClick={(event) => handleFavoriteClick(event, bouquet)}
+                        aria-label={isFavorite ? t("bouquetSection.removeFromFavorites") : t("bouquetSection.addToFavorites")}
+                        className="absolute right-2 top-2 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-[#100507]/60 text-[#fff0ea] backdrop-blur-md transition-colors duration-300 hover:border-[#ff7d95]/70 hover:bg-[#ff5b72]/20 sm:right-3 sm:top-3"
+                      >
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.span
+                            key={isFavorite ? "filled" : "outline"}
+                            initial={shouldReduceMotion ? false : { scale: 0.4, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={
+                              shouldReduceMotion
+                                ? undefined
+                                : { scale: 1.5, opacity: 0, transition: { duration: 0.15 } }
+                            }
+                            transition={{ type: "spring", stiffness: 500, damping: 18 }}
+                            className="flex"
+                          >
+                            {isFavorite ? (
+                              <HiHeart className="text-[#ff6b85] drop-shadow-[0_0_8px_rgba(255,87,110,0.6)]" size={16} />
+                            ) : (
+                              <HiOutlineHeart size={16} />
+                            )}
+                          </motion.span>
+                        </AnimatePresence>
+                      </motion.button>
+
+                      {/* ── Quick View Pill ── */}
+                      <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 translate-y-3 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-black/50 px-3.5 py-1.5 text-[0.62rem] font-bold uppercase tracking-[0.2em] text-white/90 ring-1 ring-white/15 backdrop-blur-md">
+                          <HiEye size={12} />
+                          {t("bouquetSection.view")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* ── Content ── */}
+                    <div className="relative px-2.5 pb-6 pt-5 text-center sm:px-4">
+                      {/* ── Shop Info ── */}
+                      <Link
+                        to={`/shops/${bouquet.shop?.slug ?? "#"}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 text-[0.62rem] font-extrabold uppercase tracking-[0.24em] text-[#ffab98] transition-colors duration-300 hover:text-white"
+                      >
+                        {bouquet.shop?.name ?? bouquet.category?.name ?? t("bouquetSection.all")}
+                        {bouquet.shop?.is_verified ? (
+                          <ShopVerifiedBadge className="h-3.5 w-3.5" iconClassName="h-3 w-3" />
+                        ) : null}
+                      </Link>
+
+                      {/* ── Bouquet Name ── */}
+                      <Link
+                        to={bouquetPath}
+                        onClick={(event) => event.stopPropagation()}
+                        className="mt-1.5 block font-cormorant text-[1.55rem] font-bold leading-snug text-[#fdf2ea] transition-colors duration-300 hover:text-[#ffb8a4] sm:text-[1.7rem]"
+                      >
+                        {bouquet.name.length > 26 ? `${bouquet.name.slice(0, 26)}…` : bouquet.name}
+                      </Link>
+
+                      {/* ── Rating ── */}
+                      <div className="mt-2 flex items-center justify-center gap-1.5">
+                        <span className="flex items-center gap-0.5" aria-label={`${bouquet.rating} / 5`}>
+                          {[...Array(5)].map((_, i) => {
+                            const starValue = Number(bouquet.rating) || 0;
+                            const filled = i < Math.floor(starValue);
+                            const half = !filled && i < Math.ceil(starValue) && starValue % 1 >= 0.3;
+                            return (
+                              <HiStar
+                                key={i}
+                                className={
+                                  filled
+                                    ? "text-[#ffc86b] drop-shadow-[0_0_6px_rgba(255,190,90,0.35)]"
+                                    : half
+                                      ? "text-[#ffc86b]/50"
+                                      : "text-white/15"
+                                }
+                                size={13}
+                              />
+                            );
+                          })}
+                        </span>
+                        <span className="text-xs font-bold text-[#ffe9df]">{Number(bouquet.rating).toFixed(1)}</span>
+                        <span className="text-[0.65rem] text-[#9e7d74]">
+                          ({bouquet.reviews_count} {t("bouquetSection.reviews")})
+                        </span>
+                      </div>
+
+                      {/* ── Ornament Divider ── */}
+                      <div className="mx-auto mt-4 flex items-center justify-center gap-2" aria-hidden="true">
+                        <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#ff8fa0]/40" />
+                        <LuFlower2 className="text-[#ff9b8a]/70" size={12} />
+                        <span className="h-px w-10 bg-gradient-to-l from-transparent to-[#ff8fa0]/40" />
+                      </div>
+
+                      {/* ── Price ── */}
+                      <div className="mt-4 flex items-center justify-center gap-2.5">
+                        <p className="text-[1.35rem] font-extrabold tracking-tight text-[#ffe6da]">
+                          {formatPrice(bouquet.price)}
+                        </p>
+                        <p className="text-xs font-medium text-[#a1847c] line-through">
+                          {formatPrice(getComputedOldPrice(bouquet.price))}
+                        </p>
+                      </div>
+
+                      {/* ── Add to Cart Button ── */}
+                      <button
+                        type="button"
+                        onClick={(event) => handleAddToCart(event, bouquet)}
+                        disabled={!canAddToCart}
+                        className={`group/btn mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-[0.7rem] font-extrabold uppercase tracking-[0.22em] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff8fa0] focus-visible:ring-offset-2 focus-visible:ring-offset-[#100708] ${
+                          canAddToCart
+                            ? "bg-[linear-gradient(110deg,#74202f_0%,#a52a3c_45%,#c73a4e_100%)] text-white shadow-[0_12px_30px_-8px_rgba(207,60,84,0.45)] hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-8px_rgba(207,60,84,0.6)] active:scale-[0.97]"
+                            : "cursor-not-allowed border border-white/10 bg-white/[0.04] text-[#c9aca4]/70"
+                        }`}
+                      >
+                        <HiOutlineShoppingBag
+                          className="transition-transform duration-300 group-hover/btn:-translate-x-0.5 group-hover/btn:scale-110"
+                          size={15}
+                        />
+                        {canAddToCart ? t("bouquetSection.addToCart") : t("availability.outOfStock")}
+                      </button>
+                    </div>
+                  </div>
+                </motion.article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="relative mx-auto max-w-xl rounded-[2rem] border border-dashed border-[#7a3a3a]/60 bg-[#160a0d]/60 px-6 py-14 text-center backdrop-blur-sm sm:px-10">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-[#ff8fa0]/25 bg-gradient-to-br from-[#26101a] to-[#140709]">
+              <LuFlower2 className="text-[#ff9b8a]" size={26} />
+            </div>
+            <h3 className="font-cormorant text-3xl font-semibold text-[#fff2eb]">
+              {t("bouquetSection.noFlowersTitle")}
+            </h3>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-[#c6a79d]">
+              {t("bouquetSection.noFlowersDesc")}
+            </p>
             <Link
               to="/bouquets"
-              className="group relative inline-flex h-11 sm:h-12 items-center justify-center gap-3 rounded-xl border border-[#cb5c57]/40 bg-gradient-to-b from-[#1f0a0b]/90 to-[#180708]/80 px-6 sm:px-8 text-xs sm:text-sm font-bold uppercase tracking-[0.14em] text-[#fff0ea] shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#cb5c57] hover:bg-[#cb5c57]/20 hover:shadow-xl hover:shadow-[#cb5c57]/10"
+              className="group mt-7 inline-flex items-center gap-2 rounded-full border border-[#ff8fa0]/40 bg-[#2b0f18]/80 px-6 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[#ffd9cd] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#ff8fa0] hover:bg-[#ff5b72]/15 hover:text-white hover:shadow-lg hover:shadow-[#ff5b72]/20"
             >
-               <span className="relative z-10">{t("bouquetSection.browseAllFlowers")}</span>
-              <HiArrowRight className="relative z-10 transition-transform duration-300 group-hover:translate-x-1" />
+              {t("bouquetSection.browseAllFlowers")}
+              <HiArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </div>
         )}
+
+        {/* ── Bottom CTA ── */}
+        {bouquets.length > 0 && (
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
+            whileInView={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2, duration: 0.7, ease: EASE }}
+            className="relative mt-14 flex flex-col items-center gap-4 sm:mt-20"
+          >
+            <span className="h-px w-40 bg-gradient-to-r from-transparent via-[#ff8fa0]/50 to-transparent" aria-hidden="true" />
+            <Link
+              to="/bouquets"
+              className="group inline-flex h-12 items-center justify-center gap-3 rounded-full border border-[#ff8fa0]/35 bg-white/[0.03] px-8 text-[0.72rem] font-extrabold uppercase tracking-[0.26em] text-[#ffd7ca] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[#ff8fa0]/80 hover:bg-[#ff5b72]/15 hover:text-white hover:shadow-[0_16px_44px_-12px_rgba(255,91,114,0.5)]"
+            >
+              {t("bouquetSection.browseAllFlowers")}
+              <HiArrowRight className="text-[#ff8fa0] transition-transform duration-300 group-hover:translate-x-1.5" />
+            </Link>
+          </motion.div>
+        )}
       </div>
-
-      {/* ─── Global CSS for animations ─── */}
-      <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(2rem);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes heartBeat {
-          0%, 100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.2);
-          }
-        }
-
-        @keyframes shimmer {
-          0% {
-            background-position: -200% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
-        }
-
-        .animate-fade-in-up {
-          animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-
-        .animate-heart-beat {
-          animation: heartBeat 0.4s ease-in-out;
-        }
-
-        /* Hide scrollbar for category scroll */
-        .scrollbar-none {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-none::-webkit-scrollbar {
-          display: none;
-        }
-
-        /* Smooth image loading */
-        .bouquet-card img {
-          transition: opacity 0.5s ease, transform 0.7s ease-out;
-        }
-
-        @media (max-width: 640px) {
-          .bouquet-card .font-cormorant.text-2xl {
-            font-size: 1.25rem;
-          }
-        }
-      `}</style>
     </section>
   );
 }

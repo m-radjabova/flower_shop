@@ -113,7 +113,7 @@ function AboutSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative isolate overflow-hidden px-4 pb-12 pt-20 sm:px-6 sm:pb-16 sm:pt-28"
+      className="relative isolate overflow-hidden "
       id="about"
     >
       {/* ── Full‑bleed background layer ── */}
