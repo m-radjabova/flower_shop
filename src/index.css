@@ -23,7 +23,6 @@ body {
 
 
 a {
-  color: inherit;
   text-decoration: none;
 }
 
@@ -40,6 +39,22 @@ img {
 button,
 input {
   font: inherit;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px rgba(255, 255, 255, 0.06) inset !important;
+  -webkit-text-fill-color: #fff7f6 !important;
+  caret-color: #ff8ea0 !important;
+  color: #fff7f6 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+input::placeholder {
+  color: rgba(138, 100, 109, 0.9);
+  opacity: 1;
 }
 
 button {

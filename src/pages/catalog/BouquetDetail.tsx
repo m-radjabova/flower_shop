@@ -44,6 +44,7 @@ function useInView(options: IntersectionObserverInit = EMPTY_OPTIONS): [React.Re
   return [ref, visible];
 }
 
+
 // ─── Animated reveal block ───────────────────────────────────────────────────
 function Reveal({
   children,

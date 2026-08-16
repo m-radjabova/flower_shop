@@ -95,13 +95,31 @@ export async function getBouquetPage(params: BouquetQueryParams = {}) {
 }
 
 export async function getBouquet(bouquetId: string) {
+  const normalizedId = bouquetId.trim();
+
+  if (!normalizedId) {
+    throw new Error("Bouquet id or slug is required");
+  }
+
   try {
-    const { data } = await apiClient.get<Bouquet>(`/bouquets/${bouquetId}`);
+    const bouquets = await getBouquets({ search: normalizedId, limit: 50 });
+    const match = bouquets.find((bouquet) => bouquet.slug === normalizedId || bouquet.id === normalizedId);
+
+    if (match) {
+      return match;
+    }
+  } catch {
+    // The search endpoint can be unavailable or stricter than the direct route,
+    // so we still fall back to the direct lookup below.
+  }
+
+  try {
+    const { data } = await apiClient.get<Bouquet>(`/bouquets/${encodeURIComponent(normalizedId)}`);
     return data;
   } catch (error) {
     if (axios.isAxiosError(error) && [400, 404, 422].includes(error.response?.status ?? 0)) {
-      const bouquets = await getBouquets({ search: bouquetId, limit: 50 });
-      const match = bouquets.find((bouquet) => bouquet.slug === bouquetId || bouquet.id === bouquetId);
+      const bouquets = await getBouquets({ search: normalizedId, limit: 50 });
+      const match = bouquets.find((bouquet) => bouquet.slug === normalizedId || bouquet.id === normalizedId);
 
       if (match) {
         return match;
